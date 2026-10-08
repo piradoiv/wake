@@ -133,6 +133,14 @@ End
 	#tag EndEvent
 
 
+	#tag MenuHandler
+		Function FileCloseWindow() As Boolean Handles FileCloseWindow.Action
+		  Self.Close
+		  Return True
+		End Function
+	#tag EndMenuHandler
+
+
 	#tag Method, Flags = &h21
 		Private Sub CommitRow(row As Integer)
 		  // Stores the prices typed in a row. Clearing every cell removes the model's price.

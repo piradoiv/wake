@@ -173,9 +173,10 @@ machine to inspect, and the console companion.
   on tinted tiles. Colour constants are `Type = Color`.
 - **`PaintCellText` draws the cell text in `g.DrawingColor`** when it returns
   False, so restore that colour after drawing anything else in the cell.
-- **Xojo adds no File → Close item.** `FileCloseWindow` (Cmd+W) is handled in
-  `App` and closes `WindowAt(0)`, the frontmost window. Auto-enable left it
-  greyed out, so `App.MenuBarSelected` enables it.
+- **Xojo adds no File → Close item.** `FileCloseWindow` (Cmd+W) has a
+  `Self.Close` handler in each window. A handler in `App` closing `WindowAt(0)`
+  didn't close the front window. Auto-enable left the item greyed out, so
+  `App.MenuBarSelected` enables it. A new window needs its own handler.
 - **`call` is a reserved word** in Xojo. Don't use it as a variable name.
 - **Xojo identifiers are case-insensitive.** A parameter named `usage` shadows
   a property named `Usage`.

@@ -20,14 +20,6 @@ Inherits DesktopApplication
 
 
 	#tag MenuHandler
-		Function FileCloseWindow() As Boolean Handles FileCloseWindow.Action
-		  // WindowAt(0) is the frontmost window, so Cmd+W closes whichever window has focus.
-		  If WindowCount > 0 Then WindowAt(0).Close
-		  Return True
-		End Function
-	#tag EndMenuHandler
-
-	#tag MenuHandler
 		Function WindowPrices() As Boolean Handles WindowPrices.Action
 		  PricesWindow.Show
 		  Return True

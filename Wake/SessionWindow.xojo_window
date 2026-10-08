@@ -52,6 +52,13 @@ End
 
 #tag WindowCode
 	#tag MenuHandler
+		Function FileCloseWindow() As Boolean Handles FileCloseWindow.Action
+		  Self.Close
+		  Return True
+		End Function
+	#tag EndMenuHandler
+
+	#tag MenuHandler
 		Function FileExportMarkdown() As Boolean Handles FileExportMarkdown.Action
 		  App.ExportMarkdown(mInfo)
 		  Return True

@@ -246,6 +246,14 @@ End
 	#tag EndEvent
 
 
+	#tag MenuHandler
+		Function FileCloseWindow() As Boolean Handles FileCloseWindow.Action
+		  Self.Close
+		  Return True
+		End Function
+	#tag EndMenuHandler
+
+
 	#tag Method, Flags = &h21
 		Private Sub AddUsageRow(label As String, sortKey As String, usage As WakeUsageGroup)
 		  Var total As WakeTokenUsage = usage.Total
