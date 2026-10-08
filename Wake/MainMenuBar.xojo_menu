@@ -8,6 +8,18 @@ Begin Menu MainMenuBar
       AutoEnabled = True
       AutoEnable = True
       Visible = True
+      Begin DesktopMenuItem FileOpenTimeline
+         SpecialMenu = 0
+         Index = -2147483648
+         Text = "&Open Timeline"
+         Symbol = ""
+         ShortcutKey = "O"
+         Shortcut = "Cmd+O"
+         MenuModifier = True
+         AutoEnabled = True
+         AutoEnable = True
+         Visible = True
+      End
       Begin DesktopMenuItem FileRefresh
          SpecialMenu = 0
          Index = -2147483648

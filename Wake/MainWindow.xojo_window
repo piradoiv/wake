@@ -275,9 +275,15 @@ End
 	#tag EndEvent
 
 	#tag Event
+		Sub MenuBarSelected()
+		  FileOpenTimeline.Enabled = SelectedSession <> Nil
+		End Sub
+	#tag EndEvent
+
+	#tag Event
 		Sub Opening()
 		  SetUpLists
-
+		  
 		  // The window opens its own connection only once an indexing run has finished, so it never
 		  // races the indexer thread while that creates or rebuilds the schema.
 		  If App.IndexThread Is Nil Then
@@ -290,6 +296,13 @@ End
 		End Sub
 	#tag EndEvent
 
+
+	#tag MenuHandler
+		Function FileOpenTimeline() As Boolean Handles FileOpenTimeline.Action
+		  OpenTimeline
+		  Return True
+		End Function
+	#tag EndMenuHandler
 
 	#tag MenuHandler
 		Function FileRefresh() As Boolean Handles FileRefresh.Action
@@ -367,11 +380,11 @@ End
 		Private Sub LoadSessions()
 		  // Fills the sessions list for the selected agent or project, keeping the selected session.
 		  Var previousID As Integer = SelectedSessionID
-
+		  
 		  mLoading = True
 		  SessionsList.RemoveAllRows
 		  DetailList.RemoveAllRows
-
+		  
 		  Var source As WakeProjectInfo = SelectedSource
 		  Var sessions() As WakeSessionInfo
 		  If source <> Nil And mCatalog <> Nil Then
@@ -381,11 +394,11 @@ End
 		      mIndexNote = "Could not read the index: " + err.Message
 		    End Try
 		  End If
-
+		  
 		  For Each s As WakeSessionInfo In sessions
 		    SessionsList.AddRow(FormatTime(s.StartTime), WakeFormat.Duration(s.DurationSeconds), s.DisplayTitle, _
 		    AgentName(s.AgentID), WakeFormat.Tokens(s.TotalUsage.Total), "")
-
+		    
 		    Var row As Integer = SessionsList.LastAddedRowIndex
 		    SessionsList.RowTagAt(row) = s
 		    SessionsList.CellTagAt(row, kColumnStarted) = If(s.StartTime Is Nil, 0.0, s.StartTime.SecondsFrom1970)
@@ -394,9 +407,9 @@ End
 		    SessionsList.CellTooltipAt(row, kColumnTitle) = WakeFormat.OneLine(If(s.FirstPrompt <> "", s.FirstPrompt, s.DisplayTitle), 500)
 		    If s.IsPartial Then SessionsList.CellTooltipAt(row, kColumnStatus) = s.ParseNote
 		  Next
-
+		  
 		  If SessionsList.SortingColumn >= 0 Then SessionsList.Sort
-
+		  
 		  For row As Integer = 0 To SessionsList.LastRowIndex
 		    If WakeSessionInfo(SessionsList.RowTagAt(row).ObjectValue).ID = previousID Then
 		      SessionsList.SelectedRowIndex = row
@@ -404,7 +417,7 @@ End
 		    End If
 		  Next
 		  mLoading = False
-
+		  
 		  ShowDetail(SelectedSession)
 		  UpdateStatus
 		End Sub
@@ -413,7 +426,7 @@ End
 	#tag Method, Flags = &h21
 		Private Function OpenCatalog() As Boolean
 		  If mCatalog <> Nil Then Return True
-
+		  
 		  Var index As New WakeIndex(WakeFolders.DefaultIndexFile)
 		  Try
 		    index.Open
@@ -424,11 +437,30 @@ End
 		    mIndexNote = "Could not open the index: " + err.Message
 		    Return False
 		  End Try
-
+		  
 		  mIndex = index
 		  mCatalog = New WakeCatalog(index)
 		  Return True
 		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub OpenTimeline()
+		  // Opens the selected session's timeline, or brings its window to the front if it is open.
+		  Var info As WakeSessionInfo = SelectedSession
+		  If info Is Nil Then Return
+		  
+		  For i As Integer = 0 To App.WindowCount - 1
+		    Var existing As DesktopWindow = App.WindowAt(i)
+		    If existing IsA SessionWindow And SessionWindow(existing).SessionID = info.ID Then
+		      existing.Show
+		      Return
+		    End If
+		  Next
+		  
+		  Var timelineWindow As New SessionWindow
+		  timelineWindow.ShowSession(info)
+		End Sub
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
@@ -454,39 +486,39 @@ End
 		Private Sub Reload()
 		  // Rebuilds the source list from the index and keeps the current selection when it still exists.
 		  IndexWheel.Visible = False
-
+		  
 		  If Not OpenCatalog Then
 		    UpdateStatus
 		    Return
 		  End If
-
+		  
 		  Var previous As WakeProjectInfo = SelectedSource
 		  Var previousKey As String = If(previous Is Nil, "", previous.AgentID + "/" + previous.ID.ToString)
-
+		  
 		  Try
 		    mProjects = mCatalog.Projects(ShowCommandsCheckBox.Value)
 		  Catch err As DatabaseException
 		    mIndexNote = "Could not read the index: " + err.Message
 		    mProjects.RemoveAll
 		  End Try
-
+		  
 		  mLoading = True
 		  SourceList.RemoveAllRows
-
+		  
 		  // One expandable row per agent, most recently active first. Its tag is a project with ID 0,
 		  // which the catalog reads as every project of that agent.
 		  Var agents() As String
 		  For Each p As WakeProjectInfo In mProjects
 		    If agents.IndexOf(p.AgentID) < 0 Then agents.Add(p.AgentID)
 		  Next
-
+		  
 		  For Each agentID As String In agents
 		    Var all As New WakeProjectInfo
 		    all.AgentID = agentID
 		    For Each p As WakeProjectInfo In mProjects
 		      If p.AgentID = agentID Then all.SessionCount = all.SessionCount + p.SessionCount
 		    Next
-
+		    
 		    SourceList.AddExpandableRow(AgentName(agentID))
 		    Var row As Integer = SourceList.LastAddedRowIndex
 		    SourceList.CellTextAt(row, 1) = all.SessionCount.ToString
@@ -494,7 +526,7 @@ End
 		    SourceList.RowTagAt(row) = all
 		    SourceList.RowExpandedAt(row) = True
 		  Next
-
+		  
 		  Var selectRow As Integer = If(SourceList.RowCount > 0, 0, -1)
 		  For row As Integer = 0 To SourceList.LastRowIndex
 		    Var p As WakeProjectInfo = WakeProjectInfo(SourceList.RowTagAt(row).ObjectValue)
@@ -505,7 +537,7 @@ End
 		  Next
 		  SourceList.SelectedRowIndex = selectRow
 		  mLoading = False
-
+		  
 		  LoadSessions
 		End Sub
 	#tag EndMethod
@@ -535,7 +567,7 @@ End
 	#tag Method, Flags = &h21
 		Private Sub SetUpLists()
 		  SourceList.ColumnAlignmentAt(1) = DesktopListBox.Alignments.Right
-
+		  
 		  SessionsList.HeaderAt(kColumnStarted) = "Started"
 		  SessionsList.HeaderAt(kColumnDuration) = "Duration"
 		  SessionsList.HeaderAt(kColumnTitle) = "Title"
@@ -544,21 +576,21 @@ End
 		  SessionsList.HeaderAt(kColumnStatus) = " " // An empty heading shows the column number.
 		  SessionsList.ColumnAlignmentAt(kColumnDuration) = DesktopListBox.Alignments.Right
 		  SessionsList.ColumnAlignmentAt(kColumnTokens) = DesktopListBox.Alignments.Right
-
+		  
 		  DetailList.ColumnAlignmentAt(0) = DesktopListBox.Alignments.Left
 		End Sub
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
 		Private Sub ShowDetail(info As WakeSessionInfo)
-		  // A summary of one session. The full timeline comes in the next milestone.
+		  // A summary of one session. Double-clicking it opens the full timeline.
 		  DetailList.RemoveAllRows
 		  If mCatalog Is Nil Then Return
 		  If info Is Nil Then
 		    If SessionsList.RowCount > 0 Then AddDetail("", "Select a session to see its details.")
 		    Return
 		  End If
-
+		  
 		  Var s As WakeSessionInfo
 		  Var subagents() As WakeSessionInfo
 		  Try
@@ -568,12 +600,12 @@ End
 		    AddDetail("Error", "Could not read the index: " + err.Message)
 		    Return
 		  End Try
-
+		  
 		  If s Is Nil Then
 		    AddDetail("", "This session is no longer in the index.")
 		    Return
 		  End If
-
+		  
 		  AddDetailHeading("Session")
 		  AddDetail("Title", s.DisplayTitle)
 		  If s.FirstPrompt <> "" And s.Title <> "" Then AddDetail("First prompt", WakeFormat.OneLine(s.FirstPrompt, 500))
@@ -586,7 +618,7 @@ End
 		  If s.ActiveMs > 0 Then AddDetail("Active time", WakeFormat.Duration(s.ActiveMs / 1000))
 		  AddDetail("Prompts", WakeFormat.Count(s.PromptCount))
 		  AddDetail("Events", WakeFormat.Count(s.EventCount))
-
+		  
 		  AddDetailHeading("Tokens")
 		  AddDetail("Total", WakeFormat.Count(s.TotalUsage.Total))
 		  AddDetail("Input", WakeFormat.Count(s.TotalUsage.InputTokens))
@@ -595,14 +627,14 @@ End
 		  AddDetail("Cache read", WakeFormat.Count(s.TotalUsage.CacheReadTokens))
 		  If s.SubagentCount > 0 Then AddDetail("Without subagents", WakeFormat.Count(s.OwnUsage.Total))
 		  If s.HasAgentCost Then AddDetail("Cost", "$" + s.AgentCostUSD.ToString(Locale.Raw, "0.00") + " (reported by agent)")
-
+		  
 		  If s.Models.Count > 0 Then
 		    AddDetailHeading("Models")
 		    For Each model As Pair In s.Models
 		      AddDetail(model.Left.StringValue, WakeFormat.Count(WakeTokenUsage(model.Right.ObjectValue).Total) + " tokens")
 		    Next
 		  End If
-
+		  
 		  If subagents.Count > 0 Then
 		    AddDetailHeading("Subagents")
 		    For Each child As WakeSessionInfo In subagents
@@ -610,10 +642,11 @@ End
 		      child.DisplayTitle + " (" + WakeFormat.Tokens(child.TotalUsage.Total) + " tokens)")
 		    Next
 		  End If
-
+		  
 		  AddDetailHeading("Source")
 		  If s.IsPartial Then AddDetail("Partially parsed", s.ParseNote)
 		  AddDetail("File", s.FilePath)
+		  AddDetail("Timeline", "Double-click the session or press ⌘O")
 		End Sub
 	#tag EndMethod
 
@@ -683,7 +716,7 @@ End
 		Sub RowExpanded(row As Integer)
 		  // Children of an agent row: its projects, most recently active first.
 		  Var agent As WakeProjectInfo = WakeProjectInfo(Me.RowTagAt(row).ObjectValue)
-
+		  
 		  For Each p As WakeProjectInfo In mProjects
 		    If p.AgentID <> agent.AgentID Then Continue
 		    Me.AddRow(ProjectLabel(p), p.SessionCount.ToString)
@@ -705,17 +738,17 @@ End
 		  // Draws a "Partial" badge for sessions the parser could not read completely.
 		  #Pragma Unused y
 		  If column <> kColumnStatus Or row > Me.LastRowIndex Then Return False
-
+		  
 		  Var s As WakeSessionInfo = WakeSessionInfo(Me.RowTagAt(row).ObjectValue)
 		  If s Is Nil Or Not s.IsPartial Then Return True
-
+		  
 		  Var label As String = "Partial"
 		  g.FontSize = 10
 		  g.Bold = True
 		  Var badgeWidth As Double = g.TextWidth(label) + 10
 		  Var badgeHeight As Double = 16
 		  Var top As Double = (g.Height - badgeHeight) / 2
-
+		  
 		  g.DrawingColor = Color.RGB(201, 120, 0)
 		  g.FillRoundRectangle(x, top, badgeWidth, badgeHeight, 8, 8)
 		  g.DrawingColor = Color.White
@@ -724,7 +757,7 @@ End
 		End Function
 	#tag EndEvent
 	#tag Event
-		Function RowComparison(row1 As Integer, row2 As Integer, column As Integer, ByRef result As Integer) As Boolean
+		Function RowComparison(row1 as Integer, row2 as Integer, column as Integer, ByRef result as Integer) As Boolean
 		  // Dates, durations and token counts sort by value, not by their text.
 		  Select Case column
 		  Case kColumnStarted, kColumnDuration, kColumnTokens
@@ -739,7 +772,7 @@ End
 		    End If
 		    Return True
 		  End Select
-
+		  
 		  Return False
 		End Function
 	#tag EndEvent
@@ -747,6 +780,21 @@ End
 		Sub SelectionChanged()
 		  If Not mLoading Then ShowDetail(SelectedSession)
 		End Sub
+	#tag EndEvent
+	#tag Event
+		Sub DoublePressed()
+		  OpenTimeline
+		End Sub
+	#tag EndEvent
+	#tag Event
+		Function KeyDown(key As String) As Boolean
+		  // Return or Enter opens the timeline, like double-clicking the row.
+		  If key = &u0D Or key = &u03 Then
+		    OpenTimeline
+		    Return True
+		  End If
+		  Return False
+		End Function
 	#tag EndEvent
 #tag EndEvents
 #tag Events ShowCommandsCheckBox

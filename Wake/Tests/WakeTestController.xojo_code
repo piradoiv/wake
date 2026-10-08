@@ -11,6 +11,7 @@ Inherits TestController
 		  group = New ClaudeCodeParserTests(Self, "ClaudeCodeParser")
 		  group = New WakeIndexTests(Self, "WakeIndex")
 		  group = New WakeCatalogTests(Self, "WakeCatalog")
+		  group = New WakeTimelineTests(Self, "WakeTimeline")
 		  
 		  #Pragma Unused group
 		End Sub

@@ -29,10 +29,15 @@ Each milestone ends with the tests passing and a commit.
   duration, title, agent, tokens, "Partial" badge; sorts by value), and a
   summary detail pane. "Show command-only sessions" is off by default.
   File → Refresh (Cmd+R) re-indexes. 41 tests.
-- [ ] **5. Session timeline.** `DesktopHTMLViewer` fed local HTML, with no
-  remote resources: collapsible tool calls and results, diffs for file edits,
-  long outputs truncated with an option to expand, and the parse-report note.
-  Load persisted tool output only on demand.
+- [x] **5. Session timeline.** `WakeTimeline` (Core) re-parses a transcript
+  and renders one self-contained page: prompts and answers as cards, tool
+  calls as collapsible `<details>`, edits as coloured diffs, subagents nested
+  under their tool call, and the parse-report note. Blocks longer than 40
+  lines or 6,000 characters show a preview, and the page asks for the rest
+  (or for persisted tool output) through `executeInXojoSync`. `SessionWindow`
+  shows it in a `DesktopHTMLViewer`. Open it by double-click, Return or
+  File → Open Timeline (Cmd+O). 53 tests. On real data (78 sessions) the
+  slowest page takes 0.24 s to parse and render, and the largest is 680 KB.
 - [ ] **6. Search.** Full-text search (FTS5) with filters for agent, project,
   date range and event kind.
 - [ ] **7. Stats and prices.** Tokens per session, project and day.
@@ -64,6 +69,9 @@ machine to inspect, and the console companion.
 | Files that disappear, including ones under a custom folder that's no longer available, are **removed** from the index. | The index mirrors what's on disk. |
 | The window opens its index connection **only after an indexing run finishes**, and reloads after each run. | Opening it while the thread creates or rebuilds the schema would race it. A run with nothing changed takes about 10 ms, so the wait is invisible. |
 | A session with no `cwd` (empty, or only a slash command) joins the project of **the other sessions in its folder**, if there are any. | Otherwise it shows up as a second project named after the encoded folder. |
+| The timeline **opens in its own window** (`SessionWindow`), one per session. | It needs the full width for diffs and output, and two sessions can be compared side by side. |
+| The timeline page has a **CSP of `default-src 'none'`** with inline style and script, and the viewer **cancels every navigation** after the page loads. | Transcripts are untrusted text. Nothing in them may load a remote resource or move the viewer off the page. |
+| Long blocks and persisted output are **fetched on demand** with `executeInXojoSync`, not embedded. | Keeps the page small for 10 MB transcripts. Persisted output is read only when asked for, capped at 4 MB. |
 
 ## Working notes and gotchas
 
@@ -78,6 +86,12 @@ machine to inspect, and the console companion.
 - **`Assert.AreEqual(n, someArray.Count)` is ambiguous.** Assign the count to
   an `Integer` variable first.
 - **`(expression).ToString` doesn't parse.** Assign to a variable first.
+- **`New Foo(x).Bar` doesn't parse either.** Assign the new object first.
+- **HTML viewer callbacks:** page JavaScript calls `executeInXojoSync(method,
+  arg)`, which raises `JavaScriptRequest(method, parameters())` and returns
+  its String to the page. `LoadPage(html, Nil)` loads the page as
+  `about:blank`, and `CancelLoad` fires for it too, so let the first load
+  through and block the rest.
 - **`String` has no `LastIndexOf`.** Split, or loop with `IndexOf`.
 - **`DesktopProgressWheel.Active` can't be set in code.** Leave it `True` in
   the layout and toggle `Visible`.

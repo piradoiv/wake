@@ -24,6 +24,27 @@ Protected Module WakeFormat
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function Bytes(amount As Int64) As String
+		  // File size in decimal units: "512 bytes", "2.0 KB", "14 MB".
+		  If amount < 1000 Then Return amount.ToString + If(amount = 1, " byte", " bytes")
+
+		  Var value As Double = amount / 1000
+		  Var suffix As String = " KB"
+		  If value >= 999.95 Then
+		    value = value / 1000
+		    suffix = " MB"
+		  End If
+		  If value >= 999.95 Then
+		    value = value / 1000
+		    suffix = " GB"
+		  End If
+
+		  If value >= 100 Then Return value.ToString(Locale.Raw, "0") + suffix
+		  Return value.ToString(Locale.Raw, "0.0") + suffix
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function Count(value As Int64) As String
 		  // Whole number with thousands separators from the user's locale.
 		  Return value.ToString(Locale.Current, "#,##0")

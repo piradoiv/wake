@@ -17,6 +17,9 @@ Remove anything that turns out to be wrong. Keep all three short and current.
 
 - Never write to, move or delete agent transcript files. Open them read-only.
 - No network code and no telemetry.
+- The timeline page must stay self-contained: inline CSS and JS, no remote
+  URLs, and its content-security policy kept at `default-src 'none'`.
+  Transcript text is always escaped with `WakeTimeline.EscapeHTML`.
 - Keep everything in `Wake/Core/` free of Desktop* UI classes, because a console
   companion will reuse it later.
 - UI code reads the index through `WakeCatalog`, not with its own SQL.

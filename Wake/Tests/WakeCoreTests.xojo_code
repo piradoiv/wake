@@ -83,6 +83,17 @@ Inherits TestGroup
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub FormatBytesTest()
+		  Assert.AreEqual("1 byte", WakeFormat.Bytes(1))
+		  Assert.AreEqual("999 bytes", WakeFormat.Bytes(999))
+		  Assert.AreEqual("2.0 KB", WakeFormat.Bytes(2048))
+		  Assert.AreEqual("150 KB", WakeFormat.Bytes(150000))
+		  Assert.AreEqual("1.0 MB", WakeFormat.Bytes(999999))
+		  Assert.AreEqual("4.0 GB", WakeFormat.Bytes(4000000000))
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub FormatTokensTest()
 		  Assert.AreEqual("0", WakeFormat.Tokens(0))
 		  Assert.AreEqual("950", WakeFormat.Tokens(950))
