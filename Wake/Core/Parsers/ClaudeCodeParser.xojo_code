@@ -107,7 +107,7 @@ Implements IAgentParser
 		    Var key As String = If(messageID <> "", messageID, WakeCore.JSONString(record, "requestId"))
 		    If key = "" Or Not seenMessages.HasKey(key) Then
 		      If key <> "" Then seenMessages.Value(key) = True
-		      session.AddUsage(model, UsageFrom(WakeCore.JSONDictionary(message, "usage")))
+		      session.AddUsage(model, UsageFrom(WakeCore.JSONDictionary(message, "usage")), timestamp)
 		    End If
 		  End If
 
@@ -697,6 +697,13 @@ Implements IAgentParser
 		  result.OutputTokens = WakeCore.JSONInteger(usage, "output_tokens")
 		  result.CacheWriteTokens = WakeCore.JSONInteger(usage, "cache_creation_input_tokens")
 		  result.CacheReadTokens = WakeCore.JSONInteger(usage, "cache_read_input_tokens")
+
+		  // Cache writes split by lifetime, when the record has the split. The rest are five-minute writes.
+		  Var split As Dictionary = WakeCore.JSONDictionary(usage, "cache_creation")
+		  If split <> Nil Then
+		    Var longLived As Int64 = WakeCore.JSONInteger(split, "ephemeral_1h_input_tokens")
+		    result.CacheWrite1hTokens = If(longLived > result.CacheWriteTokens, result.CacheWriteTokens, longLived)
+		  End If
 		  Return result
 		End Function
 	#tag EndMethod

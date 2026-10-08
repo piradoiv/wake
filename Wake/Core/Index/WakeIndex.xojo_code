@@ -29,7 +29,7 @@ Protected Class WakeIndex
 
 		  mDB.BeginTransaction
 		  Try
-		    For Each name As String In Array("events_fts", "events", "session_models", "sessions", "projects", "files", "meta")
+		    For Each name As String In Array("events_fts", "events", "usage", "session_models", "sessions", "projects", "files", "meta")
 		      mDB.ExecuteSQL("DROP TABLE IF EXISTS " + name)
 		    Next
 
@@ -109,15 +109,15 @@ Protected Class WakeIndex
 
 		  mDB.ExecuteSQL("INSERT INTO sessions (file_id, parent_id, project_id, agent, uid, title, first_prompt, " + _
 		  "start_time, end_time, active_ms, prompt_count, event_count, command_only, git_branch, agent_version, " + _
-		  "input_tokens, output_tokens, cache_write_tokens, cache_read_tokens, " + _
-		  "total_input_tokens, total_output_tokens, total_cache_write_tokens, total_cache_read_tokens, " + _
-		  "agent_cost_usd, partial, parse_note, subagent_type, subagent_description, parent_tool_use_id) " + _
-		  "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", _
+		  "input_tokens, output_tokens, cache_write_tokens, cache_write_1h_tokens, cache_read_tokens, " + _
+		  "total_input_tokens, total_output_tokens, total_cache_write_tokens, total_cache_write_1h_tokens, " + _
+		  "total_cache_read_tokens, agent_cost_usd, partial, parse_note, subagent_type, subagent_description, " + _
+		  "parent_tool_use_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", _
 		  fileID, parentID, projectID, session.AgentID, uid, session.Title, session.FirstPrompt, _
 		  TimeValue(session.StartTime), TimeValue(session.EndTime), session.ActiveDurationMs, session.PromptCount, _
 		  session.Events.Count, If(session.IsCommandOnly, 1, 0), session.GitBranch, session.AgentVersion, _
-		  own.InputTokens, own.OutputTokens, own.CacheWriteTokens, own.CacheReadTokens, _
-		  total.InputTokens, total.OutputTokens, total.CacheWriteTokens, total.CacheReadTokens, _
+		  own.InputTokens, own.OutputTokens, own.CacheWriteTokens, own.CacheWrite1hTokens, own.CacheReadTokens, _
+		  total.InputTokens, total.OutputTokens, total.CacheWriteTokens, total.CacheWrite1hTokens, total.CacheReadTokens, _
 		  reportedCost, If(session.Report.IsPartial, 1, 0), session.Report.Summary, _
 		  session.SubagentType, session.SubagentDescription, session.ParentToolUseID)
 
@@ -126,8 +126,17 @@ Protected Class WakeIndex
 		  For Each model As Variant In session.UsageByModel.Keys
 		    Var usage As WakeTokenUsage = WakeTokenUsage(session.UsageByModel.Value(model).ObjectValue)
 		    mDB.ExecuteSQL("INSERT INTO session_models (session_id, model, input_tokens, output_tokens, " + _
-		    "cache_write_tokens, cache_read_tokens) VALUES (?, ?, ?, ?, ?, ?)", sessionID, model.StringValue, _
-		    usage.InputTokens, usage.OutputTokens, usage.CacheWriteTokens, usage.CacheReadTokens)
+		    "cache_write_tokens, cache_write_1h_tokens, cache_read_tokens) VALUES (?, ?, ?, ?, ?, ?, ?)", _
+		    sessionID, model.StringValue, usage.InputTokens, usage.OutputTokens, usage.CacheWriteTokens, _
+		    usage.CacheWrite1hTokens, usage.CacheReadTokens)
+		  Next
+
+		  For Each entry As WakeUsageEntry In session.UsageEntries
+		    Var usage As WakeTokenUsage = entry.Usage
+		    mDB.ExecuteSQL("INSERT INTO usage (session_id, timestamp, model, input_tokens, output_tokens, " + _
+		    "cache_write_tokens, cache_write_1h_tokens, cache_read_tokens) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", _
+		    sessionID, TimeValue(entry.Timestamp), entry.Model, usage.InputTokens, usage.OutputTokens, _
+		    usage.CacheWriteTokens, usage.CacheWrite1hTokens, usage.CacheReadTokens)
 		  Next
 
 		  InsertEvents(sessionID, session)
@@ -245,9 +254,11 @@ Protected Class WakeIndex
 		  "prompt_count INTEGER NOT NULL DEFAULT 0, event_count INTEGER NOT NULL DEFAULT 0, " + _
 		  "command_only INTEGER NOT NULL DEFAULT 0, git_branch TEXT NOT NULL DEFAULT '', agent_version TEXT NOT NULL DEFAULT '', " + _
 		  "input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0, " + _
-		  "cache_write_tokens INTEGER NOT NULL DEFAULT 0, cache_read_tokens INTEGER NOT NULL DEFAULT 0, " + _
+		  "cache_write_tokens INTEGER NOT NULL DEFAULT 0, cache_write_1h_tokens INTEGER NOT NULL DEFAULT 0, " + _
+		  "cache_read_tokens INTEGER NOT NULL DEFAULT 0, " + _
 		  "total_input_tokens INTEGER NOT NULL DEFAULT 0, total_output_tokens INTEGER NOT NULL DEFAULT 0, " + _
-		  "total_cache_write_tokens INTEGER NOT NULL DEFAULT 0, total_cache_read_tokens INTEGER NOT NULL DEFAULT 0, " + _
+		  "total_cache_write_tokens INTEGER NOT NULL DEFAULT 0, total_cache_write_1h_tokens INTEGER NOT NULL DEFAULT 0, " + _
+		  "total_cache_read_tokens INTEGER NOT NULL DEFAULT 0, " + _
 		  "agent_cost_usd REAL, partial INTEGER NOT NULL DEFAULT 0, parse_note TEXT NOT NULL DEFAULT '', " + _
 		  "subagent_type TEXT NOT NULL DEFAULT '', subagent_description TEXT NOT NULL DEFAULT '', " + _
 		  "parent_tool_use_id TEXT NOT NULL DEFAULT '')")
@@ -257,7 +268,15 @@ Protected Class WakeIndex
 
 		  s.Add("CREATE TABLE session_models (session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE, " + _
 		  "model TEXT NOT NULL, input_tokens INTEGER NOT NULL, output_tokens INTEGER NOT NULL, " + _
-		  "cache_write_tokens INTEGER NOT NULL, cache_read_tokens INTEGER NOT NULL, PRIMARY KEY (session_id, model))")
+		  "cache_write_tokens INTEGER NOT NULL, cache_write_1h_tokens INTEGER NOT NULL, " + _
+		  "cache_read_tokens INTEGER NOT NULL, PRIMARY KEY (session_id, model))")
+
+		  // One row per model response, so usage can be grouped by day. cache_write_1h_tokens is
+		  // the part of cache_write_tokens cached for an hour.
+		  s.Add("CREATE TABLE usage (session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE, " + _
+		  "timestamp REAL, model TEXT NOT NULL, input_tokens INTEGER NOT NULL, output_tokens INTEGER NOT NULL, " + _
+		  "cache_write_tokens INTEGER NOT NULL, cache_write_1h_tokens INTEGER NOT NULL, cache_read_tokens INTEGER NOT NULL)")
+		  s.Add("CREATE INDEX usage_session ON usage (session_id)")
 
 		  s.Add("CREATE TABLE events (id INTEGER PRIMARY KEY, " + _
 		  "session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE, seq INTEGER NOT NULL, " + _
@@ -350,7 +369,7 @@ Protected Class WakeIndex
 	#tag Constant, Name = kMaxSearchTextLength, Type = Double, Dynamic = False, Default = \"65536", Scope = Public
 	#tag EndConstant
 
-	#tag Constant, Name = kSchemaVersion, Type = Double, Dynamic = False, Default = \"3", Scope = Public
+	#tag Constant, Name = kSchemaVersion, Type = Double, Dynamic = False, Default = \"4", Scope = Public
 	#tag EndConstant
 
 

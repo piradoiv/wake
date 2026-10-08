@@ -83,8 +83,8 @@ Begin DesktopWindow MainWindow
       AllowRowDragging=   False
       AllowRowReordering=   False
       Bold            =   False
-      ColumnCount     =   6
-      ColumnWidths    =   "124,60,*,90,60,64"
+      ColumnCount     =   7
+      ColumnWidths    =   "124,60,*,90,60,70,64"
       DefaultRowHeight=   22
       DropIndicatorVisible=   False
       Enabled         =   True
@@ -643,23 +643,34 @@ End
 		  
 		  Var source As WakeProjectInfo = SelectedSource
 		  Var sessions() As WakeSessionInfo
+		  Var usageBySession As Dictionary = WakeCore.NewCaseSensitiveDictionary
 		  If source <> Nil And mCatalog <> Nil Then
 		    Try
 		      sessions = mCatalog.Sessions(source.AgentID, source.ID, ShowCommandsCheckBox.Value)
+		      For Each g As WakeUsageGroup In mCatalog.Usage(WakeCatalog.UsageGroupings.Session, Nil, source.AgentID, source.ID)
+		        usageBySession.Value(g.Key) = g
+		      Next
 		    Catch err As DatabaseException
 		      mIndexNote = "Could not read the index: " + err.Message
 		    End Try
 		  End If
 		  
 		  For Each s As WakeSessionInfo In sessions
+		    Var usage As WakeUsageGroup = WakeUsageGroup(usageBySession.Lookup(s.ID.ToString, Nil).ObjectValue)
+		    Var estimate As WakeCostEstimate = App.Prices.Estimate(If(usage Is Nil, Nil, usage.ByModel))
+		    
 		    SessionsList.AddRow(FormatTime(s.StartTime), WakeFormat.Duration(s.DurationSeconds), s.DisplayTitle, _
-		    AgentName(s.AgentID), WakeFormat.Tokens(s.TotalUsage.Total), "")
+		    AgentName(s.AgentID), WakeFormat.Tokens(s.TotalUsage.Total), WakeFormat.Cost(estimate), "")
 		    
 		    Var row As Integer = SessionsList.LastAddedRowIndex
 		    SessionsList.RowTagAt(row) = s
 		    SessionsList.CellTagAt(row, kColumnStarted) = If(s.StartTime Is Nil, 0.0, s.StartTime.SecondsFrom1970)
 		    SessionsList.CellTagAt(row, kColumnDuration) = s.DurationSeconds
 		    SessionsList.CellTagAt(row, kColumnTokens) = s.TotalUsage.Total
+		    SessionsList.CellTagAt(row, kColumnCost) = If(estimate.PricedTokens > 0, estimate.AmountUSD, -1.0)
+		    If estimate.UnpricedModels.Count > 0 Then
+		      SessionsList.CellTooltipAt(row, kColumnCost) = "No price set for " + String.FromArray(estimate.UnpricedModels, ", ")
+		    End If
 		    SessionsList.CellTooltipAt(row, kColumnTitle) = WakeFormat.OneLine(If(s.FirstPrompt <> "", s.FirstPrompt, s.DisplayTitle), 500)
 		    If s.IsPartial Then SessionsList.CellTooltipAt(row, kColumnStatus) = s.ParseNote
 		  Next
@@ -720,6 +731,13 @@ End
 		  Var timelineWindow As New SessionWindow
 		  timelineWindow.ShowSession(info)
 		  If hit <> Nil Then timelineWindow.ShowEvent(hit.EventSessionUID, hit.Sequence)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub PricesChanged()
+		  // Costs depend on the price table, so redraw the lists and the detail pane.
+		  If mCatalog <> Nil Then ShowResults
 		End Sub
 	#tag EndMethod
 
@@ -853,9 +871,11 @@ End
 		  SessionsList.HeaderAt(kColumnTitle) = "Title"
 		  SessionsList.HeaderAt(kColumnAgent) = "Agent"
 		  SessionsList.HeaderAt(kColumnTokens) = "Tokens"
+		  SessionsList.HeaderAt(kColumnCost) = "Cost"
 		  SessionsList.HeaderAt(kColumnStatus) = " " // An empty heading shows the column number.
 		  SessionsList.ColumnAlignmentAt(kColumnDuration) = DesktopListBox.Alignments.Right
 		  SessionsList.ColumnAlignmentAt(kColumnTokens) = DesktopListBox.Alignments.Right
+		  SessionsList.ColumnAlignmentAt(kColumnCost) = DesktopListBox.Alignments.Right
 		  
 		  HitsList.HeaderAt(kHitColumnTime) = "Time"
 		  HitsList.HeaderAt(kHitColumnKind) = "Kind"
@@ -901,6 +921,21 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Function SortedModels(usage As WakeUsageGroup) As Pair()
+		  // model : WakeTokenUsage pairs, most tokens first.
+		  Var result() As Pair
+		  Var totals() As Int64
+		  For Each key As Variant In usage.ByModel.Keys
+		    Var amount As WakeTokenUsage = WakeTokenUsage(usage.ByModel.Value(key).ObjectValue)
+		    result.Add(key.StringValue : amount)
+		    totals.Add(-amount.Total)
+		  Next
+		  totals.SortWith(result)
+		  Return result
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Sub ShowDetail(info As WakeSessionInfo, hit As WakeSearchHit = Nil)
 		  // A summary of one session, after the match when it comes from a search hit.
 		  // Double-clicking the session or hit opens the full timeline.
@@ -925,9 +960,13 @@ End
 		  
 		  Var s As WakeSessionInfo
 		  Var subagents() As WakeSessionInfo
+		  Var usage As WakeUsageGroup
 		  Try
 		    s = mCatalog.Session(info.ID)
-		    If s <> Nil Then subagents = mCatalog.Subagents(s.ID)
+		    If s <> Nil Then
+		      subagents = mCatalog.Subagents(s.ID)
+		      usage = mCatalog.SessionUsage(s.ID)
+		    End If
 		  Catch err As DatabaseException
 		    AddDetail("Error", "Could not read the index: " + err.Message)
 		    Return
@@ -958,12 +997,23 @@ End
 		  AddDetail("Cache write", WakeFormat.Count(s.TotalUsage.CacheWriteTokens))
 		  AddDetail("Cache read", WakeFormat.Count(s.TotalUsage.CacheReadTokens))
 		  If s.SubagentCount > 0 Then AddDetail("Without subagents", WakeFormat.Count(s.OwnUsage.Total))
-		  If s.HasAgentCost Then AddDetail("Cost", "$" + s.AgentCostUSD.ToString(Locale.Raw, "0.00") + " (reported by agent)")
 		  
-		  If s.Models.Count > 0 Then
-		    AddDetailHeading("Models")
-		    For Each model As Pair In s.Models
-		      AddDetail(model.Left.StringValue, WakeFormat.Count(WakeTokenUsage(model.Right.ObjectValue).Total) + " tokens")
+		  // Wake's own estimate from the user's prices, and the agent's figure as a cross-check.
+		  Var estimate As WakeCostEstimate = App.Prices.Estimate(usage.ByModel)
+		  Var costText As String = WakeFormat.Cost(estimate)
+		  If estimate.UnpricedModels.Count > 0 And estimate.PricedTokens > 0 Then
+		    costText = costText + " (no price set for " + String.FromArray(estimate.UnpricedModels, ", ") + ")"
+		  End If
+		  If estimate.HasTokens Then AddDetail("Estimated cost", costText)
+		  If s.HasAgentCost Then AddDetail("Reported cost", WakeFormat.USD(s.AgentCostUSD) + " (reported by agent)")
+		  
+		  If usage.ByModel.KeyCount > 0 Then
+		    AddDetailHeading(If(s.SubagentCount > 0, "Models (with subagents)", "Models"))
+		    For Each model As Pair In SortedModels(usage)
+		      Var amount As WakeTokenUsage = WakeTokenUsage(model.Right.ObjectValue)
+		      Var price As WakeModelPrice = App.Prices.PriceFor(model.Left.StringValue)
+		      AddDetail(model.Left.StringValue, WakeFormat.Count(amount.Total) + " tokens · " + _
+		      If(price Is Nil, WakeFormat.kNoPrice, WakeFormat.USD(price.Cost(amount))))
 		    Next
 		  End If
 		  
@@ -1051,13 +1101,16 @@ End
 	#tag Constant, Name = kColumnAgent, Type = Double, Dynamic = False, Default = \"3", Scope = Private
 	#tag EndConstant
 
+	#tag Constant, Name = kColumnCost, Type = Double, Dynamic = False, Default = \"5", Scope = Private
+	#tag EndConstant
+
 	#tag Constant, Name = kColumnDuration, Type = Double, Dynamic = False, Default = \"1", Scope = Private
 	#tag EndConstant
 
 	#tag Constant, Name = kColumnStarted, Type = Double, Dynamic = False, Default = \"0", Scope = Private
 	#tag EndConstant
 
-	#tag Constant, Name = kColumnStatus, Type = Double, Dynamic = False, Default = \"5", Scope = Private
+	#tag Constant, Name = kColumnStatus, Type = Double, Dynamic = False, Default = \"6", Scope = Private
 	#tag EndConstant
 
 	#tag Constant, Name = kColumnTitle, Type = Double, Dynamic = False, Default = \"2", Scope = Private
@@ -1134,9 +1187,10 @@ End
 	#tag EndEvent
 	#tag Event
 		Function RowComparison(row1 as Integer, row2 as Integer, column as Integer, ByRef result as Integer) As Boolean
-		  // Dates, durations and token counts sort by value, not by their text.
+		  // Dates, durations, token counts and costs sort by value, not by their text. A session
+		  // with no price sorts below every priced one.
 		  Select Case column
-		  Case kColumnStarted, kColumnDuration, kColumnTokens
+		  Case kColumnStarted, kColumnDuration, kColumnTokens, kColumnCost
 		    Var a As Double = Me.CellTagAt(row1, column).DoubleValue
 		    Var b As Double = Me.CellTagAt(row2, column).DoubleValue
 		    If a < b Then

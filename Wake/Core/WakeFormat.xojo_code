@@ -45,6 +45,17 @@ Protected Module WakeFormat
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function Cost(estimate As WakeCostEstimate) As String
+		  // "$1.23"; "≥ $1.23" when some models have no price; "no price set" when none has one;
+		  // an em dash when no tokens were used.
+		  If estimate Is Nil Or Not estimate.HasTokens Then Return kUnknown
+		  If estimate.PricedTokens = 0 Then Return kNoPrice
+		  If Not estimate.IsComplete Then Return "≥ " + USD(estimate.AmountUSD)
+		  Return USD(estimate.AmountUSD)
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function Count(value As Int64) As String
 		  // Whole number with thousands separators from the user's locale.
 		  Return value.ToString(Locale.Current, "#,##0")
@@ -99,8 +110,20 @@ Protected Module WakeFormat
 		End Function
 	#tag EndMethod
 
+	#tag Method, Flags = &h0
+		Function USD(amount As Double) As String
+		  // Dollars with cents and the user's separators: "$0.42", "$1,234.50". Amounts that
+		  // round to zero but aren't zero show as "<$0.01".
+		  If amount > 0 And amount < 0.005 Then Return "<$0.01"
+		  Return "$" + amount.ToString(Locale.Current, "#,##0.00")
+		End Function
+	#tag EndMethod
+
 
 	#tag Constant, Name = kEllipsis, Type = String, Dynamic = False, Default = \"…", Scope = Public
+	#tag EndConstant
+
+	#tag Constant, Name = kNoPrice, Type = String, Dynamic = False, Default = \"no price set", Scope = Public
 	#tag EndConstant
 
 	#tag Constant, Name = kUnknown, Type = String, Dynamic = False, Default = \"—", Scope = Public

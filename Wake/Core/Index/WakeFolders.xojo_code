@@ -94,6 +94,13 @@ Protected Module WakeFolders
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function PricesFile() As FolderItem
+		  // The user's price table. Wake ships no prices, so it only exists once the user sets one.
+		  Return AppDataFolder.Child("prices.json")
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub SaveCustomRoots(f As FolderItem, roots() As WakeIndexRoot)
 		  // Writes only custom roots. Raises IOException when the file can't be written.
 		  Var items() As Variant

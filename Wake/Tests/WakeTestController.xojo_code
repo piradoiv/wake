@@ -13,6 +13,7 @@ Inherits TestController
 		  group = New WakeCatalogTests(Self, "WakeCatalog")
 		  group = New WakeTimelineTests(Self, "WakeTimeline")
 		  group = New WakeSearchTests(Self, "WakeSearch")
+		  group = New WakeStatsTests(Self, "WakeStats")
 		  
 		  #Pragma Unused group
 		End Sub

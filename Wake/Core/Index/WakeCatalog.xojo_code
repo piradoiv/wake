@@ -8,6 +8,19 @@ Protected Class WakeCatalog
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function Models() As String()
+		  // Every model that has used tokens in any session, by name. Raises DatabaseException.
+		  Var result() As String
+		  Var rs As RowSet = mIndex.Database.SelectSQL("SELECT DISTINCT model FROM session_models " + _
+		  "WHERE model <> '' ORDER BY model")
+		  For Each row As DatabaseRow In rs
+		    result.Add(row.Column("model").StringValue)
+		  Next
+		  Return result
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function Projects(includeCommandOnly As Boolean = False) As WakeProjectInfo()
 		  // Every project with at least one session to show, most recently active first.
 		  // Raises DatabaseException.
@@ -72,17 +85,8 @@ Protected Class WakeCatalog
 		    s.HasAgentCost = Not row.Column("agent_cost_usd").Value.IsNull
 		    If s.HasAgentCost Then s.AgentCostUSD = row.Column("agent_cost_usd").DoubleValue
 
-		    s.OwnUsage = New WakeTokenUsage
-		    s.OwnUsage.InputTokens = row.Column("input_tokens").Int64Value
-		    s.OwnUsage.OutputTokens = row.Column("output_tokens").Int64Value
-		    s.OwnUsage.CacheWriteTokens = row.Column("cache_write_tokens").Int64Value
-		    s.OwnUsage.CacheReadTokens = row.Column("cache_read_tokens").Int64Value
-
-		    s.TotalUsage = New WakeTokenUsage
-		    s.TotalUsage.InputTokens = row.Column("total_input_tokens").Int64Value
-		    s.TotalUsage.OutputTokens = row.Column("total_output_tokens").Int64Value
-		    s.TotalUsage.CacheWriteTokens = row.Column("total_cache_write_tokens").Int64Value
-		    s.TotalUsage.CacheReadTokens = row.Column("total_cache_read_tokens").Int64Value
+		    s.OwnUsage = UsageFrom(row)
+		    s.TotalUsage = UsageFrom(row, "total_")
 
 		    result.Add(s)
 		  Next
@@ -212,15 +216,31 @@ Protected Class WakeCatalog
 		  "ORDER BY input_tokens + output_tokens + cache_write_tokens + cache_read_tokens DESC, model", sessionID)
 
 		  For Each row As DatabaseRow In rs
-		    Var usage As New WakeTokenUsage
-		    usage.InputTokens = row.Column("input_tokens").Int64Value
-		    usage.OutputTokens = row.Column("output_tokens").Int64Value
-		    usage.CacheWriteTokens = row.Column("cache_write_tokens").Int64Value
-		    usage.CacheReadTokens = row.Column("cache_read_tokens").Int64Value
-		    s.Models.Add(row.Column("model").StringValue : usage)
+		    s.Models.Add(row.Column("model").StringValue : UsageFrom(row))
 		  Next
 
 		  Return s
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function SessionUsage(sessionID As Integer) As WakeUsageGroup
+		  // A session's usage per model, its subagents included. Raises DatabaseException.
+		  Var result As New WakeUsageGroup
+		  result.Key = sessionID.ToString
+
+		  Var rs As RowSet = mIndex.Database.SelectSQL("SELECT m.model, sum(m.input_tokens) AS input_tokens, " + _
+		  "sum(m.output_tokens) AS output_tokens, sum(m.cache_write_tokens) AS cache_write_tokens, " + _
+		  "sum(m.cache_write_1h_tokens) AS cache_write_1h_tokens, sum(m.cache_read_tokens) AS cache_read_tokens " + _
+		  "FROM session_models m JOIN sessions s ON s.id = m.session_id " + _
+		  "WHERE s.id = ? OR s.parent_id = ? GROUP BY m.model", sessionID, sessionID)
+
+		  For Each row As DatabaseRow In rs
+		    result.Add(row.Column("model").StringValue, UsageFrom(row))
+		  Next
+
+		  result.SessionCount = 1
+		  Return result
 		End Function
 	#tag EndMethod
 
@@ -257,6 +277,101 @@ Protected Class WakeCatalog
 		End Function
 	#tag EndMethod
 
+	#tag Method, Flags = &h0
+		Function Usage(grouping As UsageGroupings, fromTime As DateTime = Nil, agentID As String = "", projectID As Integer = 0) As WakeUsageGroup()
+		  // Token usage per day, project, model or top-level session, split by model so it can be
+		  // priced. Subagent usage counts toward the session that started it. fromTime limits it to
+		  // responses from then on. An empty agentID means every agent, and projectID 0 every
+		  // project. Days are calendar days in the local time zone, newest first; other groups come
+		  // with the most tokens first. Raises DatabaseException.
+		  Var keyExpression, labelExpression, order As String
+		  Select Case grouping
+		  Case UsageGroupings.Day
+		    keyExpression = "date(coalesce(u.timestamp, us.start_time, ts.start_time), 'unixepoch', 'localtime')"
+		    labelExpression = keyExpression
+		    order = "group_key IS NULL, group_key DESC"
+		  Case UsageGroupings.Project
+		    keyExpression = "ts.project_id"
+		    labelExpression = "p.path"
+		  Case UsageGroupings.Model
+		    keyExpression = "u.model"
+		    labelExpression = "u.model"
+		  Case UsageGroupings.Session
+		    keyExpression = "ts.id"
+		    labelExpression = "ts.uid"
+		  End Select
+		  If order = "" Then order = "tokens DESC, group_label"
+
+		  Var clauses() As String
+		  Var values() As Variant
+		  clauses.Add("1 = 1")
+
+		  If agentID <> "" Then
+		    clauses.Add("ts.agent = ?")
+		    values.Add(agentID)
+		  End If
+
+		  If projectID <> 0 Then
+		    clauses.Add("ts.project_id = ?")
+		    values.Add(projectID)
+		  End If
+
+		  If fromTime <> Nil Then
+		    clauses.Add("coalesce(u.timestamp, us.start_time, ts.start_time) >= ?")
+		    values.Add(fromTime.SecondsFrom1970)
+		  End If
+
+		  // Subagents are one level deep, so a response's top-level session is its session's
+		  // parent, or that session itself.
+		  Var source As String = " FROM usage u JOIN sessions us ON us.id = u.session_id " + _
+		  "JOIN sessions ts ON ts.id = coalesce(us.parent_id, us.id) JOIN projects p ON p.id = ts.project_id " + _
+		  "WHERE " + String.FromArray(clauses, " AND ")
+
+		  Var groups() As WakeUsageGroup
+		  Var byKey As Dictionary = WakeCore.NewCaseSensitiveDictionary
+
+		  Var rs As RowSet = mIndex.Database.SelectSQL("SELECT " + keyExpression + " AS group_key, " + _
+		  "min(" + labelExpression + ") AS group_label, min(ts.agent) AS agent, count(DISTINCT ts.id) AS session_count, " + _
+		  "sum(u.input_tokens + u.output_tokens + u.cache_write_tokens + u.cache_read_tokens) AS tokens" + _
+		  source + " GROUP BY group_key ORDER BY " + order, values)
+
+		  For Each row As DatabaseRow In rs
+		    Var g As New WakeUsageGroup
+		    g.Key = row.Column("group_key").StringValue
+		    g.Label = row.Column("group_label").StringValue
+		    g.AgentID = row.Column("agent").StringValue
+		    g.SessionCount = row.Column("session_count").IntegerValue
+		    groups.Add(g)
+		    byKey.Value(g.Key) = g
+		  Next
+
+		  rs = mIndex.Database.SelectSQL("SELECT " + keyExpression + " AS group_key, u.model AS model, " + _
+		  "sum(u.input_tokens) AS input_tokens, sum(u.output_tokens) AS output_tokens, " + _
+		  "sum(u.cache_write_tokens) AS cache_write_tokens, sum(u.cache_write_1h_tokens) AS cache_write_1h_tokens, " + _
+		  "sum(u.cache_read_tokens) AS cache_read_tokens" + source + " GROUP BY group_key, u.model", values)
+
+		  For Each row As DatabaseRow In rs
+		    Var g As WakeUsageGroup = WakeUsageGroup(byKey.Lookup(row.Column("group_key").StringValue, Nil).ObjectValue)
+		    If g <> Nil Then g.Add(row.Column("model").StringValue, UsageFrom(row))
+		  Next
+
+		  Return groups
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function UsageFrom(row As DatabaseRow, prefix As String = "") As WakeTokenUsage
+		  // Token counts from columns named like input_tokens, each with an optional prefix.
+		  Var result As New WakeTokenUsage
+		  result.InputTokens = row.Column(prefix + "input_tokens").Int64Value
+		  result.OutputTokens = row.Column(prefix + "output_tokens").Int64Value
+		  result.CacheWriteTokens = row.Column(prefix + "cache_write_tokens").Int64Value
+		  result.CacheWrite1hTokens = row.Column(prefix + "cache_write_1h_tokens").Int64Value
+		  result.CacheReadTokens = row.Column(prefix + "cache_read_tokens").Int64Value
+		  Return result
+		End Function
+	#tag EndMethod
+
 	#tag Method, Flags = &h21
 		Private Function TimeFrom(column As DatabaseColumn) As DateTime
 		  // Index times are seconds since 1970 (UTC), or NULL when unknown.
@@ -269,6 +384,14 @@ Protected Class WakeCatalog
 	#tag Property, Flags = &h21
 		Private mIndex As WakeIndex
 	#tag EndProperty
+
+
+	#tag Enum, Name = UsageGroupings, Type = Integer, Flags = &h0
+		Day
+		  Project
+		  Model
+		Session
+	#tag EndEnum
 
 
 End Class

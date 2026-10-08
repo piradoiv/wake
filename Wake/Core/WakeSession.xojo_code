@@ -1,8 +1,10 @@
 #tag Class
 Protected Class WakeSession
 	#tag Method, Flags = &h0
-		Sub AddUsage(model As String, amount As WakeTokenUsage)
+		Sub AddUsage(model As String, amount As WakeTokenUsage, timestamp As DateTime = Nil)
+		  // Counts one model response. Each response is also kept with its time, for usage per day.
 		  Usage.Add(amount)
+		  UsageEntries.Add(New WakeUsageEntry(timestamp, model, amount.Clone))
 
 		  Var perModel As WakeTokenUsage
 		  If UsageByModel.HasKey(model) Then
@@ -183,6 +185,10 @@ Protected Class WakeSession
 
 	#tag Property, Flags = &h0
 		UsageByModel As Dictionary
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		UsageEntries() As WakeUsageEntry
 	#tag EndProperty
 
 

@@ -12,6 +12,21 @@ Inherits DesktopApplication
 	#tag EndEvent
 
 
+	#tag MenuHandler
+		Function WindowPrices() As Boolean Handles WindowPrices.Action
+		  PricesWindow.Show
+		  Return True
+		End Function
+	#tag EndMenuHandler
+
+	#tag MenuHandler
+		Function WindowUsage() As Boolean Handles WindowUsage.Action
+		  UsageWindow.Show
+		  Return True
+		End Function
+	#tag EndMenuHandler
+
+
 	#tag Method, Flags = &h21
 		Private Sub IndexThread_Failed(sender As WakeIndexThread, message As String)
 		  #Pragma Unused sender
@@ -20,6 +35,9 @@ Inherits DesktopApplication
 		  For Each w As MainWindow In MainWindows
 		    w.IndexingFailed(message)
 		  Next
+		  
+		  Var usage As UsageWindow = OpenUsageWindow
+		  If usage <> Nil Then usage.IndexingFinished
 		End Sub
 	#tag EndMethod
 
@@ -34,6 +52,9 @@ Inherits DesktopApplication
 		  For Each w As MainWindow In MainWindows
 		    w.IndexingFinished(result)
 		  Next
+		  
+		  Var usage As UsageWindow = OpenUsageWindow
+		  If usage <> Nil Then usage.IndexingFinished
 		End Sub
 	#tag EndMethod
 
@@ -58,6 +79,52 @@ Inherits DesktopApplication
 		  Next
 		  Return result
 		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function IsIndexing() As Boolean
+		  Return IndexThread <> Nil And IndexThread.ThreadState <> Thread.ThreadStates.NotRunning
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function OpenUsageWindow() As UsageWindow
+		  // The usage window if it is open. Going through its implicit instance would open it.
+		  For i As Integer = 0 To WindowCount - 1
+		    If WindowAt(i) IsA UsageWindow Then Return UsageWindow(WindowAt(i))
+		  Next
+		  Return Nil
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function Prices() As WakePriceTable
+		  // The user's price table, read from the app data folder the first time it is needed.
+		  If mPrices Is Nil Then
+		    mPrices = WakePriceTable.Load(WakeFolders.PricesFile)
+		    If mPrices.LoadError <> "" Then System.DebugLog("Wake: " + mPrices.LoadError)
+		  End If
+		  Return mPrices
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub PricesChanged()
+		  // Saves the price table and updates every cost on screen.
+		  Try
+		    Prices.Save(WakeFolders.PricesFile)
+		    mPrices.LoadError = ""
+		  Catch err As IOException
+		    MessageBox("Could not save the prices: " + err.Message)
+		  End Try
+		  
+		  For Each w As MainWindow In MainWindows
+		    w.PricesChanged
+		  Next
+		  
+		  Var usage As UsageWindow = OpenUsageWindow
+		  If usage <> Nil Then usage.PricesChanged
+		End Sub
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
@@ -87,7 +154,7 @@ Inherits DesktopApplication
 	#tag Method, Flags = &h0
 		Sub StartIndexing()
 		  // Brings the index up to date in the background. Does nothing if a run is in progress.
-		  If IndexThread <> Nil And IndexThread.ThreadState <> Thread.ThreadStates.NotRunning Then Return
+		  If IsIndexing Then Return
 		  
 		  IndexThread = New WakeIndexThread(WakeFolders.DefaultIndexFile, WakeFolders.AllRoots)
 		  AddHandler IndexThread.Progress, AddressOf IndexThread_Progress
@@ -117,6 +184,10 @@ Inherits DesktopApplication
 
 	#tag Property, Flags = &h0
 		IndexThread As WakeIndexThread
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mPrices As WakePriceTable
 	#tag EndProperty
 
 	#tag Property, Flags = &h21

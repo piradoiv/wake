@@ -7,6 +7,7 @@ Protected Class WakeTokenUsage
 		  InputTokens = InputTokens + other.InputTokens
 		  OutputTokens = OutputTokens + other.OutputTokens
 		  CacheWriteTokens = CacheWriteTokens + other.CacheWriteTokens
+		  CacheWrite1hTokens = CacheWrite1hTokens + other.CacheWrite1hTokens
 		  CacheReadTokens = CacheReadTokens + other.CacheReadTokens
 		End Sub
 	#tag EndMethod
@@ -27,6 +28,8 @@ Protected Class WakeTokenUsage
 
 	#tag Method, Flags = &h0
 		Function Total() As Int64
+		  // CacheWrite1hTokens is the part of CacheWriteTokens cached for an hour instead of five
+		  // minutes, which is priced higher. It is not counted twice.
 		  Return InputTokens + OutputTokens + CacheWriteTokens + CacheReadTokens
 		End Function
 	#tag EndMethod
@@ -34,6 +37,10 @@ Protected Class WakeTokenUsage
 
 	#tag Property, Flags = &h0
 		CacheReadTokens As Int64
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		CacheWrite1hTokens As Int64
 	#tag EndProperty
 
 	#tag Property, Flags = &h0

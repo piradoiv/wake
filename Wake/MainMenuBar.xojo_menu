@@ -169,6 +169,27 @@ Begin Menu MainMenuBar
       AutoEnabled = True
       AutoEnable = True
       Visible = True
+      Begin DesktopMenuItem WindowUsage
+         SpecialMenu = 0
+         Index = -2147483648
+         Text = "&Usage"
+         Symbol = ""
+         ShortcutKey = "U"
+         Shortcut = "Cmd+U"
+         MenuModifier = True
+         AutoEnabled = True
+         AutoEnable = True
+         Visible = True
+      End
+      Begin DesktopMenuItem WindowPrices
+         SpecialMenu = 0
+         Index = -2147483648
+         Text = "&Prices…"
+         Symbol = ""
+         AutoEnabled = True
+         AutoEnable = True
+         Visible = True
+      End
    End
    Begin DesktopMenuItem HelpMenu
       SpecialMenu = 0

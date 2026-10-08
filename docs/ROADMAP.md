@@ -46,10 +46,16 @@ Each milestone ends with the tests passing and a commit.
   while there is text. Opening a hit scrolls the timeline to its event
   (`WakeTimeline.Anchor`, `wakeGoTo`). 62 tests. On real data (11,600 events)
   a query takes 1–45 ms, and two one-letter prefixes about 210 ms.
-- [ ] **7. Stats and prices.** Tokens per session, project and day.
-  User-editable price table (per model: input, output, cache write and cache
-  read per million tokens) stored as JSON in the app data folder. Cost
-  estimates show "no price set" for unknown models.
+- [x] **7. Stats and prices.** The index keeps one `usage` row per model
+  response, and `WakeCatalog.Usage` groups it by day (local time), project,
+  model or session as `WakeUsageGroup`s split by model. `WakePriceTable`
+  (`prices.json` in the app data folder) prices input, output, cache write,
+  one-hour cache write and cache read per million tokens, and returns a
+  `WakeCostEstimate` that lists the models with no price. `MainWindow` has a
+  Cost column and an estimated cost per session and model; Window → Usage
+  (Cmd+U) shows usage per day, project or model for a period; Window → Prices
+  edits the table. 73 tests. On real data the totals per model and the
+  number of days match a Python reference exactly.
 - [ ] **8. Markdown export and polish.** Session → Markdown report (summary,
   prompts, commands, file changes as fenced diffs, token totals), with tests.
   Update the README and do a demo pass on real data.
@@ -80,6 +86,11 @@ machine to inspect, and the console companion.
 | Search words match as **prefixes**, `"quoted text"` as a phrase, and every term must match. Every term is quoted, so FTS5 operators are plain words. | Search as you type needs partial words, and no input may raise an FTS5 syntax error. |
 | Search lives **in the main window**, scoped by the source-list selection, not in its own window. | Agent and project filters come for free, and the detail pane shows the hit's session. |
 | Search runs **on the main thread**, 250 ms after the last keystroke. | Queries take milliseconds on real data. |
+| Wake ships **no prices**. Until the user sets one, costs read "no price set", and a partly priced total reads "≥ $x". | Prices change and must not be hardcoded. "≥" keeps a partial sum from looking complete. |
+| **One-hour cache writes** are counted apart (`CacheWrite1hTokens`, part of `CacheWriteTokens`) and have their own price, which falls back to the cache-write price when empty. | 98% of cache writes in real data are one-hour writes, which cost 2× input instead of 1.25×. One price for both would be far off. |
+| A **dated model name** (`claude-haiku-4-5-20251001`) uses the price of its undated name when it has none of its own. Other prefixes never match. | `claude-opus-5` must not price `claude-opus-5-5`. |
+| Usage **per day** groups responses by their own timestamp in the **local time zone**, at query time. Subagent usage counts toward the session that started it. | A session can span midnight, and the time zone can change between runs. |
+| The Usage window covers **every agent and project**, not the main window's selection. | It's a summary across everything. Per project is one of its groupings. |
 | Long blocks and persisted output are **fetched on demand** with `executeInXojoSync`, not embedded. | Keeps the page small for 10 MB transcripts. Persisted output is read only when asked for, capped at 4 MB. |
 
 ## Working notes and gotchas
@@ -107,6 +118,8 @@ machine to inspect, and the console companion.
   its String to the page. `LoadPage(html, Nil)` loads the page as
   `about:blank`, and `CancelLoad` fires for it too, so let the first load
   through and block the rest.
+- **A method call on a string literal doesn't parse** (`"abc".IndexOf(x)`).
+  Assign the literal to a variable first.
 - **`String` has no `LastIndexOf`.** Split, or loop with `IndexOf`.
 - **`DesktopProgressWheel.Active` can't be set in code.** Leave it `True` in
   the layout and toggle `Visible`.

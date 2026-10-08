@@ -149,7 +149,7 @@ totals by two to three times.
 | `output_tokens`                 | Output, including thinking.           |
 | `cache_creation_input_tokens`   | Cache writes.                         |
 | `cache_read_input_tokens`       | Cache reads.                          |
-| `cache_creation.ephemeral_5m_input_tokens` / `ephemeral_1h_input_tokens` | Cache writes split by TTL (priced differently). |
+| `cache_creation.ephemeral_5m_input_tokens` / `ephemeral_1h_input_tokens` | Cache writes split by TTL (priced differently). In the sample, 98% of cache-write tokens were one-hour writes. Wake stores the one-hour part as `CacheWrite1hTokens`. |
 | `server_tool_use.web_search_requests` | Web searches.                   |
 
 Other assistant fields: `message.model` (e.g. `claude-opus-5-5`) and
