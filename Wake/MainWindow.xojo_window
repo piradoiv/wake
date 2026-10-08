@@ -513,6 +513,20 @@ End
 		End Function
 	#tag EndMenuHandler
 
+	#tag MenuHandler
+		Function WindowPrices() As Boolean Handles WindowPrices.Action
+		  PricesWindow.Show
+		  Return True
+		End Function
+	#tag EndMenuHandler
+
+	#tag MenuHandler
+		Function WindowUsage() As Boolean Handles WindowUsage.Action
+		  UsageWindow.Show
+		  Return True
+		End Function
+	#tag EndMenuHandler
+
 
 	#tag Method, Flags = &h21
 		Private Sub AddDetail(label As String, value As String)

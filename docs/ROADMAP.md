@@ -176,8 +176,11 @@ machine to inspect, and the console companion.
   False, so restore that colour after drawing anything else in the cell.
 - **Xojo adds no File → Close item.** `FileCloseWindow` (Cmd+W) has a
   `Self.Close` handler in each window. A handler in `App` closing `WindowAt(0)`
-  didn't close the front window. Auto-enable left the item greyed out, so
-  `App.MenuBarSelected` enables it. A new window needs its own handler.
+  didn't close the front window. A new window needs its own handler.
+- **Menu handlers in `App` never run** in this project, even with no window
+  handling the item (confirmed with a breakpoint). So auto-enable greys
+  their items out, and enabling them by hand only gives a dead item. Put menu
+  handlers in every window instead (Window → Usage and Prices are in all four).
 - **Closing the main window quits Wake** (`MainWindow.Closing` calls `Quit`).
   `AllowAutoQuit = True` in `App.Opening` covers the last-window case.
 - **`call` is a reserved word** in Xojo. Don't use it as a variable name.

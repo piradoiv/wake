@@ -20,21 +20,6 @@ Inherits DesktopApplication
 	#tag EndEvent
 
 
-	#tag MenuHandler
-		Function WindowPrices() As Boolean Handles WindowPrices.Action
-		  PricesWindow.Show
-		  Return True
-		End Function
-	#tag EndMenuHandler
-
-	#tag MenuHandler
-		Function WindowUsage() As Boolean Handles WindowUsage.Action
-		  UsageWindow.Show
-		  Return True
-		End Function
-	#tag EndMenuHandler
-
-
 	#tag Method, Flags = &h0
 		Sub ExportMarkdown(info As WakeSessionInfo)
 		  // Asks where to save a Markdown report of a session and writes it there. The transcript is
