@@ -26,9 +26,9 @@ Inherits DesktopCanvas
 		Sub Paint(g As Graphics, areas() As Rect)
 		  // The title and a summary on top, one bar per day, and the first and last day below.
 		  #Pragma Unused areas
-
+		  
 		  Var dark As Boolean = Color.IsDarkMode
-
+		  
 		  g.FontSize = 11
 		  g.Bold = True
 		  g.DrawingColor = Color.TextColor
@@ -38,15 +38,15 @@ Inherits DesktopCanvas
 		    g.DrawingColor = WakeGlanceTiles.SecondaryTextColor
 		    g.DrawText(Summary, g.Width - kPadding - g.TextWidth(Summary), kPadding + g.FontAscent)
 		  End If
-
+		  
 		  Var plotTop As Double = kPadding + 26
 		  Var plotBottom As Double = g.Height - kPadding - 16
 		  Var plotHeight As Double = plotBottom - plotTop
 		  Var slot As Double = (g.Width - kPadding * 2) / Max(1, mValues.Count)
-
+		  
 		  g.DrawingColor = Color.RGB(128, 128, 128, 170)
 		  g.DrawLine(kPadding, plotBottom + 0.5, g.Width - kPadding, plotBottom + 0.5)
-
+		  
 		  If mMax <= 0 Then
 		    g.FontSize = 12
 		    g.DrawingColor = WakeGlanceTiles.SecondaryTextColor
@@ -59,7 +59,7 @@ Inherits DesktopCanvas
 		      If mValues(i) <= 0 Then Continue
 		      Var barHeight As Double = Max(2, mValues(i) / mMax * plotHeight)
 		      Var barLeft As Double = kPadding + i * slot + (slot - barWidth) / 2
-
+		      
 		      If i = mHover Then
 		        g.DrawingColor = If(dark, Tint, WakeGlanceTiles.Shade(Tint))
 		      ElseIf mEmphasized(i) Then
@@ -67,7 +67,7 @@ Inherits DesktopCanvas
 		      Else
 		        g.DrawingColor = Color.RGB(Tint.Red, Tint.Green, Tint.Blue, 170)
 		      End If
-
+		      
 		      // Rounded on top only: the lower half is filled square.
 		      If barWidth >= 6 And barHeight >= 6 Then
 		        g.FillRoundRectangle(barLeft, plotBottom - barHeight, barWidth, barHeight, 6, 6)
@@ -77,7 +77,7 @@ Inherits DesktopCanvas
 		      End If
 		    Next
 		  End If
-
+		  
 		  g.Bold = False
 		  g.FontSize = 10
 		  g.DrawingColor = WakeGlanceTiles.SecondaryTextColor
@@ -166,5 +166,231 @@ Inherits DesktopCanvas
 	#tag EndConstant
 
 
+	#tag ViewBehavior
+		#tag ViewProperty
+			Name="Name"
+			Visible=true
+			Group="ID"
+			InitialValue=""
+			Type="String"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Index"
+			Visible=true
+			Group="ID"
+			InitialValue=""
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Super"
+			Visible=true
+			Group="ID"
+			InitialValue=""
+			Type="String"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Left"
+			Visible=true
+			Group="Position"
+			InitialValue="0"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Top"
+			Visible=true
+			Group="Position"
+			InitialValue="0"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Width"
+			Visible=true
+			Group="Position"
+			InitialValue="100"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Height"
+			Visible=true
+			Group="Position"
+			InitialValue="100"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="LockLeft"
+			Visible=true
+			Group="Position"
+			InitialValue="True"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="LockTop"
+			Visible=true
+			Group="Position"
+			InitialValue="True"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="LockRight"
+			Visible=true
+			Group="Position"
+			InitialValue="False"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="LockBottom"
+			Visible=true
+			Group="Position"
+			InitialValue="False"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="TabIndex"
+			Visible=true
+			Group="Position"
+			InitialValue="0"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="TabPanelIndex"
+			Visible=false
+			Group="Position"
+			InitialValue="0"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="TabStop"
+			Visible=true
+			Group="Position"
+			InitialValue="True"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="AllowAutoDeactivate"
+			Visible=true
+			Group="Appearance"
+			InitialValue="True"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Backdrop"
+			Visible=true
+			Group="Appearance"
+			InitialValue=""
+			Type="Picture"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Enabled"
+			Visible=true
+			Group="Appearance"
+			InitialValue="True"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Tooltip"
+			Visible=true
+			Group="Appearance"
+			InitialValue=""
+			Type="String"
+			EditorType="MultiLineEditor"
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="AllowFocusRing"
+			Visible=true
+			Group="Appearance"
+			InitialValue="True"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Visible"
+			Visible=true
+			Group="Appearance"
+			InitialValue="True"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="AllowFocus"
+			Visible=true
+			Group="Behavior"
+			InitialValue="False"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="AllowTabs"
+			Visible=true
+			Group="Behavior"
+			InitialValue="False"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Transparent"
+			Visible=true
+			Group="Behavior"
+			InitialValue="False"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="EndLabel"
+			Visible=false
+			Group="Behavior"
+			InitialValue=""
+			Type="String"
+			EditorType="MultiLineEditor"
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="StartLabel"
+			Visible=false
+			Group="Behavior"
+			InitialValue=""
+			Type="String"
+			EditorType="MultiLineEditor"
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Summary"
+			Visible=false
+			Group="Behavior"
+			InitialValue=""
+			Type="String"
+			EditorType="MultiLineEditor"
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Tint"
+			Visible=false
+			Group="Behavior"
+			InitialValue="&c0A84FF"
+			Type="Color"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Title"
+			Visible=false
+			Group="Behavior"
+			InitialValue=""
+			Type="String"
+			EditorType="MultiLineEditor"
+		#tag EndViewProperty
+	#tag EndViewBehavior
 End Class
 #tag EndClass

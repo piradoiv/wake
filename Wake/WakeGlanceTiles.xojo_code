@@ -5,17 +5,17 @@ Inherits DesktopCanvas
 		Sub Paint(g As Graphics, areas() As Rect)
 		  // An optional heading, then the tiles in rows of equal width.
 		  #Pragma Unused areas
-
+		  
 		  Var dark As Boolean = Color.IsDarkMode
 		  Var y As Double = kPadding
-
+		  
 		  If Heading <> "" Then
 		    g.Bold = True
 		    g.FontSize = 15
 		    g.DrawingColor = Color.TextColor
 		    g.DrawText(FitText(g, Heading, g.Width - kPadding * 2), kPadding, y + g.FontAscent)
 		    y = y + g.TextHeight + 2
-
+		    
 		    If Subheading <> "" Then
 		      g.Bold = False
 		      g.FontSize = 11
@@ -25,9 +25,9 @@ Inherits DesktopCanvas
 		    End If
 		    y = y + 10
 		  End If
-
+		  
 		  If mCaptions.Count = 0 Then Return
-
+		  
 		  Var columns As Integer = ColumnCount(g.Width)
 		  Var tileWidth As Double = (g.Width - kPadding * 2 - kGap * (columns - 1)) / columns
 		  For i As Integer = 0 To mCaptions.LastIndex
@@ -62,15 +62,15 @@ Inherits DesktopCanvas
 		  // A tinted card: the caption in the tint, the value large, and a detail line below.
 		  Var tint As Color = mTints(index)
 		  Var inner As Double = tileWidth - 20
-
+		  
 		  g.DrawingColor = Color.RGB(tint.Red, tint.Green, tint.Blue, If(dark, 196, 220))
 		  g.FillRoundRectangle(x, y, tileWidth, kTileHeight, 14, 14)
-
+		  
 		  g.Bold = True
 		  g.FontSize = 10
 		  g.DrawingColor = If(dark, tint, Shade(tint))
 		  g.DrawText(FitText(g, mCaptions(index).Uppercase, inner), x + 10, y + 18)
-
+		  
 		  // The value in the largest size that fits the tile.
 		  g.FontSize = 22
 		  While g.FontSize > 12 And g.TextWidth(mValues(index)) > inner
@@ -78,7 +78,7 @@ Inherits DesktopCanvas
 		  Wend
 		  g.DrawingColor = Color.TextColor
 		  g.DrawText(FitText(g, mValues(index), inner), x + 10, y + 44)
-
+		  
 		  If mDetails(index) <> "" Then
 		    g.Bold = False
 		    g.FontSize = 11
@@ -92,7 +92,7 @@ Inherits DesktopCanvas
 		Private Function FitText(g As Graphics, text As String, maxWidth As Double) As String
 		  // The text, cut with an ellipsis when it is wider than maxWidth in the current font.
 		  If g.TextWidth(text) <= maxWidth Then Return text
-
+		  
 		  Var kept As String = text
 		  While kept.Length > 1 And g.TextWidth(kept + WakeFormat.kEllipsis) > maxWidth
 		    kept = kept.Left(kept.Length - 1)
@@ -197,5 +197,207 @@ Inherits DesktopCanvas
 	#tag EndConstant
 
 
+	#tag ViewBehavior
+		#tag ViewProperty
+			Name="Name"
+			Visible=true
+			Group="ID"
+			InitialValue=""
+			Type="String"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Index"
+			Visible=true
+			Group="ID"
+			InitialValue=""
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Super"
+			Visible=true
+			Group="ID"
+			InitialValue=""
+			Type="String"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Left"
+			Visible=true
+			Group="Position"
+			InitialValue="0"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Top"
+			Visible=true
+			Group="Position"
+			InitialValue="0"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Width"
+			Visible=true
+			Group="Position"
+			InitialValue="100"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Height"
+			Visible=true
+			Group="Position"
+			InitialValue="100"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="LockLeft"
+			Visible=true
+			Group="Position"
+			InitialValue="True"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="LockTop"
+			Visible=true
+			Group="Position"
+			InitialValue="True"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="LockRight"
+			Visible=true
+			Group="Position"
+			InitialValue="False"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="LockBottom"
+			Visible=true
+			Group="Position"
+			InitialValue="False"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="TabIndex"
+			Visible=true
+			Group="Position"
+			InitialValue="0"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="TabPanelIndex"
+			Visible=false
+			Group="Position"
+			InitialValue="0"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="TabStop"
+			Visible=true
+			Group="Position"
+			InitialValue="True"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="AllowAutoDeactivate"
+			Visible=true
+			Group="Appearance"
+			InitialValue="True"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Backdrop"
+			Visible=true
+			Group="Appearance"
+			InitialValue=""
+			Type="Picture"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Enabled"
+			Visible=true
+			Group="Appearance"
+			InitialValue="True"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Tooltip"
+			Visible=true
+			Group="Appearance"
+			InitialValue=""
+			Type="String"
+			EditorType="MultiLineEditor"
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="AllowFocusRing"
+			Visible=true
+			Group="Appearance"
+			InitialValue="True"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Visible"
+			Visible=true
+			Group="Appearance"
+			InitialValue="True"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="AllowFocus"
+			Visible=true
+			Group="Behavior"
+			InitialValue="False"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="AllowTabs"
+			Visible=true
+			Group="Behavior"
+			InitialValue="False"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Transparent"
+			Visible=true
+			Group="Behavior"
+			InitialValue="False"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Heading"
+			Visible=false
+			Group="Behavior"
+			InitialValue=""
+			Type="String"
+			EditorType="MultiLineEditor"
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Subheading"
+			Visible=false
+			Group="Behavior"
+			InitialValue=""
+			Type="String"
+			EditorType="MultiLineEditor"
+		#tag EndViewProperty
+	#tag EndViewBehavior
 End Class
 #tag EndClass
