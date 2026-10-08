@@ -97,7 +97,7 @@ Begin DesktopWindow MainWindow
       HasHorizontalScrollbar=   False
       HasVerticalScrollbar=   True
       HeadingIndex    =   -1
-      Height          =   689
+      Height          =   653
       Index           =   -2147483648
       InitialParent   =   ""
       InitialValue    =   ""
@@ -115,7 +115,7 @@ Begin DesktopWindow MainWindow
       TabPanelIndex   =   0
       TabStop         =   True
       Tooltip         =   ""
-      Top             =   -1
+      Top             =   35
       Transparent     =   False
       Underline       =   False
       Visible         =   True
@@ -146,7 +146,7 @@ Begin DesktopWindow MainWindow
       HasHorizontalScrollbar=   False
       HasVerticalScrollbar=   True
       HeadingIndex    =   -1
-      Height          =   689
+      Height          =   653
       Index           =   -2147483648
       InitialParent   =   ""
       InitialValue    =   ""
@@ -164,7 +164,7 @@ Begin DesktopWindow MainWindow
       TabPanelIndex   =   0
       TabStop         =   True
       Tooltip         =   ""
-      Top             =   -1
+      Top             =   35
       Transparent     =   False
       Underline       =   False
       Visible         =   True
@@ -264,6 +264,154 @@ Begin DesktopWindow MainWindow
       Visible         =   True
       Width           =   974
    End
+   Begin DesktopTextField SearchField
+      AllowAutoDeactivate=   True
+      AllowFocusRing  =   True
+      AllowSpellChecking=   False
+      AllowTabs       =   False
+      BackgroundColor =   &cFFFFFF00
+      Bold            =   False
+      Enabled         =   True
+      FontName        =   "System"
+      FontSize        =   0.0
+      FontUnit        =   0
+      Format          =   ""
+      HasBorder       =   True
+      Height          =   24
+      Hint            =   "Search prompts, answers, commands and output"
+      Index           =   -2147483648
+      Italic          =   False
+      Left            =   228
+      LockBottom      =   False
+      LockedInPosition=   False
+      LockLeft        =   True
+      LockRight       =   True
+      LockTop         =   True
+      MaximumCharactersAllowed=   0
+      Password        =   False
+      ReadOnly        =   False
+      Scope           =   2
+      TabIndex        =   6
+      TabPanelIndex   =   0
+      TabStop         =   True
+      Text            =   ""
+      TextAlignment   =   0
+      TextColor       =   &c00000000
+      Tooltip         =   "Words match as prefixes. Put a phrase in double quotes to match it exactly. Searches the agent or project selected on the left."
+      Top             =   6
+      Transparent     =   False
+      Underline       =   False
+      ValidationMask  =   ""
+      Visible         =   True
+      Width           =   640
+   End
+   Begin DesktopPopupMenu KindPopup
+      AllowAutoDeactivate=   True
+      Bold            =   False
+      Enabled         =   True
+      FontName        =   "System"
+      FontSize        =   0.0
+      FontUnit        =   0
+      Height          =   20
+      Index           =   -2147483648
+      InitialValue    =   ""
+      Italic          =   False
+      Left            =   878
+      LockBottom      =   False
+      LockedInPosition=   False
+      LockLeft        =   False
+      LockRight       =   True
+      LockTop         =   True
+      Scope           =   2
+      SelectedRowIndex=   -1
+      TabIndex        =   8
+      TabPanelIndex   =   0
+      TabStop         =   True
+      Tooltip         =   "Search only events of this kind"
+      Top             =   8
+      Transparent     =   False
+      Underline       =   False
+      Visible         =   True
+      Width           =   170
+   End
+   Begin DesktopPopupMenu DatePopup
+      AllowAutoDeactivate=   True
+      Bold            =   False
+      Enabled         =   True
+      FontName        =   "System"
+      FontSize        =   0.0
+      FontUnit        =   0
+      Height          =   20
+      Index           =   -2147483648
+      InitialValue    =   ""
+      Italic          =   False
+      Left            =   1058
+      LockBottom      =   False
+      LockedInPosition=   False
+      LockLeft        =   False
+      LockRight       =   True
+      LockTop         =   True
+      Scope           =   2
+      SelectedRowIndex=   -1
+      TabIndex        =   9
+      TabPanelIndex   =   0
+      TabStop         =   True
+      Tooltip         =   "Search only events from this period"
+      Top             =   8
+      Transparent     =   False
+      Underline       =   False
+      Visible         =   True
+      Width           =   170
+   End
+   Begin DesktopListBox HitsList
+      AllowAutoDeactivate=   True
+      AllowAutoHideScrollbars=   True
+      AllowExpandableRows=   False
+      AllowFocusRing  =   False
+      AllowResizableColumns=   True
+      AllowRowDragging=   False
+      AllowRowReordering=   False
+      Bold            =   False
+      ColumnCount     =   4
+      ColumnWidths    =   "124,100,*,200"
+      DefaultRowHeight=   22
+      DropIndicatorVisible=   False
+      Enabled         =   True
+      FontName        =   "System"
+      FontSize        =   0.0
+      FontUnit        =   0
+      GridLineStyle   =   0
+      HasBorder       =   True
+      HasHeader       =   True
+      HasHorizontalScrollbar=   False
+      HasVerticalScrollbar=   True
+      HeadingIndex    =   -1
+      Height          =   653
+      Index           =   -2147483648
+      InitialParent   =   ""
+      InitialValue    =   ""
+      Italic          =   False
+      Left            =   219
+      LockBottom      =   True
+      LockedInPosition=   False
+      LockLeft        =   True
+      LockRight       =   True
+      LockTop         =   True
+      RequiresSelection=   False
+      RowSelectionType=   0
+      Scope           =   2
+      TabIndex        =   7
+      TabPanelIndex   =   0
+      TabStop         =   True
+      Tooltip         =   ""
+      Top             =   35
+      Transparent     =   False
+      Underline       =   False
+      Visible         =   False
+      Width           =   662
+      _ScrollOffset   =   0
+      _ScrollWidth    =   -1
+   End
 End
 #tag EndDesktopWindow
 
@@ -296,6 +444,14 @@ End
 		End Sub
 	#tag EndEvent
 
+
+	#tag MenuHandler
+		Function EditFind() As Boolean Handles EditFind.Action
+		  SearchField.SetFocus
+		  SearchField.SelectAll
+		  Return True
+		End Function
+	#tag EndMenuHandler
 
 	#tag MenuHandler
 		Function FileOpenTimeline() As Boolean Handles FileOpenTimeline.Action
@@ -351,6 +507,29 @@ End
 		End Function
 	#tag EndMethod
 
+	#tag Method, Flags = &h21
+		Private Function HitKindLabel(hit As WakeSearchHit) As String
+		  Select Case hit.Kind
+		  Case "user"
+		    Return "Prompt"
+		  Case "assistant"
+		    Return "Answer"
+		  Case "thinking"
+		    Return "Thinking"
+		  Case "tool", "shell", "edit"
+		    If hit.ToolName <> "" Then Return hit.ToolName
+		    Return "Tool call"
+		  Case "result"
+		    Return "Tool result"
+		  Case "error"
+		    Return "Error"
+		  Case "system"
+		    Return "System"
+		  End Select
+		  Return hit.Kind
+		End Function
+	#tag EndMethod
+
 	#tag Method, Flags = &h0
 		Sub IndexingFailed(message As String)
 		  mIndexNote = message
@@ -373,6 +552,83 @@ End
 	#tag Method, Flags = &h0
 		Sub IndexingProgress(done As Integer, total As Integer)
 		  ShowIndexing("Indexing " + done.ToString + " of " + total.ToString + WakeFormat.kEllipsis)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function IsSearching() As Boolean
+		  Return SearchField.Text.Trim <> ""
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub LoadHits()
+		  // Fills the hits list with the events that match the search, within the agent or project
+		  // selected in the source list and the kind and period chosen above the list.
+		  Var previous As WakeSearchHit = SelectedHit
+		  Var previousEventID As Integer = If(previous Is Nil, 0, previous.EventID)
+		  
+		  mLoading = True
+		  HitsList.RemoveAllRows
+		  DetailList.RemoveAllRows
+		  mHitSessionCount = 0
+		  
+		  Var hits() As WakeSearchHit
+		  If mCatalog <> Nil Then
+		    Var query As New WakeSearchQuery(SearchField.Text)
+		    Var source As WakeProjectInfo = SelectedSource
+		    If source <> Nil Then
+		      query.AgentID = source.AgentID
+		      query.ProjectID = source.ID
+		    End If
+		    query.IncludeCommandOnly = ShowCommandsCheckBox.Value
+		    query.Limit = kMaxHits
+		    
+		    If KindPopup.SelectedRowIndex > 0 Then
+		      query.Kinds = KindPopup.RowTagAt(KindPopup.SelectedRowIndex).StringValue.Split(",")
+		    End If
+		    
+		    If DatePopup.SelectedRowIndex > 0 Then
+		      Var days As Integer = DatePopup.RowTagAt(DatePopup.SelectedRowIndex).IntegerValue
+		      Var now As DateTime = DateTime.Now
+		      Var midnight As New DateTime(now.Year, now.Month, now.Day)
+		      query.FromTime = midnight.SubtractInterval(0, 0, days - 1)
+		    End If
+		    
+		    Try
+		      hits = mCatalog.Search(query)
+		    Catch err As DatabaseException
+		      mIndexNote = "Could not search the index: " + err.Message
+		    End Try
+		  End If
+		  
+		  Var sessionIDs() As Integer
+		  For Each hit As WakeSearchHit In hits
+		    Var sessionTitle As String = hit.Session.DisplayTitle + If(hit.InSubagent, " (subagent)", "")
+		    HitsList.AddRow(FormatTime(hit.Timestamp), HitKindLabel(hit), WakeFormat.OneLine(hit.PlainSnippet, 0), sessionTitle)
+		    
+		    Var row As Integer = HitsList.LastAddedRowIndex
+		    HitsList.RowTagAt(row) = hit
+		    HitsList.CellTagAt(row, kHitColumnTime) = If(hit.Timestamp Is Nil, 0.0, hit.Timestamp.SecondsFrom1970)
+		    HitsList.CellTooltipAt(row, kHitColumnMatch) = WakeFormat.OneLine(hit.PlainSnippet, 500)
+		    HitsList.CellTooltipAt(row, kHitColumnSession) = hit.Session.ProjectPath
+		    
+		    If sessionIDs.IndexOf(hit.Session.ID) < 0 Then sessionIDs.Add(hit.Session.ID)
+		  Next
+		  mHitSessionCount = sessionIDs.Count
+		  
+		  If HitsList.SortingColumn >= 0 Then HitsList.Sort
+		  
+		  For row As Integer = 0 To HitsList.LastRowIndex
+		    If WakeSearchHit(HitsList.RowTagAt(row).ObjectValue).EventID = previousEventID Then
+		      HitsList.SelectedRowIndex = row
+		      Exit
+		    End If
+		  Next
+		  mLoading = False
+		  
+		  ShowDetail(SelectedSession, SelectedHit)
+		  UpdateStatus
 		End Sub
 	#tag EndMethod
 
@@ -447,19 +703,23 @@ End
 	#tag Method, Flags = &h21
 		Private Sub OpenTimeline()
 		  // Opens the selected session's timeline, or brings its window to the front if it is open.
+		  // For a search hit, the timeline scrolls to the matching event.
 		  Var info As WakeSessionInfo = SelectedSession
 		  If info Is Nil Then Return
+		  Var hit As WakeSearchHit = SelectedHit
 		  
 		  For i As Integer = 0 To App.WindowCount - 1
 		    Var existing As DesktopWindow = App.WindowAt(i)
 		    If existing IsA SessionWindow And SessionWindow(existing).SessionID = info.ID Then
 		      existing.Show
+		      If hit <> Nil Then SessionWindow(existing).ShowEvent(hit.EventSessionUID, hit.Sequence)
 		      Return
 		    End If
 		  Next
 		  
 		  Var timelineWindow As New SessionWindow
 		  timelineWindow.ShowSession(info)
+		  If hit <> Nil Then timelineWindow.ShowEvent(hit.EventSessionUID, hit.Sequence)
 		End Sub
 	#tag EndMethod
 
@@ -538,12 +798,33 @@ End
 		  SourceList.SelectedRowIndex = selectRow
 		  mLoading = False
 		  
-		  LoadSessions
+		  ShowResults
 		End Sub
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Sub RunSearch()
+		  // Called a moment after the last keystroke, so typing doesn't query the index on every key.
+		  ShowResults
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function SelectedHit() As WakeSearchHit
+		  If Not HitsList.Visible Or HitsList.SelectedRowIndex < 0 Then Return Nil
+		  Return WakeSearchHit(HitsList.RowTagAt(HitsList.SelectedRowIndex).ObjectValue)
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function SelectedSession() As WakeSessionInfo
+		  // The selected session, or the session of the selected search hit.
+		  If HitsList.Visible Then
+		    Var hit As WakeSearchHit = SelectedHit
+		    If hit Is Nil Then Return Nil
+		    Return hit.Session
+		  End If
+		  
 		  If SessionsList.SelectedRowIndex < 0 Then Return Nil
 		  Return WakeSessionInfo(SessionsList.RowTagAt(SessionsList.SelectedRowIndex).ObjectValue)
 		End Function
@@ -551,9 +832,8 @@ End
 
 	#tag Method, Flags = &h21
 		Private Function SelectedSessionID() As Integer
-		  Var s As WakeSessionInfo = SelectedSession
-		  If s Is Nil Then Return 0
-		  Return s.ID
+		  If SessionsList.SelectedRowIndex < 0 Then Return 0
+		  Return WakeSessionInfo(SessionsList.RowTagAt(SessionsList.SelectedRowIndex).ObjectValue).ID
 		End Function
 	#tag EndMethod
 
@@ -577,18 +857,70 @@ End
 		  SessionsList.ColumnAlignmentAt(kColumnDuration) = DesktopListBox.Alignments.Right
 		  SessionsList.ColumnAlignmentAt(kColumnTokens) = DesktopListBox.Alignments.Right
 		  
+		  HitsList.HeaderAt(kHitColumnTime) = "Time"
+		  HitsList.HeaderAt(kHitColumnKind) = "Kind"
+		  HitsList.HeaderAt(kHitColumnMatch) = "Match"
+		  HitsList.HeaderAt(kHitColumnSession) = "Session"
+		  
+		  // Each kind row's tag lists the event kinds it searches, as the index names them.
+		  mLoading = True
+		  KindPopup.AddRow("All events")
+		  KindPopup.AddRow("Prompts")
+		  KindPopup.RowTagAt(KindPopup.LastAddedRowIndex) = "user"
+		  KindPopup.AddRow("Answers")
+		  KindPopup.RowTagAt(KindPopup.LastAddedRowIndex) = "assistant"
+		  KindPopup.AddRow("Thinking")
+		  KindPopup.RowTagAt(KindPopup.LastAddedRowIndex) = "thinking"
+		  KindPopup.AddRow("Tool calls")
+		  KindPopup.RowTagAt(KindPopup.LastAddedRowIndex) = "tool,shell,edit,result"
+		  KindPopup.AddRow("Shell commands")
+		  KindPopup.RowTagAt(KindPopup.LastAddedRowIndex) = "shell"
+		  KindPopup.AddRow("File edits")
+		  KindPopup.RowTagAt(KindPopup.LastAddedRowIndex) = "edit"
+		  KindPopup.AddRow("Errors")
+		  KindPopup.RowTagAt(KindPopup.LastAddedRowIndex) = "error"
+		  KindPopup.AddRow("System messages")
+		  KindPopup.RowTagAt(KindPopup.LastAddedRowIndex) = "system"
+		  KindPopup.SelectedRowIndex = 0
+		  
+		  // Each period row's tag is its length in days, counted back from the end of today.
+		  DatePopup.AddRow("Any time")
+		  DatePopup.AddRow("Today")
+		  DatePopup.RowTagAt(DatePopup.LastAddedRowIndex) = 1
+		  DatePopup.AddRow("Last 7 days")
+		  DatePopup.RowTagAt(DatePopup.LastAddedRowIndex) = 7
+		  DatePopup.AddRow("Last 30 days")
+		  DatePopup.RowTagAt(DatePopup.LastAddedRowIndex) = 30
+		  DatePopup.AddRow("Last 12 months")
+		  DatePopup.RowTagAt(DatePopup.LastAddedRowIndex) = 365
+		  DatePopup.SelectedRowIndex = 0
+		  mLoading = False
+		  
 		  DetailList.ColumnAlignmentAt(0) = DesktopListBox.Alignments.Left
 		End Sub
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
-		Private Sub ShowDetail(info As WakeSessionInfo)
-		  // A summary of one session. Double-clicking it opens the full timeline.
+		Private Sub ShowDetail(info As WakeSessionInfo, hit As WakeSearchHit = Nil)
+		  // A summary of one session, after the match when it comes from a search hit.
+		  // Double-clicking the session or hit opens the full timeline.
 		  DetailList.RemoveAllRows
 		  If mCatalog Is Nil Then Return
 		  If info Is Nil Then
-		    If SessionsList.RowCount > 0 Then AddDetail("", "Select a session to see its details.")
+		    If HitsList.Visible And HitsList.RowCount > 0 Then
+		      AddDetail("", "Select a match to see its session.")
+		    ElseIf Not HitsList.Visible And SessionsList.RowCount > 0 Then
+		      AddDetail("", "Select a session to see its details.")
+		    End If
 		    Return
+		  End If
+		  
+		  If hit <> Nil Then
+		    AddDetailHeading("Match")
+		    AddDetail(HitKindLabel(hit), WakeFormat.OneLine(hit.PlainSnippet, 500))
+		    AddDetail("Time", FormatTime(hit.Timestamp))
+		    If hit.FilePath <> "" Then AddDetail("File", hit.FilePath)
+		    If hit.InSubagent Then AddDetail("Where", "In a subagent of this session")
 		  End If
 		  
 		  Var s As WakeSessionInfo
@@ -646,7 +978,7 @@ End
 		  AddDetailHeading("Source")
 		  If s.IsPartial Then AddDetail("Partially parsed", s.ParseNote)
 		  AddDetail("File", s.FilePath)
-		  AddDetail("Timeline", "Double-click the session or press ⌘O")
+		  AddDetail("Timeline", If(hit <> Nil, "Double-click the match or press ⌘O", "Double-click the session or press ⌘O"))
 		End Sub
 	#tag EndMethod
 
@@ -658,9 +990,31 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Sub ShowResults()
+		  // Search hits while there is search text, otherwise the sessions of the selected source.
+		  Timer.CancelCallLater(AddressOf RunSearch)
+		  
+		  Var searching As Boolean = IsSearching
+		  HitsList.Visible = searching
+		  SessionsList.Visible = Not searching
+		  
+		  If searching Then
+		    LoadHits
+		  Else
+		    HitsList.RemoveAllRows
+		    LoadSessions
+		  End If
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Sub UpdateStatus()
 		  Var parts() As String
-		  If mCatalog <> Nil Then
+		  If mCatalog <> Nil And HitsList.Visible Then
+		    Var matches As String = If(HitsList.RowCount = 1, "1 match", WakeFormat.Count(HitsList.RowCount) + " matches")
+		    parts.Add(matches + " in " + If(mHitSessionCount = 1, "1 session", WakeFormat.Count(mHitSessionCount) + " sessions"))
+		    If HitsList.RowCount >= kMaxHits Then parts.Add("showing the best " + WakeFormat.Count(kMaxHits))
+		  ElseIf mCatalog <> Nil Then
 		    parts.Add(If(SessionsList.RowCount = 1, "1 session", SessionsList.RowCount.ToString + " sessions"))
 		  End If
 		  If mIndexNote <> "" Then parts.Add(mIndexNote)
@@ -671,6 +1025,10 @@ End
 
 	#tag Property, Flags = &h21
 		Private mCatalog As WakeCatalog
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mHitSessionCount As Integer
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
@@ -708,6 +1066,24 @@ End
 	#tag Constant, Name = kColumnTokens, Type = Double, Dynamic = False, Default = \"4", Scope = Private
 	#tag EndConstant
 
+	#tag Constant, Name = kHitColumnKind, Type = Double, Dynamic = False, Default = \"1", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kHitColumnMatch, Type = Double, Dynamic = False, Default = \"2", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kHitColumnSession, Type = Double, Dynamic = False, Default = \"3", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kHitColumnTime, Type = Double, Dynamic = False, Default = \"0", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kMaxHits, Type = Double, Dynamic = False, Default = \"500", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kSearchDelay, Type = Double, Dynamic = False, Default = \"250", Scope = Private
+	#tag EndConstant
+
 
 #tag EndWindowCode
 
@@ -728,7 +1104,7 @@ End
 	#tag EndEvent
 	#tag Event
 		Sub SelectionChanged()
-		  If Not mLoading Then LoadSessions
+		  If Not mLoading Then ShowResults
 		End Sub
 	#tag EndEvent
 #tag EndEvents
@@ -802,5 +1178,137 @@ End
 		Sub ValueChanged()
 		  Reload
 		End Sub
+	#tag EndEvent
+#tag EndEvents
+#tag Events SearchField
+	#tag Event
+		Sub TextChanged()
+		  // Search shortly after typing stops. Clearing the field goes back to the sessions at once.
+		  Timer.CancelCallLater(AddressOf RunSearch)
+		  If IsSearching Then
+		    Timer.CallLater(kSearchDelay, AddressOf RunSearch)
+		  Else
+		    ShowResults
+		  End If
+		End Sub
+	#tag EndEvent
+	#tag Event
+		Function KeyDown(key As String) As Boolean
+		  Select Case key
+		  Case &u1B
+		    // Escape clears the search.
+		    Me.Text = ""
+		    Return True
+		  Case &u0D, &u03
+		    ShowResults
+		    Return True
+		  Case &u1F
+		    // Down arrow moves to the results.
+		    If HitsList.Visible And HitsList.RowCount > 0 Then
+		      HitsList.SetFocus
+		      If HitsList.SelectedRowIndex < 0 Then HitsList.SelectedRowIndex = 0
+		      Return True
+		    End If
+		  End Select
+		  Return False
+		End Function
+	#tag EndEvent
+#tag EndEvents
+#tag Events KindPopup
+	#tag Event
+		Sub SelectionChanged(item As DesktopMenuItem)
+		  #Pragma Unused item
+		  If Not mLoading And IsSearching Then ShowResults
+		End Sub
+	#tag EndEvent
+#tag EndEvents
+#tag Events DatePopup
+	#tag Event
+		Sub SelectionChanged(item As DesktopMenuItem)
+		  #Pragma Unused item
+		  If Not mLoading And IsSearching Then ShowResults
+		End Sub
+	#tag EndEvent
+#tag EndEvents
+#tag Events HitsList
+	#tag Event
+		Function PaintCellText(g as Graphics, row as Integer, column as Integer, x as Integer, y as Integer) As Boolean
+		  // Draws the snippet with its matched terms in bold.
+		  If column <> kHitColumnMatch Or row > Me.LastRowIndex Then Return False
+		  
+		  Var hit As WakeSearchHit = WakeSearchHit(Me.RowTagAt(row).ObjectValue)
+		  If hit Is Nil Then Return False
+		  
+		  Var snippet As String = WakeFormat.OneLine(hit.Snippet, 0)
+		  Var drawAt As Double = x
+		  Var pieces() As String = snippet.Split(WakeSearchHit.MatchStart)
+		  
+		  For i As Integer = 0 To pieces.LastIndex
+		    Var plain As String = pieces(i)
+		    Var matched As String
+		    If i > 0 Then
+		      Var finish As Integer = plain.IndexOf(WakeSearchHit.MatchEnd)
+		      If finish < 0 Then
+		        matched = plain
+		        plain = ""
+		      Else
+		        matched = plain.Left(finish)
+		        plain = plain.Middle(finish + 1)
+		      End If
+		    End If
+		    
+		    If matched <> "" Then
+		      g.Bold = True
+		      g.DrawText(matched, drawAt, y)
+		      drawAt = drawAt + g.TextWidth(matched)
+		    End If
+		    If plain <> "" Then
+		      g.Bold = False
+		      g.DrawText(plain, drawAt, y)
+		      drawAt = drawAt + g.TextWidth(plain)
+		    End If
+		    If drawAt > g.Width Then Exit
+		  Next
+		  
+		  g.Bold = False
+		  Return True
+		End Function
+	#tag EndEvent
+	#tag Event
+		Function RowComparison(row1 as Integer, row2 as Integer, column as Integer, ByRef result as Integer) As Boolean
+		  // Times sort by value, not by their text.
+		  If column <> kHitColumnTime Then Return False
+		  
+		  Var a As Double = Me.CellTagAt(row1, column).DoubleValue
+		  Var b As Double = Me.CellTagAt(row2, column).DoubleValue
+		  If a < b Then
+		    result = -1
+		  ElseIf a > b Then
+		    result = 1
+		  Else
+		    result = 0
+		  End If
+		  Return True
+		End Function
+	#tag EndEvent
+	#tag Event
+		Sub SelectionChanged()
+		  If Not mLoading Then ShowDetail(SelectedSession, SelectedHit)
+		End Sub
+	#tag EndEvent
+	#tag Event
+		Sub DoublePressed()
+		  OpenTimeline
+		End Sub
+	#tag EndEvent
+	#tag Event
+		Function KeyDown(key As String) As Boolean
+		  // Return or Enter opens the timeline at the match, like double-clicking the row.
+		  If key = &u0D Or key = &u03 Then
+		    OpenTimeline
+		    Return True
+		  End If
+		  Return False
+		End Function
 	#tag EndEvent
 #tag EndEvents

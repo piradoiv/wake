@@ -38,8 +38,14 @@ Each milestone ends with the tests passing and a commit.
   shows it in a `DesktopHTMLViewer`. Open it by double-click, Return or
   File → Open Timeline (Cmd+O). 53 tests. On real data (78 sessions) the
   slowest page takes 0.24 s to parse and render, and the largest is 680 KB.
-- [ ] **6. Search.** Full-text search (FTS5) with filters for agent, project,
-  date range and event kind.
+- [x] **6. Search.** `WakeCatalog.Search(WakeSearchQuery)` returns
+  `WakeSearchHit`s (FTS5, best match first, at most 500) with a snippet whose
+  matches are marked, filtered by agent, project, time range and event kind.
+  `MainWindow` has a search field (Cmd+F) with kind and period popups. The
+  source-list selection scopes the search, and hits replace the sessions list
+  while there is text. Opening a hit scrolls the timeline to its event
+  (`WakeTimeline.Anchor`, `wakeGoTo`). 62 tests. On real data (11,600 events)
+  a query takes 1–45 ms, and two one-letter prefixes about 210 ms.
 - [ ] **7. Stats and prices.** Tokens per session, project and day.
   User-editable price table (per model: input, output, cache write and cache
   read per million tokens) stored as JSON in the app data folder. Cost
@@ -71,6 +77,9 @@ machine to inspect, and the console companion.
 | A session with no `cwd` (empty, or only a slash command) joins the project of **the other sessions in its folder**, if there are any. | Otherwise it shows up as a second project named after the encoded folder. |
 | The timeline **opens in its own window** (`SessionWindow`), one per session. | It needs the full width for diffs and output, and two sessions can be compared side by side. |
 | The timeline page has a **CSP of `default-src 'none'`** with inline style and script, and the viewer **cancels every navigation** after the page loads. | Transcripts are untrusted text. Nothing in them may load a remote resource or move the viewer off the page. |
+| Search words match as **prefixes**, `"quoted text"` as a phrase, and every term must match. Every term is quoted, so FTS5 operators are plain words. | Search as you type needs partial words, and no input may raise an FTS5 syntax error. |
+| Search lives **in the main window**, scoped by the source-list selection, not in its own window. | Agent and project filters come for free, and the detail pane shows the hit's session. |
+| Search runs **on the main thread**, 250 ms after the last keystroke. | Queries take milliseconds on real data. |
 | Long blocks and persisted output are **fetched on demand** with `executeInXojoSync`, not embedded. | Keeps the page small for 10 MB transcripts. Persisted output is read only when asked for, capped at 4 MB. |
 
 ## Working notes and gotchas
@@ -106,6 +115,15 @@ machine to inspect, and the console companion.
   `~/Developer/Xojo/Xojo/<version>/IDE`), which are in the same text format.
 - **The shell can't take screenshots** (no screen-recording permission), so
   the maintainer has to check UI changes by eye.
+- **Search snippets mark matches with `&u02` and `&u03`.** The index replaces
+  those characters in the text it stores.
+- **Subagents are one level deep.** Search finds an event's top-level session
+  as its session's parent. Revisit this if nested subagents appear.
+- **No IDE window uses `DesktopSearchField`**, so there's no property list to
+  copy. The search field is a `DesktopTextField` with a hint, and Escape clears it.
+- **Opening a hit runs `wakeGoTo` with `ExecuteJavaScript`** after
+  `DocumentComplete`. This relies on WebKit not applying the page's CSP to
+  native script calls, which hasn't been checked in the running app yet.
 - **`call` is a reserved word** in Xojo. Don't use it as a variable name.
 - **Xojo identifiers are case-insensitive.** A parameter named `usage` shadows
   a property named `Usage`.

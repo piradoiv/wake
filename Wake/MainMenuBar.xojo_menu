@@ -139,6 +139,27 @@ Begin Menu MainMenuBar
          AutoEnable = True
          Visible = True
       End
+      Begin DesktopMenuItem EditSeparator3
+         SpecialMenu = 0
+         Index = -2147483648
+         Text = "-"
+         Symbol = ""
+         AutoEnabled = True
+         AutoEnable = True
+         Visible = True
+      End
+      Begin DesktopMenuItem EditFind
+         SpecialMenu = 0
+         Index = -2147483648
+         Text = "&Find…"
+         Symbol = ""
+         ShortcutKey = "F"
+         Shortcut = "Cmd+F"
+         MenuModifier = True
+         AutoEnabled = True
+         AutoEnable = True
+         Visible = True
+      End
    End
    Begin DesktopMenuItem WindowMenu
       SpecialMenu = 0

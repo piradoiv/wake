@@ -291,7 +291,8 @@ Protected Class WakeIndex
 		  // For shell commands the result text repeats stdout.
 		  If e.ResultText <> "" And e.Stdout = "" Then parts.Add(e.ResultText)
 
-		  Var body As String = String.FromArray(parts, &u0A)
+		  // Search snippets mark matches with these two characters, so they can't appear in the text.
+		  Var body As String = String.FromArray(parts, &u0A).ReplaceAll(WakeSearchHit.MatchStart, " ").ReplaceAll(WakeSearchHit.MatchEnd, " ")
 		  If body.Length > kMaxSearchTextLength Then body = body.Left(kMaxSearchTextLength)
 		  Return body
 		End Function
@@ -349,7 +350,7 @@ Protected Class WakeIndex
 	#tag Constant, Name = kMaxSearchTextLength, Type = Double, Dynamic = False, Default = \"65536", Scope = Public
 	#tag EndConstant
 
-	#tag Constant, Name = kSchemaVersion, Type = Double, Dynamic = False, Default = \"2", Scope = Public
+	#tag Constant, Name = kSchemaVersion, Type = Double, Dynamic = False, Default = \"3", Scope = Public
 	#tag EndConstant
 
 

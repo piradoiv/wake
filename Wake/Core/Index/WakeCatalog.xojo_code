@@ -92,6 +92,112 @@ Protected Class WakeCatalog
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function Search(query As WakeSearchQuery) As WakeSearchHit()
+		  // Events that match query.Text, best matches first, at most query.Limit of them. Each hit
+		  // carries its top-level session, also when the event belongs to a subagent.
+		  // Raises DatabaseException.
+		  Var result() As WakeSearchHit
+		  Var match As String = query.MatchExpression
+		  If match = "" Then Return result
+
+		  Var clauses() As String
+		  Var values() As Variant
+		  values.Add(WakeSearchHit.MatchStart)
+		  values.Add(WakeSearchHit.MatchEnd)
+		  values.Add(WakeFormat.kEllipsis)
+		  clauses.Add("events_fts MATCH ?")
+		  values.Add(match)
+
+		  If query.AgentID <> "" Then
+		    clauses.Add("ts.agent = ?")
+		    values.Add(query.AgentID)
+		  End If
+
+		  If query.ProjectID <> 0 Then
+		    clauses.Add("ts.project_id = ?")
+		    values.Add(query.ProjectID)
+		  End If
+
+		  If Not query.IncludeCommandOnly Then clauses.Add("ts.command_only = 0")
+
+		  If query.FromTime <> Nil Then
+		    clauses.Add("coalesce(e.timestamp, es.start_time) >= ?")
+		    values.Add(query.FromTime.SecondsFrom1970)
+		  End If
+
+		  If query.ToTime <> Nil Then
+		    clauses.Add("coalesce(e.timestamp, es.start_time) < ?")
+		    values.Add(query.ToTime.SecondsFrom1970)
+		  End If
+
+		  If query.Kinds.Count > 0 Then
+		    Var marks() As String
+		    For Each kind As String In query.Kinds
+		      marks.Add("?")
+		      values.Add(kind)
+		    Next
+		    clauses.Add("e.kind IN (" + String.FromArray(marks, ", ") + ")")
+		  End If
+
+		  Var limit As Integer = If(query.Limit > 0, query.Limit, 1)
+		  values.Add(limit)
+
+		  // Subagents are one level deep, so an event's top-level session is its session's parent,
+		  // or that session itself.
+		  Var sql As String = "SELECT e.id, e.seq, e.kind, e.timestamp, e.tool_name, e.file_path, " + _
+		  "es.uid AS event_uid, es.parent_id IS NOT NULL AS in_subagent, ts.id AS top_id, " + _
+		  "snippet(events_fts, 0, ?, ?, ?, 16) AS snippet " + _
+		  "FROM events_fts JOIN events e ON e.id = events_fts.rowid " + _
+		  "JOIN sessions es ON es.id = e.session_id " + _
+		  "JOIN sessions ts ON ts.id = coalesce(es.parent_id, es.id) " + _
+		  "WHERE " + String.FromArray(clauses, " AND ") + " ORDER BY rank, e.id LIMIT ?"
+
+		  Var rs As RowSet = mIndex.Database.SelectSQL(sql, values)
+		  Var topIDs() As Integer
+		  Var topIDMarks() As String
+		  Var sessionValues() As Variant
+
+		  For Each row As DatabaseRow In rs
+		    Var hit As New WakeSearchHit
+		    hit.EventID = row.Column("id").IntegerValue
+		    hit.Sequence = row.Column("seq").IntegerValue
+		    hit.Kind = row.Column("kind").StringValue
+		    hit.Timestamp = TimeFrom(row.Column("timestamp"))
+		    hit.ToolName = row.Column("tool_name").StringValue
+		    hit.FilePath = row.Column("file_path").StringValue
+		    hit.EventSessionUID = row.Column("event_uid").StringValue
+		    hit.InSubagent = row.Column("in_subagent").BooleanValue
+		    hit.Snippet = row.Column("snippet").StringValue
+
+		    // Session is filled in below, once per session. Until then it holds only the id.
+		    Var topID As Integer = row.Column("top_id").IntegerValue
+		    hit.Session = New WakeSessionInfo
+		    hit.Session.ID = topID
+		    If topIDs.IndexOf(topID) < 0 Then
+		      topIDs.Add(topID)
+		      topIDMarks.Add("?")
+		      sessionValues.Add(topID)
+		    End If
+
+		    result.Add(hit)
+		  Next
+
+		  If topIDs.Count = 0 Then Return result
+
+		  Var sessions As New Dictionary
+		  For Each s As WakeSessionInfo In ReadSessions("s.id IN (" + String.FromArray(topIDMarks, ", ") + ")", sessionValues, "s.id")
+		    sessions.Value(s.ID) = s
+		  Next
+
+		  For Each hit As WakeSearchHit In result
+		    hit.Session = WakeSessionInfo(sessions.Lookup(hit.Session.ID, hit.Session).ObjectValue)
+		  Next
+
+		  Return result
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function Session(sessionID As Integer) As WakeSessionInfo
 		  // One session or subagent with its per-model usage, or Nil if it is no longer indexed.
 		  // Raises DatabaseException.

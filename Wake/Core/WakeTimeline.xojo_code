@@ -44,10 +44,28 @@ Protected Class WakeTimeline
 		    Return
 		  End If
 
+		  // Each event gets an anchor, so a search hit can scroll to it with wakeGoTo.
+		  Var uid As String = If(session.IsSubagent And session.SubagentID <> "", session.SubagentID, session.ID)
+
 		  For Each e As WakeEvent In session.Events
+		    mNextAnchor = mNextAnchor + 1
+		    Var anchor As String = "e" + mNextAnchor.ToString
+		    mAnchors.Value(uid + "/" + e.Sequence.ToString) = anchor
+
+		    out.Add("<div class=""ev"" id=""" + anchor + """>")
 		    AddEvent(out, e)
+		    out.Add("</div>")
 		  Next
 		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function Anchor(sessionUID As String, sequence As Integer) As String
+		  // The element id of an event in the page, or "" if there is no such event. sessionUID is the
+		  // session's or subagent's uid, as the index stores it.
+		  Call HTML
+		  Return mAnchors.Lookup(sessionUID + "/" + sequence.ToString, "").StringValue
+		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
@@ -220,6 +238,7 @@ Protected Class WakeTimeline
 	#tag Method, Flags = &h0
 		Sub Constructor(session As WakeSession)
 		  mSession = session
+		  mAnchors = WakeCore.NewCaseSensitiveDictionary
 		  mBlocks = WakeCore.NewCaseSensitiveDictionary
 		  mPersisted = WakeCore.NewCaseSensitiveDictionary
 		End Sub
@@ -480,6 +499,16 @@ Protected Class WakeTimeline
 		  js.Add("  target.innerHTML = html;")
 		  js.Add("  if (button && button.parentNode) button.parentNode.removeChild(button);")
 		  js.Add("}")
+		  js.Add("function wakeGoTo(id) {")
+		  js.Add("  var target = document.getElementById(id);")
+		  js.Add("  if (!target) return;")
+		  js.Add("  for (var p = target; p; p = p.parentElement) { if (p.tagName === 'DETAILS') p.open = true; }")
+		  js.Add("  var first = target.firstElementChild;")
+		  js.Add("  if (first && first.tagName === 'DETAILS') first.open = true;")
+		  js.Add("  document.querySelectorAll('.ev.hit').forEach(function (e) { e.classList.remove('hit'); });")
+		  js.Add("  target.classList.add('hit');")
+		  js.Add("  target.scrollIntoView({ block: 'center' });")
+		  js.Add("}")
 		  Return String.FromArray(js, &u0A)
 		End Function
 	#tag EndMethod
@@ -548,7 +577,7 @@ Protected Class WakeTimeline
 		  Var css() As String
 		  css.Add(":root { color-scheme: light dark; --bg: #ffffff; --fg: #1d1d1f; --muted: #6e6e73; --line: #e2e2e6; --card: #f5f5f7;")
 		  css.Add("  --user: #eef4ff; --user-line: #c8dbff; --code: #f2f2f4; --add-bg: #e6f6ea; --add: #1a7f37; --del-bg: #fdecec;")
-		  css.Add("  --del: #c2272d; --hunk: #6639ba; --warn-bg: #fff4e0; --warn: #8a5300; --err: #c2272d; }")
+		  css.Add("  --del: #c2272d; --hunk: #6639ba; --warn-bg: #fff4e0; --warn: #8a5300; --err: #c2272d; --hit: #f5b400; }")
 		  css.Add("@media (prefers-color-scheme: dark) { :root { --bg: #1e1e20; --fg: #e8e8ea; --muted: #98989d; --line: #3a3a3e;")
 		  css.Add("  --card: #2a2a2d; --user: #1f2a3d; --user-line: #34507a; --code: #28282b; --add-bg: #16301f; --add: #63d283;")
 		  css.Add("  --del-bg: #3a1b1d; --del: #ff7b7f; --hunk: #b59cff; --warn-bg: #3a2c12; --warn: #f2b84b; --err: #ff7b7f; } }")
@@ -597,6 +626,7 @@ Protected Class WakeTimeline
 		  css.Add(".system, .thinking { color: var(--muted); font-size: 12px; }")
 		  css.Add(".subagent { border: 1px dashed var(--line); border-radius: 8px; padding: 4px 8px; margin: 6px 0; }")
 		  css.Add(".persisted { margin: 4px 0; }")
+		  css.Add(".ev.hit > * { outline: 2px solid var(--hit); outline-offset: 2px; border-radius: 6px; }")
 		  Return String.FromArray(css, &u0A)
 		End Function
 	#tag EndMethod
@@ -613,11 +643,19 @@ Protected Class WakeTimeline
 
 
 	#tag Property, Flags = &h21
+		Private mAnchors As Dictionary
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
 		Private mBlocks As Dictionary
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
 		Private mHTML As String
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mNextAnchor As Integer
 	#tag EndProperty
 
 	#tag Property, Flags = &h21

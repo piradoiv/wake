@@ -58,6 +58,22 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub ShowEvent(sessionUID As String, sequence As Integer)
+		  // Scrolls to an event and highlights it, opening the blocks around it. sessionUID is the uid
+		  // of the session or subagent the event belongs to.
+		  If mTimeline Is Nil Then Return
+		  Var anchor As String = mTimeline.Anchor(sessionUID, sequence)
+		  If anchor = "" Then Return
+		  
+		  If mLoadingPage Then
+		    mPendingAnchor = anchor
+		  Else
+		    TimelineViewer.ExecuteJavaScript("wakeGoTo('" + anchor + "');")
+		  End If
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub ShowSession(info As WakeSessionInfo)
 		  // The timeline re-parses the transcript, read-only. The index holds only summaries.
 		  mSessionID = info.ID
@@ -65,6 +81,7 @@ End
 		  mTimeline = WakeTimeline.Load(info.AgentID, info.FilePath)
 		  
 		  mLoadingPage = True
+		  mPendingAnchor = ""
 		  TimelineViewer.LoadPage(mTimeline.HTML, Nil)
 		End Sub
 	#tag EndMethod
@@ -72,6 +89,10 @@ End
 
 	#tag Property, Flags = &h21
 		Private mLoadingPage As Boolean
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mPendingAnchor As String
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
@@ -98,6 +119,13 @@ End
 		Sub DocumentComplete(url as String)
 		  #Pragma Unused URL
 		  mLoadingPage = False
+		  
+		  // A search hit asked for an event before the page was ready. Anchors are generated ids,
+		  // never transcript text.
+		  If mPendingAnchor <> "" Then
+		    TimelineViewer.ExecuteJavaScript("wakeGoTo('" + mPendingAnchor + "');")
+		    mPendingAnchor = ""
+		  End If
 		End Sub
 	#tag EndEvent
 	#tag Event
