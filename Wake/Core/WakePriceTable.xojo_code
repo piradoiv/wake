@@ -17,7 +17,7 @@ Protected Class WakePriceTable
 		    Var model As String = key.StringValue
 		    Var amount As WakeTokenUsage = WakeTokenUsage(byModel.Value(key).ObjectValue)
 		    If amount Is Nil Or amount.IsEmpty Then Continue
-		  
+		    
 		    Var price As WakeModelPrice = PriceFor(model)
 		    If price Is Nil Then
 		      result.UnpricedTokens = result.UnpricedTokens + amount.Total
@@ -46,17 +46,17 @@ Protected Class WakePriceTable
 		    input.Encoding = Encodings.UTF8
 		    Var json As String = input.ReadAll
 		    input.Close
-		  
+		    
 		    Var prices As Dictionary = WakeCore.JSONDictionary(WakeCore.AsDictionary(ParseJSON(json)), "prices")
 		    If prices Is Nil Then
 		      table.LoadError = f.Name + " has no ""prices"" object."
 		      Return table
 		    End If
-		  
+		    
 		    For Each key As Variant In prices.Keys
 		      Var entry As Dictionary = WakeCore.AsDictionary(prices.Value(key))
 		      If entry Is Nil Or key.StringValue = "" Then Continue
-		  
+		      
 		      Var price As New WakeModelPrice(key.StringValue)
 		      price.InputPerMillion = Max(0.0, WakeCore.JSONDouble(entry, "input"))
 		      price.OutputPerMillion = Max(0.0, WakeCore.JSONDouble(entry, "output"))

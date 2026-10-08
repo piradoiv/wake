@@ -30,37 +30,6 @@ Inherits TestGroup
 	#tag EndEvent
 
 
-	#tag Method, Flags = &h21
-		Private Function FindGroup(groups() As WakeUsageGroup, key As String) As WakeUsageGroup
-		  For Each g As WakeUsageGroup In groups
-		    If g.Key = key Then Return g
-		  Next
-		  Return Nil
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function LocalDay(isoTime As String) As String
-		  // The calendar day of isoTime in the local time zone, as the catalog groups it.
-		  Var utc As DateTime = WakeCore.ParseISO8601(isoTime)
-		  Var localTime As New DateTime(utc.SecondsFrom1970)
-		  Return localTime.SQLDate
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function OpusPrice() As WakeModelPrice
-		  // Made-up prices, in dollars per million tokens.
-		  Var price As New WakeModelPrice("claude-opus-5-5")
-		  price.InputPerMillion = 5
-		  price.OutputPerMillion = 25
-		  price.CacheWritePerMillion = 6.25
-		  price.CacheWrite1hPerMillion = 10
-		  price.CacheReadPerMillion = 0.5
-		  Return price
-		End Function
-	#tag EndMethod
-
 	#tag Method, Flags = &h0
 		Sub CostFormatTest()
 		  Var table As New WakePriceTable
@@ -116,6 +85,24 @@ Inherits TestGroup
 		End Sub
 	#tag EndMethod
 
+	#tag Method, Flags = &h21
+		Private Function FindGroup(groups() As WakeUsageGroup, key As String) As WakeUsageGroup
+		  For Each g As WakeUsageGroup In groups
+		    If g.Key = key Then Return g
+		  Next
+		  Return Nil
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function LocalDay(isoTime As String) As String
+		  // The calendar day of isoTime in the local time zone, as the catalog groups it.
+		  Var utc As DateTime = WakeCore.ParseISO8601(isoTime)
+		  Var localTime As New DateTime(utc.SecondsFrom1970)
+		  Return localTime.SQLDate
+		End Function
+	#tag EndMethod
+
 	#tag Method, Flags = &h0
 		Sub ModelPriceCostTest()
 		  Var usage As New WakeTokenUsage
@@ -135,18 +122,17 @@ Inherits TestGroup
 		End Sub
 	#tag EndMethod
 
-	#tag Method, Flags = &h0
-		Sub ParserCountsUsagePerResponseTest()
-		  Var session As WakeSession = TestSupport.ParseClaudeFixture(2)
-		  Var count As Integer = session.UsageEntries.Count
-		  Assert.AreEqual(6, count, "one entry per response")
-		  Assert.AreEqual("claude-opus-5-5", session.UsageEntries(0).Model)
-		  Assert.IsNotNil(session.UsageEntries(0).Timestamp)
-		  Assert.AreEqual(10, session.UsageEntries(0).Usage.InputTokens)
-		  
-		  // The fixtures write every cache write with a one-hour lifetime.
-		  Assert.AreEqual(700, session.Usage.CacheWrite1hTokens)
-		End Sub
+	#tag Method, Flags = &h21
+		Private Function OpusPrice() As WakeModelPrice
+		  // Made-up prices, in dollars per million tokens.
+		  Var price As New WakeModelPrice("claude-opus-5-5")
+		  price.InputPerMillion = 5
+		  price.OutputPerMillion = 25
+		  price.CacheWritePerMillion = 6.25
+		  price.CacheWrite1hPerMillion = 10
+		  price.CacheReadPerMillion = 0.5
+		  Return price
+		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
@@ -176,18 +162,16 @@ Inherits TestGroup
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
-		Sub PriceForDatedModelTest()
-		  Var table As New WakePriceTable
-		  Var haiku As New WakeModelPrice("claude-haiku-4-5")
-		  table.SetPrice(haiku)
-		  Var opus As New WakeModelPrice("claude-opus-5")
-		  table.SetPrice(opus)
+		Sub ParserCountsUsagePerResponseTest()
+		  Var session As WakeSession = TestSupport.ParseClaudeFixture(2)
+		  Var count As Integer = session.UsageEntries.Count
+		  Assert.AreEqual(6, count, "one entry per response")
+		  Assert.AreEqual("claude-opus-5-5", session.UsageEntries(0).Model)
+		  Assert.IsNotNil(session.UsageEntries(0).Timestamp)
+		  Assert.AreEqual(10, session.UsageEntries(0).Usage.InputTokens)
 		  
-		  Assert.AreSame(haiku, table.PriceFor("claude-haiku-4-5"))
-		  Assert.AreSame(haiku, table.PriceFor("claude-haiku-4-5-20251001"), "dated name")
-		  Assert.IsNil(table.PriceFor("claude-haiku-4-5-preview"))
-		  Assert.IsNil(table.PriceFor("claude-opus-5-5"), "a different model, not a dated name")
-		  Assert.IsNil(table.PriceFor("Claude-Haiku-4-5"), "names are case-sensitive")
+		  // The fixtures write every cache write with a one-hour lifetime.
+		  Assert.AreEqual(700, session.Usage.CacheWrite1hTokens)
 		End Sub
 	#tag EndMethod
 
@@ -222,6 +206,22 @@ Inherits TestGroup
 		  Assert.AreNotEqual("", broken.LoadError, "a damaged file is reported")
 		  modelCount = broken.Models.Count
 		  Assert.AreEqual(0, modelCount)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub PriceForDatedModelTest()
+		  Var table As New WakePriceTable
+		  Var haiku As New WakeModelPrice("claude-haiku-4-5")
+		  table.SetPrice(haiku)
+		  Var opus As New WakeModelPrice("claude-opus-5")
+		  table.SetPrice(opus)
+		  
+		  Assert.AreSame(haiku, table.PriceFor("claude-haiku-4-5"))
+		  Assert.AreSame(haiku, table.PriceFor("claude-haiku-4-5-20251001"), "dated name")
+		  Assert.IsNil(table.PriceFor("claude-haiku-4-5-preview"))
+		  Assert.IsNil(table.PriceFor("claude-opus-5-5"), "a different model, not a dated name")
+		  Assert.IsNil(table.PriceFor("Claude-Haiku-4-5"), "names are case-sensitive")
 		End Sub
 	#tag EndMethod
 
