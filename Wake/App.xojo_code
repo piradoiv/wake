@@ -2,6 +2,13 @@
 Protected Class App
 Inherits DesktopApplication
 	#tag Event
+		Sub MenuBarSelected()
+		  // Auto-enable leaves this item greyed out, so it's enabled here.
+		  FileCloseWindow.Enabled = WindowCount > 0
+		End Sub
+	#tag EndEvent
+
+	#tag Event
 		Sub Opening()
 		  #If DebugBuild Then
 		    If RunTestsIfRequested Then Return
@@ -13,7 +20,7 @@ Inherits DesktopApplication
 
 
 	#tag MenuHandler
-		Function FileClose() As Boolean Handles FileClose.Action
+		Function FileCloseWindow() As Boolean Handles FileCloseWindow.Action
 		  // WindowAt(0) is the frontmost window, so Cmd+W closes whichever window has focus.
 		  If WindowCount > 0 Then WindowAt(0).Close
 		  Return True
