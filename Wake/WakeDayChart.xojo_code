@@ -35,7 +35,7 @@ Inherits DesktopCanvas
 		  g.DrawText(Title, kPadding, kPadding + g.FontAscent)
 		  If Summary <> "" Then
 		    g.Bold = False
-		    g.DrawingColor = Color.DisabledTextColor
+		    g.DrawingColor = WakeGlanceTiles.SecondaryTextColor
 		    g.DrawText(Summary, g.Width - kPadding - g.TextWidth(Summary), kPadding + g.FontAscent)
 		  End If
 
@@ -49,7 +49,7 @@ Inherits DesktopCanvas
 
 		  If mMax <= 0 Then
 		    g.FontSize = 12
-		    g.DrawingColor = Color.DisabledTextColor
+		    g.DrawingColor = WakeGlanceTiles.SecondaryTextColor
 		    Var message As String = "No usage in this period"
 		    g.DrawText(message, (g.Width - g.TextWidth(message)) / 2, plotTop + plotHeight / 2)
 		  Else
@@ -80,7 +80,7 @@ Inherits DesktopCanvas
 
 		  g.Bold = False
 		  g.FontSize = 10
-		  g.DrawingColor = Color.DisabledTextColor
+		  g.DrawingColor = WakeGlanceTiles.SecondaryTextColor
 		  Var labelBaseline As Double = g.Height - kPadding
 		  g.DrawText(StartLabel, kPadding, labelBaseline)
 		  g.DrawText(EndLabel, g.Width - kPadding - g.TextWidth(EndLabel), labelBaseline)

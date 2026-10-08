@@ -19,7 +19,7 @@ Inherits DesktopCanvas
 		    If Subheading <> "" Then
 		      g.Bold = False
 		      g.FontSize = 11
-		      g.DrawingColor = Color.DisabledTextColor
+		      g.DrawingColor = SecondaryTextColor
 		      g.DrawText(FitText(g, Subheading, g.Width - kPadding * 2), kPadding, y + g.FontAscent)
 		      y = y + g.TextHeight
 		    End If
@@ -82,7 +82,7 @@ Inherits DesktopCanvas
 		  If mDetails(index) <> "" Then
 		    g.Bold = False
 		    g.FontSize = 11
-		    g.DrawingColor = Color.DisabledTextColor
+		    g.DrawingColor = SecondaryTextColor
 		    g.DrawText(FitText(g, mDetails(index), inner), x + 10, y + 61)
 		  End If
 		End Sub
@@ -122,6 +122,15 @@ Inherits DesktopCanvas
 		  mDetails.RemoveAll
 		  mTints.RemoveAll
 		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Shared Function SecondaryTextColor() As Color
+		  // The text colour at about 65% opacity: quieter than the text, but readable on a tint,
+		  // which the system's disabled-text grey is not.
+		  Var text As Color = Color.TextColor
+		  Return Color.RGB(text.Red, text.Green, text.Blue, 90)
+		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h0

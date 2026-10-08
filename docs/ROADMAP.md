@@ -160,9 +160,10 @@ machine to inspect, and the console companion.
 - **Opening a hit runs `wakeGoTo` with `ExecuteJavaScript`** after
   `DocumentComplete`. The page's CSP doesn't block native script calls
   (checked in the app on macOS).
-- **Drawn controls use system colours** (`Color.TextColor`,
-  `Color.DisabledTextColor`) and check `Color.IsDarkMode` for tints, so they
-  follow the appearance. Colour constants are `Type = Color`.
+- **Drawn controls use `Color.TextColor`** and check `Color.IsDarkMode` for
+  tints, so they follow the appearance. For quieter text use
+  `WakeGlanceTiles.SecondaryTextColor`: `Color.DisabledTextColor` is too faint
+  on tinted tiles. Colour constants are `Type = Color`.
 - **`PaintCellText` draws the cell text in `g.DrawingColor`** when it returns
   False, so restore that colour after drawing anything else in the cell.
 - **`call` is a reserved word** in Xojo. Don't use it as a variable name.
