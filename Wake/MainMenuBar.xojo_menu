@@ -20,6 +20,18 @@ Begin Menu MainMenuBar
          AutoEnable = True
          Visible = True
       End
+      Begin DesktopMenuItem FileExportMarkdown
+         SpecialMenu = 0
+         Index = -2147483648
+         Text = "&Export as Markdown…"
+         Symbol = ""
+         ShortcutKey = "E"
+         Shortcut = "Cmd+E"
+         MenuModifier = True
+         AutoEnabled = True
+         AutoEnable = True
+         Visible = True
+      End
       Begin DesktopMenuItem FileRefresh
          SpecialMenu = 0
          Index = -2147483648

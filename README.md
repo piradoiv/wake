@@ -9,13 +9,37 @@ your machine, but those files are rarely read. Wake turns them into something
 you can navigate: what the agent was asked, what it read, which commands it
 ran, which files it changed and how many tokens it used.
 
-> **Status:** early development, working toward v0.1.
+> **Status:** v0.1 in progress. Claude Code sessions are fully supported.
+
+## What it does
+
+- **Browse** every session by agent and project, with its start time,
+  duration, title, tokens and estimated cost. Sessions that hold only a slash
+  command such as `/clear` are hidden unless you ask for them.
+- **Read a session as a timeline** (double-click it, or Cmd+O): prompts and
+  answers, tool calls with their output, file edits as coloured diffs, and
+  subagents nested under the call that started them.
+- **Search** prompts, answers, commands and output across all sessions
+  (Cmd+F), filtered by kind of event and by period. Opening a match scrolls
+  the timeline to it.
+- **See usage** per day, project or model for a period (Window → Usage, Cmd+U).
+- **Estimate costs** from your own price table (Window → Prices). Wake ships no
+  prices, because they change: enter them per million tokens from your
+  provider's price list. The cost the agent itself reports is shown next to
+  Wake's estimate, labelled "reported by agent".
+- **Export a session as Markdown** (File → Export as Markdown, Cmd+E): a
+  summary, token totals, the prompts, every shell command and every file
+  change as a fenced diff.
+
+Wake keeps a search index and your prices in its own folder (the app data
+folder, under `Wake`). The index is a cache: deleting it only makes the next
+launch rebuild it.
 
 ## Principles
 
 - **Read-only.** Wake never modifies, moves or deletes transcript files.
 - **Local and private.** No network access and no telemetry. Your data stays
-  on your machine.
+  on your machine, and exports are written only where you choose.
 - **Robust.** Transcript formats are undocumented and change between agent
   versions. Wake skips and counts anything it doesn't understand, and shows
   partially parsed sessions with a note.
@@ -24,7 +48,7 @@ ran, which files it changed and how many tokens it used.
 
 | Agent       | Status        | Versions tested     |
 |-------------|---------------|---------------------|
-| Claude Code | In progress   | 2.1.119 – 2.1.292   |
+| Claude Code | Supported     | 2.1.119 – 2.1.292   |
 | Codex CLI   | Planned       | —                   |
 | Gemini CLI  | Planned       | —                   |
 
@@ -45,7 +69,7 @@ needed to build standalone binaries.
 
 ## Running the tests
 
-The parser tests use a vendored copy of [XojoUnit](https://github.com/xojo/XojoUnit)
+The tests use a vendored copy of [XojoUnit](https://github.com/xojo/XojoUnit)
 (in `Wake/Tests/XojoUnit`) and run against the synthetic transcripts in
 `tests/fixtures`.
 

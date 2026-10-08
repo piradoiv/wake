@@ -51,6 +51,14 @@ End
 #tag EndDesktopWindow
 
 #tag WindowCode
+	#tag MenuHandler
+		Function FileExportMarkdown() As Boolean Handles FileExportMarkdown.Action
+		  App.ExportMarkdown(mInfo)
+		  Return True
+		End Function
+	#tag EndMenuHandler
+
+
 	#tag Method, Flags = &h0
 		Function SessionID() As Integer
 		  Return mSessionID
@@ -77,6 +85,7 @@ End
 		Sub ShowSession(info As WakeSessionInfo)
 		  // The timeline re-parses the transcript, read-only. The index holds only summaries.
 		  mSessionID = info.ID
+		  mInfo = info
 		  Title = info.DisplayTitle
 		  mTimeline = WakeTimeline.Load(info.AgentID, info.FilePath)
 		  
@@ -86,6 +95,10 @@ End
 		End Sub
 	#tag EndMethod
 
+
+	#tag Property, Flags = &h21
+		Private mInfo As WakeSessionInfo
+	#tag EndProperty
 
 	#tag Property, Flags = &h21
 		Private mLoadingPage As Boolean

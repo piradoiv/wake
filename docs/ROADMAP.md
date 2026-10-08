@@ -56,9 +56,14 @@ Each milestone ends with the tests passing and a commit.
   (Cmd+U) shows usage per day, project or model for a period; Window → Prices
   edits the table. 73 tests. On real data the totals per model and the
   number of days match a Python reference exactly.
-- [ ] **8. Markdown export and polish.** Session → Markdown report (summary,
-  prompts, commands, file changes as fenced diffs, token totals), with tests.
-  Update the README and do a demo pass on real data.
+- [x] **8. Markdown export and polish.** `WakeMarkdown` (Core) turns a parsed
+  session into a report: summary table, tokens per model with estimated cost,
+  prompts as quotes, every shell command in one `sh` block, and each file
+  change as a fenced diff, subagents' work included and labelled. File →
+  Export as Markdown (Cmd+E) in both windows. `WakeCore.LoadSession` now
+  loads transcripts for the timeline and the export. 82 tests. On real data
+  (80 sessions) the slowest export takes 0.13 s and the largest is 880 KB.
+  README updated. The new windows still need a check by eye.
 
 After v0.1: Codex CLI and Gemini CLI parsers, once real sessions exist on a
 machine to inspect, and the console companion.
@@ -91,6 +96,8 @@ machine to inspect, and the console companion.
 | A **dated model name** (`claude-haiku-4-5-20251001`) uses the price of its undated name when it has none of its own. Other prefixes never match. | `claude-opus-5` must not price `claude-opus-5-5`. |
 | Usage **per day** groups responses by their own timestamp in the **local time zone**, at query time. Subagent usage counts toward the session that started it. | A session can span midnight, and the time zone can change between runs. |
 | The Usage window covers **every agent and project**, not the main window's selection. | It's a summary across everything. Per project is one of its groupings. |
+| A Markdown export lists **prompts, commands and file changes**, not the answers or tool output. | It's a record of what was asked and what changed. The timeline has the rest. |
+| Code blocks and inline code in exports use a **fence longer than any backtick run** in their text. | Transcripts often contain Markdown, and a stray fence would break the report. |
 | Long blocks and persisted output are **fetched on demand** with `executeInXojoSync`, not embedded. | Keeps the page small for 10 MB transcripts. Persisted output is read only when asked for, capped at 4 MB. |
 
 ## Working notes and gotchas

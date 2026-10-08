@@ -82,6 +82,41 @@ Inherits DesktopApplication
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub ExportMarkdown(info As WakeSessionInfo)
+		  // Asks where to save a Markdown report of a session and writes it there. The transcript is
+		  // only read, and the report can never be saved over it.
+		  If info Is Nil Then Return
+		  
+		  Var report As New WakeMarkdown(WakeCore.LoadSession(info.AgentID, info.FilePath), Prices)
+		  
+		  // A file name from the title, without characters that some systems don't allow.
+		  Var name As String = report.Title
+		  For Each character As String In Array("/", "\", ":", "*", "?", """", "<", ">", "|")
+		    name = name.ReplaceAll(character, " ")
+		  Next
+		  name = WakeFormat.OneLine(name, 80).Replace(WakeFormat.kEllipsis, "").Trim
+		  If name = "" Then name = "Session"
+		  
+		  Var f As FolderItem = FolderItem.ShowSaveFileDialog("", name + ".md")
+		  If f Is Nil Then Return
+		  
+		  If f.NativePath = info.FilePath Or f.Name.EndsWith(".jsonl") Then
+		    MessageBox("Wake doesn't write over transcripts. Choose another name.")
+		    Return
+		  End If
+		  
+		  Try
+		    Var output As TextOutputStream = TextOutputStream.Create(f)
+		    output.Encoding = Encodings.UTF8
+		    output.Write(report.Markdown)
+		    output.Close
+		  Catch err As IOException
+		    MessageBox("Could not save the report: " + err.Message)
+		  End Try
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function IsIndexing() As Boolean
 		  Return IndexThread <> Nil And IndexThread.ThreadState <> Thread.ThreadStates.NotRunning
 		End Function

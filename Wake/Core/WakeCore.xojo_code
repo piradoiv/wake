@@ -88,6 +88,40 @@ Protected Module WakeCore
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function LoadSession(agentID As String, filePath As String) As WakeSession
+		  // Parses a transcript read-only, for the timeline or an export. Never raises: a missing
+		  // file or an unknown agent gives an empty session whose report says why.
+		  Var session As WakeSession
+		  Var parser As IAgentParser = AgentRegistry.ParserFor(agentID)
+
+		  If parser Is Nil Then
+		    session = New WakeSession
+		    session.AgentID = agentID
+		    session.Report.FileError = "Wake can't read sessions of agent """ + agentID + """"
+		    Return session
+		  End If
+
+		  Var f As FolderItem
+		  Try
+		    f = New FolderItem(filePath, FolderItem.PathModes.Native)
+		  Catch err As UnsupportedFormatException
+		    f = Nil
+		  Catch err As IOException
+		    f = Nil
+		  End Try
+
+		  If f Is Nil Or Not f.Exists Then
+		    session = New WakeSession
+		    session.AgentID = agentID
+		    session.Report.FileError = "the transcript is no longer at " + filePath
+		    Return session
+		  End If
+
+		  Return parser.ParseSession(f)
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function NewCaseSensitiveDictionary() As Dictionary
 		  // A plain Dictionary compares String keys case-insensitively. Dictionaries created by
 		  // ParseJSON are case-sensitive, which ids such as "toolu_aB" and "toolu_Ab" need.

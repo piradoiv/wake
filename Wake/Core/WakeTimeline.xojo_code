@@ -369,34 +369,7 @@ Protected Class WakeTimeline
 	#tag Method, Flags = &h0
 		Shared Function Load(agentID As String, filePath As String) As WakeTimeline
 		  // Parses a transcript for display. Never raises: a missing file or agent shows as a note.
-		  Var session As WakeSession
-		  Var parser As IAgentParser = AgentRegistry.ParserFor(agentID)
-
-		  If parser Is Nil Then
-		    session = New WakeSession
-		    session.AgentID = agentID
-		    session.Report.FileError = "Wake can't read sessions of agent """ + agentID + """"
-		    Return New WakeTimeline(session)
-		  End If
-
-		  Var f As FolderItem
-		  Try
-		    f = New FolderItem(filePath, FolderItem.PathModes.Native)
-		  Catch err As UnsupportedFormatException
-		    f = Nil
-		  Catch err As IOException
-		    f = Nil
-		  End Try
-
-		  If f Is Nil Or Not f.Exists Then
-		    session = New WakeSession
-		    session.AgentID = agentID
-		    session.Report.FileError = "the transcript is no longer at " + filePath
-		  Else
-		    session = parser.ParseSession(f)
-		  End If
-
-		  Return New WakeTimeline(session)
+		  Return New WakeTimeline(WakeCore.LoadSession(agentID, filePath))
 		End Function
 	#tag EndMethod
 

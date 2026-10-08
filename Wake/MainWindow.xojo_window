@@ -425,6 +425,7 @@ End
 	#tag Event
 		Sub MenuBarSelected()
 		  FileOpenTimeline.Enabled = SelectedSession <> Nil
+		  FileExportMarkdown.Enabled = SelectedSession <> Nil
 		End Sub
 	#tag EndEvent
 
@@ -449,6 +450,13 @@ End
 		Function EditFind() As Boolean Handles EditFind.Action
 		  SearchField.SetFocus
 		  SearchField.SelectAll
+		  Return True
+		End Function
+	#tag EndMenuHandler
+
+	#tag MenuHandler
+		Function FileExportMarkdown() As Boolean Handles FileExportMarkdown.Action
+		  App.ExportMarkdown(SelectedSession)
 		  Return True
 		End Function
 	#tag EndMenuHandler
