@@ -1,0 +1,1 @@
+{"agentType": "Explore", "description": "Find TODOs", "toolUseId": "toolu_agent_01", "spawnDepth": 1, "requestShape": "standard", "requestNonInteractive": true}

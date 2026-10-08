@@ -43,6 +43,18 @@ Coming soon.
 You can run and debug Wake in the Xojo IDE for free. A Xojo license is only
 needed to build standalone binaries.
 
+## Running the tests
+
+The parser tests use a vendored copy of [XojoUnit](https://github.com/xojo/XojoUnit)
+(in `Wake/Tests/XojoUnit`) and run against the synthetic transcripts in
+`tests/fixtures`.
+
+1. Create an empty file named `WakeRunTests` in the `Wake/` folder.
+2. Run the project from the Xojo IDE.
+
+In debug runs, when Wake finds that marker it runs every test group, writes
+JUnit XML to `tests/results.xml`, deletes the marker and quits.
+
 ## Contributing
 
 Contributions are welcome. Please never commit real agent transcripts, because
