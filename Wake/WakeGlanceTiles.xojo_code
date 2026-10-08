@@ -140,6 +140,35 @@ Inherits DesktopCanvas
 		End Function
 	#tag EndMethod
 
+	#tag Method, Flags = &h0
+		Sub ShowSession(s As WakeSessionInfo, usage As WakeUsageGroup, prices As WakePriceTable)
+		  // The session's title, and tiles with its cost, tokens, time and prompts. usage is per model,
+		  // subagents included. Set Subheading afterwards to show other facts.
+		  RemoveAllTiles
+		  Heading = s.DisplayTitle
+		  Subheading = WakeFormat.ProjectName(s.ProjectPath) + " · " + _
+		  If(s.StartTime Is Nil, WakeFormat.kUnknown, s.StartTime.ToString(DateTime.FormatStyles.Medium, DateTime.FormatStyles.Short))
+		  
+		  AddTile("Estimated cost", WakeFormat.Cost(prices.Estimate(usage.ByModel)), _
+		  If(s.HasAgentCost, WakeFormat.USD(s.AgentCostUSD) + " reported", ""), kGreen)
+		  
+		  Var total As WakeTokenUsage = s.TotalUsage
+		  Var inputSide As Int64 = total.InputTokens + total.CacheWriteTokens + total.CacheReadTokens
+		  AddTile("Tokens", WakeFormat.Tokens(total.Total), _
+		  If(inputSide > 0, WakeFormat.Percent(total.CacheReadTokens, inputSide) + " from cache", ""), kBlue)
+		  
+		  AddTile("Duration", WakeFormat.Duration(s.DurationSeconds), _
+		  If(s.ActiveMs > 0, WakeFormat.Duration(s.ActiveMs / 1000) + " active", ""), kOrange)
+		  
+		  Var activity As String = WakeFormat.Count(s.EventCount) + " events"
+		  If s.SubagentCount = 1 Then activity = activity + " · 1 subagent"
+		  If s.SubagentCount > 1 Then activity = activity + " · " + s.SubagentCount.ToString + " subagents"
+		  AddTile("Prompts", WakeFormat.Count(s.PromptCount), activity, kPurple)
+		  
+		  Refresh(False)
+		End Sub
+	#tag EndMethod
+
 
 	#tag Property, Flags = &h0
 		Heading As String

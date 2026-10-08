@@ -179,30 +179,6 @@ Inherits TestGroup
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
-		Sub StatTilesTest()
-		  // Fixture 2: 18,412 tokens, 17,500 of the 18,222 input-side ones read from the cache, and a
-		  // reported cost.
-		  Var html As String = FixturePage(2)
-		  Assert.IsTrue(html.IndexOf("<div class=""cap"">Tokens</div><div class=""val"">18.4K</div>" + _
-		  "<div class=""sub"">96% from cache</div>") >= 0, "tokens tile")
-		  Assert.IsTrue(html.IndexOf("<div class=""stat cost"" id=""wake-cost""><div class=""cap"">Estimated cost</div>" + _
-		  "<div class=""val"">" + WakeFormat.kNoPrice + "</div><div class=""sub"">" + WakeFormat.USD(0.1234) + " reported</div>") >= 0, _
-		  "cost tile without prices")
-		  Assert.IsTrue(html.IndexOf("<div class=""cap"">Prompts</div>") >= 0, "prompts tile")
-		  
-		  // The page asks for the cost tile again when the prices change.
-		  Var prices As New WakePriceTable
-		  Var timeline As New WakeTimeline(TestSupport.ParseClaudeFixture(2), prices)
-		  Call timeline.HTML
-		  Var price As New WakeModelPrice("claude-opus-5-5")
-		  price.OutputPerMillion = 1000000
-		  prices.SetPrice(price)
-		  Assert.IsTrue(timeline.Request("cost", "wake-cost").IndexOf("<div class=""val"">" + WakeFormat.USD(190) + "</div>") >= 0, _
-		  "cost from the changed prices")
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h0
 		Sub UnknownRequestTest()
 		  Var timeline As New WakeTimeline(TestSupport.ParseClaudeFixture(1))
 		  Call timeline.HTML

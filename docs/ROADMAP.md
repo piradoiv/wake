@@ -72,13 +72,14 @@ Each milestone ends with the tests passing and a commit.
   tiles for the selected session, or totals for the selected agent or project,
   above the details, and a strip under the Tokens and Cost cells. 84 tests.
   Checked in the app in light and dark.
-- [x] **10. Timeline header.** The timeline page's header shows the same
-  four tiles as the main window (cost, tokens, duration, prompts), as HTML and
-  CSS in `WakeTimeline`. `WakeTimeline` takes the price table, and when the
-  prices change the page reloads only the cost tile through the `cost`
-  request, keeping its scroll position. `WakeSession.TotalUsageByModel` rolls
-  up subagents for both the timeline and the export. 85 tests. Checked in the
-  app.
+- [x] **10. Timeline header.** `SessionWindow` shows the same title and four
+  tiles as the main window (cost, tokens, duration, prompts) in a native
+  `WakeGlanceTiles` above the page, built by `WakeGlanceTiles.ShowSession`
+  for both windows, with native Expand all and Collapse all buttons that call
+  the page's `wakeAll`. The page itself has no header and doesn't depend on
+  prices, so a price change only redraws the tiles. An earlier HTML copy of
+  the tiles drifted from the native ones. `WakeSession.TotalUsageByModel`
+  rolls up subagents for both the timeline and the export. 84 tests.
 
 After v0.1: Codex CLI and Gemini CLI parsers, once real sessions exist on a
 machine to inspect, and the console companion.

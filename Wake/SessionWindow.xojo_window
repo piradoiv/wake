@@ -18,17 +18,108 @@ Begin DesktopWindow SessionWindow
    MaximumWidth    =   32000
    MenuBar         =   478898175
    MenuBarVisible  =   False
-   MinimumHeight   =   300
+   MinimumHeight   =   400
    MinimumWidth    =   480
    Resizeable      =   True
    Title           =   "Session"
    Type            =   0
    Visible         =   True
    Width           =   960
+   Begin WakeGlanceTiles GlanceTiles
+      AllowAutoDeactivate=   True
+      AllowFocus      =   False
+      AllowFocusRing  =   True
+      AllowTabs       =   False
+      Backdrop        =   0
+      Enabled         =   True
+      Heading         =   ""
+      Height          =   138
+      Index           =   -2147483648
+      Left            =   12
+      LockBottom      =   False
+      LockedInPosition=   False
+      LockLeft        =   True
+      LockRight       =   True
+      LockTop         =   True
+      Scope           =   2
+      Subheading      =   ""
+      TabIndex        =   0
+      TabPanelIndex   =   0
+      TabStop         =   True
+      Tooltip         =   ""
+      Top             =   0
+      Transparent     =   True
+      Visible         =   True
+      Width           =   936
+   End
+   Begin DesktopButton ExpandButton
+      AllowAutoDeactivate=   True
+      Bold            =   False
+      Cancel          =   False
+      Caption         =   "Expand all"
+      Default         =   False
+      Enabled         =   True
+      FontName        =   "System"
+      FontSize        =   0.0
+      FontUnit        =   0
+      Height          =   20
+      Index           =   -2147483648
+      InitialParent   =   ""
+      Italic          =   False
+      Left            =   24
+      LockBottom      =   False
+      LockedInPosition=   False
+      LockLeft        =   True
+      LockRight       =   False
+      LockTop         =   True
+      MacButtonStyle  =   0
+      Scope           =   2
+      TabIndex        =   1
+      TabPanelIndex   =   0
+      TabStop         =   True
+      Tooltip         =   ""
+      Top             =   138
+      Transparent     =   False
+      Underline       =   False
+      Visible         =   True
+      Width           =   96
+   End
+   Begin DesktopButton CollapseButton
+      AllowAutoDeactivate=   True
+      Bold            =   False
+      Cancel          =   False
+      Caption         =   "Collapse all"
+      Default         =   False
+      Enabled         =   True
+      FontName        =   "System"
+      FontSize        =   0.0
+      FontUnit        =   0
+      Height          =   20
+      Index           =   -2147483648
+      InitialParent   =   ""
+      Italic          =   False
+      Left            =   128
+      LockBottom      =   False
+      LockedInPosition=   False
+      LockLeft        =   True
+      LockRight       =   False
+      LockTop         =   True
+      MacButtonStyle  =   0
+      Scope           =   2
+      TabIndex        =   2
+      TabPanelIndex   =   0
+      TabStop         =   True
+      Tooltip         =   ""
+      Top             =   138
+      Transparent     =   False
+      Underline       =   False
+      Visible         =   True
+      Width           =   96
+   End
    Begin DesktopHTMLViewer TimelineViewer
       AutoDeactivate  =   True
       Enabled         =   True
-      Height          =   760
+      Height          =   592
       Index           =   -2147483648
       InitialParent   =   ""
       Left            =   0
@@ -39,11 +130,11 @@ Begin DesktopWindow SessionWindow
       LockTop         =   True
       Renderer        =   0
       Scope           =   2
-      TabIndex        =   0
+      TabIndex        =   3
       TabPanelIndex   =   0
       TabStop         =   True
       Tooltip         =   ""
-      Top             =   0
+      Top             =   168
       Visible         =   True
       Width           =   960
    End
@@ -51,6 +142,19 @@ End
 #tag EndDesktopWindow
 
 #tag WindowCode
+	#tag Event
+		Sub Resized()
+		  LayOutHeader
+		End Sub
+	#tag EndEvent
+
+	#tag Event
+		Sub Resizing()
+		  LayOutHeader
+		End Sub
+	#tag EndEvent
+
+
 	#tag MenuHandler
 		Function FileCloseWindow() As Boolean Handles FileCloseWindow.Action
 		  Self.Close
@@ -66,12 +170,26 @@ End
 	#tag EndMenuHandler
 
 
+	#tag Method, Flags = &h21
+		Private Sub LayOutHeader()
+		  // The tiles take the height their rows need at this width, then the buttons, then the page.
+		  // The canvas pads its tiles by 12, so they line up with the page's 24-point margin.
+		  GlanceTiles.Left = 12
+		  GlanceTiles.Width = Width - 24
+		  GlanceTiles.Height = GlanceTiles.HeightFor(GlanceTiles.Width)
+		  
+		  ExpandButton.Top = GlanceTiles.Top + GlanceTiles.Height
+		  CollapseButton.Top = ExpandButton.Top
+		  
+		  TimelineViewer.Top = ExpandButton.Top + ExpandButton.Height + 10
+		  TimelineViewer.Height = Height - TimelineViewer.Top
+		End Sub
+	#tag EndMethod
+
 	#tag Method, Flags = &h0
 		Sub PricesChanged()
-		  // Only the cost tile depends on the prices, so the page reloads just that, keeping its
-		  // scroll position and open blocks.
-		  If mTimeline Is Nil Or mLoadingPage Then Return
-		  TimelineViewer.ExecuteJavaScript("wakeLoad('cost','wake-cost');")
+		  // Only the cost tile depends on the prices, and it is native, so the page stays as it is.
+		  ShowTiles
 		End Sub
 	#tag EndMethod
 
@@ -103,11 +221,30 @@ End
 		  mSessionID = info.ID
 		  mInfo = info
 		  Title = info.DisplayTitle
-		  mTimeline = WakeTimeline.Load(info.AgentID, info.FilePath, App.Prices)
+		  mTimeline = WakeTimeline.Load(info.AgentID, info.FilePath)
+		  ShowTiles
 		  
 		  mLoadingPage = True
 		  mPendingAnchor = ""
 		  TimelineViewer.LoadPage(mTimeline.HTML, Nil)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub ShowTiles()
+		  // The same tiles as the main window, with the cost from the parsed transcript, and the full
+		  // path and branch under the title.
+		  If mInfo Is Nil Or mTimeline Is Nil Then Return
+		  GlanceTiles.ShowSession(mInfo, mTimeline.Session.TotalUsageByModel, App.Prices)
+		  
+		  Var facts() As String
+		  If mInfo.ProjectPath <> "" Then facts.Add(mInfo.ProjectPath)
+		  If mInfo.GitBranch <> "" Then facts.Add(mInfo.GitBranch)
+		  If mInfo.StartTime <> Nil Then facts.Add(mInfo.StartTime.ToString(DateTime.FormatStyles.Medium, DateTime.FormatStyles.Short))
+		  GlanceTiles.Subheading = String.FromArray(facts, " · ")
+		  
+		  LayOutHeader
+		  GlanceTiles.Refresh(False)
 		End Sub
 	#tag EndMethod
 
@@ -135,6 +272,20 @@ End
 
 #tag EndWindowCode
 
+#tag Events ExpandButton
+	#tag Event
+		Sub Pressed()
+		  If Not mLoadingPage Then TimelineViewer.ExecuteJavaScript("wakeAll(true);")
+		End Sub
+	#tag EndEvent
+#tag EndEvents
+#tag Events CollapseButton
+	#tag Event
+		Sub Pressed()
+		  If Not mLoadingPage Then TimelineViewer.ExecuteJavaScript("wakeAll(false);")
+		End Sub
+	#tag EndEvent
+#tag EndEvents
 #tag Events TimelineViewer
 	#tag Event
 		Function CancelLoad(URL as String) As Boolean

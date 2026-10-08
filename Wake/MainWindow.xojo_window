@@ -1043,7 +1043,7 @@ End
 		    Return
 		  End If
 		  
-		  ShowSessionGlance(s, usage)
+		  GlanceTiles.ShowSession(s, usage, App.Prices)
 		  AddDetailHeading("Session")
 		  AddDetail("Title", s.DisplayTitle)
 		  If s.FirstPrompt <> "" And s.Title <> "" Then AddDetail("First prompt", WakeFormat.OneLine(s.FirstPrompt, 500))
@@ -1122,34 +1122,6 @@ End
 		    HitsList.RemoveAllRows
 		    LoadSessions
 		  End If
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Sub ShowSessionGlance(s As WakeSessionInfo, usage As WakeUsageGroup)
-		  // The session's title, and tiles with its cost, tokens, time and prompts.
-		  GlanceTiles.RemoveAllTiles
-		  GlanceTiles.Heading = s.DisplayTitle
-		  GlanceTiles.Subheading = WakeFormat.ProjectName(s.ProjectPath) + " · " + FormatTime(s.StartTime)
-		  
-		  Var estimate As WakeCostEstimate = App.Prices.Estimate(usage.ByModel)
-		  GlanceTiles.AddTile("Estimated cost", WakeFormat.Cost(estimate), _
-		  If(s.HasAgentCost, WakeFormat.USD(s.AgentCostUSD) + " reported", ""), WakeGlanceTiles.kGreen)
-		  
-		  Var total As WakeTokenUsage = s.TotalUsage
-		  Var inputSide As Int64 = total.InputTokens + total.CacheWriteTokens + total.CacheReadTokens
-		  GlanceTiles.AddTile("Tokens", WakeFormat.Tokens(total.Total), _
-		  If(inputSide > 0, WakeFormat.Percent(total.CacheReadTokens, inputSide) + " from cache", ""), WakeGlanceTiles.kBlue)
-		  
-		  GlanceTiles.AddTile("Duration", WakeFormat.Duration(s.DurationSeconds), _
-		  If(s.ActiveMs > 0, WakeFormat.Duration(s.ActiveMs / 1000) + " active", ""), WakeGlanceTiles.kOrange)
-		  
-		  Var activity As String = WakeFormat.Count(s.EventCount) + " events"
-		  If s.SubagentCount = 1 Then activity = activity + " · 1 subagent"
-		  If s.SubagentCount > 1 Then activity = activity + " · " + s.SubagentCount.ToString + " subagents"
-		  GlanceTiles.AddTile("Prompts", WakeFormat.Count(s.PromptCount), activity, WakeGlanceTiles.kPurple)
-		  
-		  GlanceTiles.Refresh(False)
 		End Sub
 	#tag EndMethod
 

@@ -60,41 +60,6 @@ Protected Class WakeTimeline
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
-		Private Sub AddHeader(out() As String)
-		  // The title, where and when the session ran, and tiles with its cost, tokens, time and
-		  // prompts, like the main window's.
-		  Var s As WakeSession = mSession
-		  Var facts() As String
-		  
-		  If s.ProjectPath <> "" Then facts.Add(s.ProjectPath)
-		  If s.GitBranch <> "" Then facts.Add(s.GitBranch)
-		  If s.StartTime <> Nil Then facts.Add(LocalTime(s.StartTime).ToString(DateTime.FormatStyles.Medium, DateTime.FormatStyles.Short))
-		  
-		  out.Add("<header><h1>" + EscapeHTML(DisplayTitle) + "</h1>")
-		  out.Add("<div class=""facts"">" + EscapeHTML(String.FromArray(facts, " · ")) + "</div>")
-		  
-		  Var total As WakeTokenUsage = s.TotalUsage
-		  Var inputSide As Int64 = total.InputTokens + total.CacheWriteTokens + total.CacheReadTokens
-		  Var activity As String = WakeFormat.Count(s.Events.Count) + " events"
-		  If s.Subagents.Count = 1 Then activity = activity + " · 1 subagent"
-		  If s.Subagents.Count > 1 Then activity = activity + " · " + s.Subagents.Count.ToString + " subagents"
-		  
-		  out.Add("<div class=""stats"">")
-		  out.Add("<div class=""stat cost"" id=""" + kCostTileID + """>" + CostTileHTML + "</div>")
-		  out.Add("<div class=""stat tokens"">" + StatHTML("Tokens", WakeFormat.Tokens(total.Total), _
-		  If(inputSide > 0, WakeFormat.Percent(total.CacheReadTokens, inputSide) + " from cache", "")) + "</div>")
-		  out.Add("<div class=""stat time"">" + StatHTML("Duration", _
-		  If(s.StartTime Is Nil, WakeFormat.kUnknown, WakeFormat.Duration(s.DurationSeconds)), _
-		  If(s.ActiveDurationMs > 0, WakeFormat.Duration(s.ActiveDurationMs / 1000) + " active", "")) + "</div>")
-		  out.Add("<div class=""stat prompts"">" + StatHTML("Prompts", WakeFormat.Count(s.PromptCount), activity) + "</div>")
-		  out.Add("</div>")
-		  out.Add("<div class=""tools""><button onclick=""wakeAll(true)"">Expand all</button>" + _
-		  "<button onclick=""wakeAll(false)"">Collapse all</button></div></header>")
-		  AddParseNote(out, s)
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
 		Private Sub AddParseNote(out() As String, session As WakeSession)
 		  If Not session.Report.IsPartial Then Return
 		  out.Add("<div class=""warning""><b>Partially parsed.</b> " + EscapeHTML(session.Report.Summary) + "</div>")
@@ -251,32 +216,12 @@ Protected Class WakeTimeline
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
-		Sub Constructor(session As WakeSession, prices As WakePriceTable = Nil)
-		  // prices Nil shows the cost as "no price set".
+		Sub Constructor(session As WakeSession)
 		  mSession = session
-		  mPrices = prices
 		  mAnchors = WakeCore.NewCaseSensitiveDictionary
 		  mBlocks = WakeCore.NewCaseSensitiveDictionary
 		  mPersisted = WakeCore.NewCaseSensitiveDictionary
 		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function CostTileHTML() As String
-		  // The cost tile's contents. The page asks for them again when the prices change.
-		  Var table As WakePriceTable = If(mPrices Is Nil, New WakePriceTable, mPrices)
-		  Var estimate As WakeCostEstimate = table.Estimate(mSession.TotalUsageByModel.ByModel)
-		  Return StatHTML("Estimated cost", WakeFormat.Cost(estimate), _
-		  If(mSession.HasAgentReportedCost, WakeFormat.USD(mSession.AgentReportedCostUSD) + " reported", ""))
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function DisplayTitle() As String
-		  If mSession.Title <> "" Then Return mSession.Title
-		  If mSession.FirstPrompt <> "" Then Return WakeFormat.OneLine(mSession.FirstPrompt, 100)
-		  Return "Untitled session"
-		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
@@ -320,7 +265,7 @@ Protected Class WakeTimeline
 		  out.Add("<style>" + StyleSheet + "</style>")
 		  out.Add("<script>" + ScriptSource + "</script>")
 		  out.Add("</head><body>")
-		  AddHeader(out)
+		  AddParseNote(out, mSession)
 		  AddEvents(out, mSession)
 		  out.Add("</body></html>")
 		  
@@ -407,9 +352,9 @@ Protected Class WakeTimeline
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
-		Shared Function Load(agentID As String, filePath As String, prices As WakePriceTable = Nil) As WakeTimeline
+		Shared Function Load(agentID As String, filePath As String) As WakeTimeline
 		  // Parses a transcript for display. Never raises: a missing file or agent shows as a note.
-		  Return New WakeTimeline(WakeCore.LoadSession(agentID, filePath), prices)
+		  Return New WakeTimeline(WakeCore.LoadSession(agentID, filePath))
 		End Function
 	#tag EndMethod
 
@@ -492,8 +437,6 @@ Protected Class WakeTimeline
 		    Return ExpandedHTML(blockID)
 		  Case "persisted"
 		    Return PersistedOutputHTML(blockID)
-		  Case "cost"
-		    Return CostTileHTML
 		  End Select
 		  
 		  Return ""
@@ -534,6 +477,12 @@ Protected Class WakeTimeline
 		End Function
 	#tag EndMethod
 
+	#tag Method, Flags = &h0
+		Function Session() As WakeSession
+		  Return mSession
+		End Function
+	#tag EndMethod
+
 	#tag Method, Flags = &h21
 		Private Function SplitLines(text As String) As String()
 		  Var lines() As String = text.ReplaceLineEndings(&u0A).Split(&u0A)
@@ -541,13 +490,6 @@ Protected Class WakeTimeline
 		    lines.RemoveAt(lines.LastIndex)
 		  Wend
 		  Return lines
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function StatHTML(caption As String, value As String, detail As String) As String
-		  Return "<div class=""cap"">" + EscapeHTML(caption) + "</div><div class=""val"">" + EscapeHTML(value) + "</div>" + _
-		  "<div class=""sub"">" + EscapeHTML(detail) + "</div>"
 		End Function
 	#tag EndMethod
 
@@ -590,22 +532,9 @@ Protected Class WakeTimeline
 		  css.Add("@media (prefers-color-scheme: dark) { :root { --bg: #1e1e20; --fg: #e8e8ea; --muted: #98989d; --line: #3a3a3e;")
 		  css.Add("  --card: #2a2a2d; --user: #1f2a3d; --user-line: #34507a; --code: #28282b; --add-bg: #16301f; --add: #63d283;")
 		  css.Add("  --del-bg: #3a1b1d; --del: #ff7b7f; --hunk: #b59cff; --warn-bg: #3a2c12; --warn: #f2b84b; --err: #ff7b7f; } }")
-		  css.Add("body { margin: 0; padding: 20px 24px 48px; background: var(--bg); color: var(--fg);")
+		  css.Add("body { margin: 0; padding: 16px 24px 48px; background: var(--bg); color: var(--fg);")
 		  css.Add("  font: 13px/1.5 -apple-system, BlinkMacSystemFont, ""Segoe UI"", sans-serif; }")
-		  css.Add("header { border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 16px; }")
-		  css.Add("h1 { font-size: 18px; margin: 0 0 4px; }")
-		  css.Add(".facts, .muted { color: var(--muted); }")
-		  css.Add(".stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0 4px; }")
-		  css.Add(".stat { border-radius: 12px; padding: 9px 12px 10px; background: rgba(var(--tint), .14); }")
-		  css.Add(".stat .cap { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: rgb(var(--ink)); }")
-		  css.Add(".stat .val { font-size: 22px; font-weight: 700; line-height: 1.25; font-variant-numeric: tabular-nums; }")
-		  css.Add(".stat .sub { font-size: 11px; color: var(--muted); min-height: 1.4em; }")
-		  css.Add(".stat.cost { --tint: 48, 184, 86; --ink: 34, 129, 60; }")
-		  css.Add(".stat.tokens { --tint: 10, 132, 255; --ink: 7, 92, 178; }")
-		  css.Add(".stat.time { --tint: 255, 149, 0; --ink: 178, 104, 0; }")
-		  css.Add(".stat.prompts { --tint: 175, 82, 222; --ink: 122, 57, 155; }")
-		  css.Add("@media (prefers-color-scheme: dark) { .stat { background: rgba(var(--tint), .22); } .stat .cap { color: rgb(var(--tint)); } }")
-		  css.Add(".tools { margin-top: 8px; }")
+		  css.Add(".muted { color: var(--muted); }")
 		  css.Add("button { font: inherit; font-size: 12px; padding: 1px 10px; margin-right: 6px; border: 1px solid var(--line);")
 		  css.Add("  border-radius: 5px; background: var(--card); color: var(--fg); cursor: pointer; }")
 		  css.Add("button.more { margin: 0 0 6px; }")
@@ -686,16 +615,9 @@ Protected Class WakeTimeline
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
-		Private mPrices As WakePriceTable
-	#tag EndProperty
-
-	#tag Property, Flags = &h21
 		Private mSession As WakeSession
 	#tag EndProperty
 
-
-	#tag Constant, Name = kCostTileID, Type = String, Dynamic = False, Default = \"wake-cost", Scope = Private
-	#tag EndConstant
 
 	#tag Constant, Name = kExpandLimit, Type = Double, Dynamic = False, Default = \"2000000", Scope = Private
 	#tag EndConstant
