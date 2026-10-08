@@ -15,6 +15,7 @@ Inherits DesktopApplication
 		  #EndIf
 		  
 		  StartIndexing
+		  AllowAutoQuit = True
 		End Sub
 	#tag EndEvent
 
