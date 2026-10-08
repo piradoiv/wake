@@ -2,6 +2,10 @@
 
 Wake is a read-only, local-only desktop explorer for AI coding-agent sessions.
 
+**Start here:** read `docs/ROADMAP.md` for milestone status, decisions already
+made and Xojo gotchas. Continue from the first unchecked milestone, and tick it
+off in the same commit that finishes it.
+
 - Never write to, move or delete agent transcript files. Open them read-only.
 - No network code and no telemetry.
 - Keep everything in `Wake/Core/` free of Desktop* UI classes, because a console
