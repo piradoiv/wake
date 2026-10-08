@@ -159,6 +159,10 @@ Inherits DesktopApplication
 		  
 		  Var usage As UsageWindow = OpenUsageWindow
 		  If usage <> Nil Then usage.PricesChanged
+		  
+		  For i As Integer = 0 To WindowCount - 1
+		    If WindowAt(i) IsA SessionWindow Then SessionWindow(WindowAt(i)).PricesChanged
+		  Next
 		End Sub
 	#tag EndMethod
 

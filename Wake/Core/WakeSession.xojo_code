@@ -82,6 +82,25 @@ Protected Class WakeSession
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function TotalUsageByModel() As WakeUsageGroup
+		  // Usage per model, this session's own plus that of all its subagents.
+		  Var result As New WakeUsageGroup
+		  For Each key As Variant In UsageByModel.Keys
+		    result.Add(key.StringValue, WakeTokenUsage(UsageByModel.Value(key).ObjectValue))
+		  Next
+		  
+		  For Each child As WakeSession In Subagents
+		    Var childUsage As WakeUsageGroup = child.TotalUsageByModel
+		    For Each key As Variant In childUsage.ByModel.Keys
+		      result.Add(key.StringValue, WakeTokenUsage(childUsage.ByModel.Value(key).ObjectValue))
+		    Next
+		  Next
+		  
+		  Return result
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function TotalUsage() As WakeTokenUsage
 		  // This session's own usage plus that of all its subagents.
 		  Var result As WakeTokenUsage = Usage.Clone

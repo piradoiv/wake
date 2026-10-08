@@ -148,8 +148,7 @@ Protected Class WakeMarkdown
 		  out.Add("## Tokens")
 		  out.Add("")
 		  
-		  Var usage As New WakeUsageGroup
-		  AddUsage(usage, mSession)
+		  Var usage As WakeUsageGroup = mSession.TotalUsageByModel
 		  If usage.ByModel.KeyCount = 0 Then
 		    out.Add("No tokens recorded.")
 		    out.Add("")
@@ -183,17 +182,6 @@ Protected Class WakeMarkdown
 		    out.Add("Cost reported by agent: " + WakeFormat.USD(mSession.AgentReportedCostUSD) + ".")
 		    out.Add("")
 		  End If
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Sub AddUsage(group As WakeUsageGroup, session As WakeSession)
-		  For Each key As Variant In session.UsageByModel.Keys
-		    group.Add(key.StringValue, WakeTokenUsage(session.UsageByModel.Value(key).ObjectValue))
-		  Next
-		  For Each child As WakeSession In session.Subagents
-		    AddUsage(group, child)
-		  Next
 		End Sub
 	#tag EndMethod
 

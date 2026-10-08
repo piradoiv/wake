@@ -60,6 +60,15 @@ End
 
 
 	#tag Method, Flags = &h0
+		Sub PricesChanged()
+		  // Only the cost tile depends on the prices, so the page reloads just that, keeping its
+		  // scroll position and open blocks.
+		  If mTimeline Is Nil Or mLoadingPage Then Return
+		  TimelineViewer.ExecuteJavaScript("wakeLoad('cost','wake-cost');")
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function SessionID() As Integer
 		  Return mSessionID
 		End Function
@@ -87,7 +96,7 @@ End
 		  mSessionID = info.ID
 		  mInfo = info
 		  Title = info.DisplayTitle
-		  mTimeline = WakeTimeline.Load(info.AgentID, info.FilePath)
+		  mTimeline = WakeTimeline.Load(info.AgentID, info.FilePath, App.Prices)
 		  
 		  mLoadingPage = True
 		  mPendingAnchor = ""
