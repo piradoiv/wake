@@ -150,6 +150,32 @@ Inherits TestGroup
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub ParsePriceTest()
+		  Var value As Double
+		  
+		  Assert.IsTrue(WakePriceTable.ParsePrice("3", value))
+		  Assert.AreEqual(3.0, value, 0.000001)
+		  
+		  // The text the Prices window shows for a stored price must read back as the same price,
+		  // whatever the locale. String.ToDouble read "3.00" as 300 in a Spanish locale.
+		  Var shown As Double = 3.0
+		  Assert.IsTrue(WakePriceTable.ParsePrice(shown.ToString(Locale.Raw, "0.00####"), value))
+		  Assert.AreEqual(3.0, value, 0.000001, "round trip")
+		  
+		  Assert.IsTrue(WakePriceTable.ParsePrice("3,5", value))
+		  Assert.AreEqual(3.5, value, 0.000001, "decimal comma")
+		  Assert.IsTrue(WakePriceTable.ParsePrice(" $0.30 ", value))
+		  Assert.AreEqual(0.3, value, 0.000001, "dollar sign")
+		  Assert.IsTrue(WakePriceTable.ParsePrice(".5", value))
+		  Assert.AreEqual(0.5, value, 0.000001)
+		  
+		  For Each bad As String In Array("", "abc", "-1", "1.2.3", "1,234.5", "1e3", ".")
+		    Assert.IsFalse(WakePriceTable.ParsePrice(bad, value), "rejects """ + bad + """")
+		  Next
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub PriceForDatedModelTest()
 		  Var table As New WakePriceTable
 		  Var haiku As New WakeModelPrice("claude-haiku-4-5")

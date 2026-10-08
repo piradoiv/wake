@@ -125,6 +125,11 @@ machine to inspect, and the console companion.
   its String to the page. `LoadPage(html, Nil)` loads the page as
   `about:blank`, and `CancelLoad` fires for it too, so let the first load
   through and block the rest.
+- **`String.ToDouble` follows the user's locale.** In Spanish, `"3.00".ToDouble`
+  is 300. Read numbers the user types with `WakePriceTable.ParsePrice`, and
+  numbers Wake wrote itself with `Val` or JSON.
+- **Leaving an edited listbox cell fires both `CellAction` and
+  `CellFocusLost`**, so whatever they call must be safe to run twice.
 - **A method call on a string literal doesn't parse** (`"abc".IndexOf(x)`).
   Assign the literal to a variable first.
 - **`String` has no `LastIndexOf`.** Split, or loop with `IndexOf`.

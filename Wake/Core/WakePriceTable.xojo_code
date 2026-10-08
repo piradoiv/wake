@@ -90,6 +90,34 @@ Protected Class WakePriceTable
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Shared Function ParsePrice(text As String, ByRef value As Double) As Boolean
+		  // Reads a price typed by the user, such as "3", "3.5", "3,5" or "$0.30", whatever the
+		  // locale. Returns False for anything else, negative and empty values included.
+		  // String.ToDouble follows the locale, where "." can be a thousands separator and turn
+		  // "3.00" into 300, so the text is checked here and converted with Val, which always
+		  // reads "." as the decimal point.
+		  Var cleaned As String = text.Trim.ReplaceAll("$", "").ReplaceAll(" ", "").ReplaceAll(",", ".")
+		  If cleaned = "" Then Return False
+		  
+		  Var digits, points As Integer
+		  For i As Integer = 0 To cleaned.Length - 1
+		    Var character As String = cleaned.Middle(i, 1)
+		    If character = "." Then
+		      points = points + 1
+		    ElseIf character >= "0" And character <= "9" Then
+		      digits = digits + 1
+		    Else
+		      Return False
+		    End If
+		  Next
+		  If digits = 0 Or points > 1 Then Return False
+		  
+		  value = Val(cleaned)
+		  Return True
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function PriceFor(model As String) As WakeModelPrice
 		  // The price set for model, or Nil. A dated model name such as
 		  // claude-haiku-4-5-20251001 also uses the price of claude-haiku-4-5.

@@ -142,11 +142,12 @@ End
 		  Var values() As Double
 		  Var anySet As Boolean
 		  For column As Integer = kColumnInput To kColumnCacheRead
-		    Var entry As String = PricesList.CellTextAt(row, column).Trim.ReplaceAll("$", "").ReplaceAll(",", ".")
+		    Var entry As String = PricesList.CellTextAt(row, column).Trim
+		    Var value As Double
 		    If entry = "" Then
 		      values.Add(0)
-		    ElseIf IsNumeric(entry) And entry.ToDouble >= 0 Then
-		      values.Add(entry.ToDouble)
+		    ElseIf WakePriceTable.ParsePrice(entry, value) Then
+		      values.Add(value)
 		      anySet = True
 		    Else
 		      System.Beep
