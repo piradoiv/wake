@@ -122,8 +122,8 @@ machine to inspect, and the console companion.
 - **No IDE window uses `DesktopSearchField`**, so there's no property list to
   copy. The search field is a `DesktopTextField` with a hint, and Escape clears it.
 - **Opening a hit runs `wakeGoTo` with `ExecuteJavaScript`** after
-  `DocumentComplete`. This relies on WebKit not applying the page's CSP to
-  native script calls, which hasn't been checked in the running app yet.
+  `DocumentComplete`. The page's CSP doesn't block native script calls
+  (checked in the app on macOS).
 - **`call` is a reserved word** in Xojo. Don't use it as a variable name.
 - **Xojo identifiers are case-insensitive.** A parameter named `usage` shadows
   a property named `Usage`.
