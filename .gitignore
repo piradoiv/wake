@@ -1,0 +1,23 @@
+# Xojo build output and IDE state
+Builds*/
+Build/
+*.xojo_uistate
+*.xojo_project~
+*.xojo_lock
+*.lock
+*~
+
+# Xojo agentic-mode trigger and result files
+XojoRunProject.txt
+XojoCompileErrors.txt
+
+# Test run artefacts
+WakeRunTests
+tests/results.xml
+
+# OS clutter
+.DS_Store
+Thumbs.db
+
+# Never commit real agent transcripts
+*.real.jsonl
