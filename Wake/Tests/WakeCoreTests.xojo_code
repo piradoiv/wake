@@ -70,6 +70,17 @@ Inherits TestGroup
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub FormatPercentTest()
+		  Assert.AreEqual(WakeFormat.kUnknown, WakeFormat.Percent(5, 0))
+		  Assert.AreEqual("0%", WakeFormat.Percent(0, 10))
+		  Assert.AreEqual("<1%", WakeFormat.Percent(1, 1000))
+		  Assert.AreEqual("1%", WakeFormat.Percent(6, 1000))
+		  Assert.AreEqual("95%", WakeFormat.Percent(9531, 10000))
+		  Assert.AreEqual("100%", WakeFormat.Percent(7, 7))
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub FormatTextTest()
 		  Assert.AreEqual("Fix the test", WakeFormat.OneLine("Fix the" + &u0A + "  test", 0), "0 means no limit")
 		  Assert.AreEqual("a b c", WakeFormat.OneLine("  a" + &u0D + &u0A + "b" + &u09 + "c  ", 50))

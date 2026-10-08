@@ -64,6 +64,14 @@ Each milestone ends with the tests passing and a commit.
   loads transcripts for the timeline and the export. 82 tests. On real data
   (80 sessions) the slowest export takes 0.13 s and the largest is 880 KB.
   README updated, and the new windows checked in the app.
+- [x] **9. Glance stats.** `WakeGlanceTiles` (tinted stat tiles with an
+  optional heading) and `WakeDayChart` (a bar per day, tooltip on hover) are
+  drawn `DesktopCanvas` subclasses outside Core. The Usage window shows tiles
+  for the period (cost, tokens, sessions, busiest day, cache hits) and a
+  daily chart of cost, or tokens while no price is set. The main window shows
+  tiles for the selected session, or totals for the selected agent or project,
+  above the details, and a strip under the Tokens and Cost cells. 84 tests.
+  Checked in the app in light and dark.
 
 After v0.1: Codex CLI and Gemini CLI parsers, once real sessions exist on a
 machine to inspect, and the console companion.
@@ -98,6 +106,7 @@ machine to inspect, and the console companion.
 | The Usage window covers **every agent and project**, not the main window's selection. | It's a summary across everything. Per project is one of its groupings. |
 | A Markdown export lists **prompts, commands and file changes**, not the answers or tool output. | It's a record of what was asked and what changed. The timeline has the rest. |
 | Code blocks and inline code in exports use a **fence longer than any backtick run** in their text. | Transcripts often contain Markdown, and a stray fence would break the report. |
+| The daily chart covers **at least 14 days**, with days outside the chosen period drawn lighter, and at most five years. | One bar for "Today" says nothing, and a bad timestamp mustn't draw thousands of bars. |
 | Long blocks and persisted output are **fetched on demand** with `executeInXojoSync`, not embedded. | Keeps the page small for 10 MB transcripts. Persisted output is read only when asked for, capped at 4 MB. |
 
 ## Working notes and gotchas
@@ -113,7 +122,8 @@ machine to inspect, and the console companion.
   inside each `If`, `For`, `Try` and so on. Methods are sorted by name. Event signatures keep the IDE's own
   spelling, such as `DocumentComplete(url as String)`. The IDE re-saves only
   the items it has opened, so older files may still have empty blank lines.
-  Commit a reformat on its own ("Reformat X as saved by the Xojo IDE").
+  Commit a reformat on its own ("Reformat X as saved by the Xojo IDE"), so
+  commit your own work before asking for the save.
 - **Adding project items:** create the file first, then add its line to
   `Wake/Wake.xojo_project` with a fresh unique `&h…` id and the parent folder's
   id. Never change existing ids.
@@ -150,6 +160,11 @@ machine to inspect, and the console companion.
 - **Opening a hit runs `wakeGoTo` with `ExecuteJavaScript`** after
   `DocumentComplete`. The page's CSP doesn't block native script calls
   (checked in the app on macOS).
+- **Drawn controls use system colours** (`Color.TextColor`,
+  `Color.DisabledTextColor`) and check `Color.IsDarkMode` for tints, so they
+  follow the appearance. Colour constants are `Type = Color`.
+- **`PaintCellText` draws the cell text in `g.DrawingColor`** when it returns
+  False, so restore that colour after drawing anything else in the cell.
 - **`call` is a reserved word** in Xojo. Don't use it as a variable name.
 - **Xojo identifiers are case-insensitive.** A parameter named `usage` shadows
   a property named `Usage`.

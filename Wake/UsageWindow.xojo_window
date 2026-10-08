@@ -11,15 +11,15 @@ Begin DesktopWindow UsageWindow
    HasMaximizeButton=   True
    HasMinimizeButton=   True
    HasTitleBar     =   True
-   Height          =   560
+   Height          =   700
    ImplicitInstance=   True
    MacProcID       =   0
    MaximumHeight   =   32000
    MaximumWidth    =   32000
    MenuBar         =   478898175
    MenuBarVisible  =   False
-   MinimumHeight   =   300
-   MinimumWidth    =   640
+   MinimumHeight   =   500
+   MinimumWidth    =   800
    Resizeable      =   True
    Title           =   "Usage"
    Type            =   0
@@ -83,6 +83,63 @@ Begin DesktopWindow UsageWindow
       Visible         =   True
       Width           =   170
    End
+   Begin WakeGlanceTiles GlanceTiles
+      AllowAutoDeactivate=   True
+      AllowFocus      =   False
+      AllowFocusRing  =   True
+      AllowTabs       =   False
+      Backdrop        =   0
+      Enabled         =   True
+      Heading         =   ""
+      Height          =   94
+      Index           =   -2147483648
+      Left            =   0
+      LockBottom      =   False
+      LockedInPosition=   False
+      LockLeft        =   True
+      LockRight       =   True
+      LockTop         =   True
+      Scope           =   2
+      Subheading      =   ""
+      TabIndex        =   4
+      TabPanelIndex   =   0
+      TabStop         =   True
+      Tooltip         =   ""
+      Top             =   36
+      Transparent     =   True
+      Visible         =   True
+      Width           =   960
+   End
+   Begin WakeDayChart DayChart
+      AllowAutoDeactivate=   True
+      AllowFocus      =   False
+      AllowFocusRing  =   True
+      AllowTabs       =   False
+      Backdrop        =   0
+      Enabled         =   True
+      EndLabel        =   ""
+      Height          =   150
+      Index           =   -2147483648
+      Left            =   0
+      LockBottom      =   False
+      LockedInPosition=   False
+      LockLeft        =   True
+      LockRight       =   True
+      LockTop         =   True
+      Scope           =   2
+      StartLabel      =   ""
+      Summary         =   ""
+      TabIndex        =   5
+      TabPanelIndex   =   0
+      TabStop         =   True
+      Tint            =   &c0A84FF00
+      Title           =   ""
+      Tooltip         =   ""
+      Top             =   130
+      Transparent     =   True
+      Visible         =   True
+      Width           =   960
+   End
    Begin DesktopListBox UsageList
       AllowAutoDeactivate=   True
       AllowAutoHideScrollbars=   True
@@ -106,7 +163,7 @@ Begin DesktopWindow UsageWindow
       HasHorizontalScrollbar=   False
       HasVerticalScrollbar=   True
       HeadingIndex    =   -1
-      Height          =   481
+      Height          =   381
       Index           =   -2147483648
       InitialParent   =   ""
       InitialValue    =   ""
@@ -124,7 +181,7 @@ Begin DesktopWindow UsageWindow
       TabPanelIndex   =   0
       TabStop         =   True
       Tooltip         =   ""
-      Top             =   44
+      Top             =   284
       Transparent     =   False
       Underline       =   False
       Visible         =   True
@@ -159,7 +216,7 @@ Begin DesktopWindow UsageWindow
       TextAlignment   =   0
       TextColor       =   &c000000
       Tooltip         =   ""
-      Top             =   532
+      Top             =   672
       Transparent     =   False
       Underline       =   False
       Visible         =   True
@@ -252,8 +309,12 @@ End
 	#tag Method, Flags = &h21
 		Private Sub Reload()
 		  // Fills the list with usage per day, project or model in the chosen period, and sums it
-		  // up below the list.
+		  // up in the tiles above the list and below it.
 		  UsageList.RemoveAllRows
+		  GlanceTiles.RemoveAllTiles
+		  GlanceTiles.Refresh(False)
+		  DayChart.RemoveAllBars
+		  DayChart.Refresh(False)
 		  
 		  If mCatalog Is Nil Then
 		    Var index As New WakeIndex(WakeFolders.DefaultIndexFile)
@@ -308,7 +369,7 @@ End
 		    Else
 		      AddUsageRow(g.Label, g.Label, g)
 		    End Select
-		  
+		    
 		    For Each model As Variant In g.ByModel.Keys
 		      all.Add(model.StringValue, WakeTokenUsage(g.ByModel.Value(model).ObjectValue))
 		    Next
@@ -324,6 +385,8 @@ End
 		    parts.Add("no price set for " + String.FromArray(estimate.UnpricedModels, ", ") + " (Window → Prices)")
 		  End If
 		  StatusLabel.Text = String.FromArray(parts, " · ")
+		  
+		  ShowGlance(periodStart)
 		End Sub
 	#tag EndMethod
 
@@ -369,6 +432,128 @@ End
 		End Sub
 	#tag EndMethod
 
+	#tag Method, Flags = &h21
+		Private Sub ShowGlance(periodStart As DateTime)
+		  // Tiles with the period's totals, and a bar per day. A period shorter than kMinChartDays
+		  // is shown within that many days, with its own days in full colour.
+		  Var now As DateTime = DateTime.Now
+		  Var today As New DateTime(now.Year, now.Month, now.Day)
+		  Var chartStart As DateTime
+		  If periodStart <> Nil Then
+		    chartStart = today.SubtractInterval(0, 0, kMinChartDays - 1)
+		    If periodStart < chartStart Then chartStart = periodStart
+		  End If
+		  
+		  Var dayGroups() As WakeUsageGroup
+		  Var projectGroups() As WakeUsageGroup
+		  Try
+		    dayGroups = mCatalog.Usage(WakeCatalog.UsageGroupings.Day, chartStart)
+		    projectGroups = mCatalog.Usage(WakeCatalog.UsageGroupings.Project, periodStart)
+		  Catch err As DatabaseException
+		    Return
+		  End Try
+		  
+		  // Every session belongs to one project, so the project groups count each session once.
+		  Var all As New WakeUsageGroup
+		  Var sessions As Integer
+		  For Each g As WakeUsageGroup In projectGroups
+		    sessions = sessions + g.SessionCount
+		    For Each model As Variant In g.ByModel.Keys
+		      all.Add(model.StringValue, WakeTokenUsage(g.ByModel.Value(model).ObjectValue))
+		    Next
+		  Next
+		  Var total As WakeTokenUsage = all.Total
+		  Var estimate As WakeCostEstimate = App.Prices.Estimate(all.ByModel)
+		  Var useCost As Boolean = estimate.PricedTokens > 0
+		  
+		  // All time starts at the first day with usage.
+		  Var byDay As Dictionary = WakeCore.NewCaseSensitiveDictionary
+		  Var earliest As String
+		  For Each g As WakeUsageGroup In dayGroups
+		    If g.Key = "" Then Continue
+		    byDay.Value(g.Key) = g
+		    If earliest = "" Or g.Key.Compare(earliest) < 0 Then earliest = g.Key
+		  Next
+		  If chartStart Is Nil Then
+		    chartStart = today
+		    If earliest <> "" Then
+		      Try
+		        chartStart = DateTime.FromString(earliest)
+		      Catch err As RuntimeException
+		        chartStart = today
+		      End Try
+		    End If
+		  End If
+		  Var oldest As DateTime = today.SubtractInterval(0, 0, kMaxChartDays - 1)
+		  If chartStart < oldest Then chartStart = oldest
+		  
+		  DayChart.Title = If(useCost, "Estimated cost per day", "Tokens per day")
+		  DayChart.Tint = If(useCost, WakeGlanceTiles.kGreen, WakeGlanceTiles.kBlue)
+		  DayChart.StartLabel = chartStart.ToString(DateTime.FormatStyles.Medium, DateTime.FormatStyles.None)
+		  DayChart.EndLabel = "Today"
+		  
+		  Var activeDays As Integer
+		  Var busiestValue As Double
+		  Var busiestDay As DateTime
+		  Var day As DateTime = chartStart
+		  While day <= today
+		    Var tip As String = day.ToString(DateTime.FormatStyles.Full, DateTime.FormatStyles.None)
+		    Var value As Double = 0
+		    Var inPeriod As Boolean = periodStart Is Nil Or day >= periodStart
+		    
+		    Var g As WakeUsageGroup = WakeUsageGroup(byDay.Lookup(day.SQLDate, Nil).ObjectValue)
+		    If g Is Nil Then
+		      tip = tip + ": no usage"
+		    Else
+		      Var dayEstimate As WakeCostEstimate = App.Prices.Estimate(g.ByModel)
+		      Var dayTokens As Int64 = g.Total.Total
+		      If useCost Then
+		        value = dayEstimate.AmountUSD
+		      Else
+		        value = dayTokens
+		      End If
+		      tip = tip + ": " + If(useCost, WakeFormat.Cost(dayEstimate) + " · ", "") + WakeFormat.Tokens(dayTokens) + _
+		      " tokens · " + If(g.SessionCount = 1, "1 session", g.SessionCount.ToString + " sessions")
+		      
+		      If inPeriod And dayTokens > 0 Then
+		        activeDays = activeDays + 1
+		        If value > busiestValue Then
+		          busiestValue = value
+		          busiestDay = day
+		        End If
+		      End If
+		    End If
+		    
+		    DayChart.AddBar(value, tip, inPeriod)
+		    day = day.AddInterval(0, 0, 1)
+		  Wend
+		  DayChart.Summary = If(activeDays = 1, "1 active day", activeDays.ToString + " active days")
+		  DayChart.Refresh(False)
+		  
+		  Var perDay As String = "Set prices in Window → Prices"
+		  If useCost And activeDays > 0 Then perDay = WakeFormat.USD(estimate.AmountUSD / activeDays) + " per active day"
+		  GlanceTiles.AddTile("Estimated cost", WakeFormat.Cost(estimate), perDay, WakeGlanceTiles.kGreen)
+		  
+		  GlanceTiles.AddTile("Tokens", WakeFormat.Tokens(total.Total), WakeFormat.Tokens(total.OutputTokens) + " output", WakeGlanceTiles.kBlue)
+		  
+		  GlanceTiles.AddTile("Sessions", WakeFormat.Count(sessions), _
+		  "in " + If(projectGroups.Count = 1, "1 project", projectGroups.Count.ToString + " projects"), WakeGlanceTiles.kPurple)
+		  
+		  If busiestDay Is Nil Then
+		    GlanceTiles.AddTile("Busiest day", WakeFormat.kUnknown, "", WakeGlanceTiles.kOrange)
+		  Else
+		    GlanceTiles.AddTile("Busiest day", If(useCost, WakeFormat.USD(busiestValue), WakeFormat.Tokens(busiestValue)), _
+		    busiestDay.ToString(DateTime.FormatStyles.Medium, DateTime.FormatStyles.None), WakeGlanceTiles.kOrange)
+		  End If
+		  
+		  // The share of input tokens read from the cache instead of sent again.
+		  Var inputSide As Int64 = total.InputTokens + total.CacheWriteTokens + total.CacheReadTokens
+		  GlanceTiles.AddTile("Cache hits", WakeFormat.Percent(total.CacheReadTokens, inputSide), _
+		  If(inputSide > 0, WakeFormat.Tokens(total.CacheReadTokens) + " read from cache", ""), WakeGlanceTiles.kTeal)
+		  GlanceTiles.Refresh(False)
+		End Sub
+	#tag EndMethod
+
 
 	#tag Property, Flags = &h21
 		Private mCatalog As WakeCatalog
@@ -405,6 +590,12 @@ End
 	#tag EndConstant
 
 	#tag Constant, Name = kColumnTotal, Type = Double, Dynamic = False, Default = \"6", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kMaxChartDays, Type = Double, Dynamic = False, Default = \"1830", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kMinChartDays, Type = Double, Dynamic = False, Default = \"14", Scope = Private
 	#tag EndConstant
 
 

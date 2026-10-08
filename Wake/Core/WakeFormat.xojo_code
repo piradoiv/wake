@@ -78,6 +78,17 @@ Protected Module WakeFormat
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function Percent(part As Double, whole As Double) As String
+		  // A whole percentage: "95%", "<1%" for a small share that isn't zero, and an em dash when
+		  // there is nothing to take a share of.
+		  If whole <= 0 Then Return kUnknown
+		  Var share As Double = part / whole * 100
+		  If share > 0 And share < 0.5 Then Return "<1%"
+		  Return Round(share).ToString(Locale.Raw, "0") + "%"
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function ProjectName(path As String) As String
 		  // The last component of a project path: "/Users/dev/demo" gives "demo".
 		  Var parts() As String = path.ReplaceAll("\", "/").Split("/")

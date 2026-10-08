@@ -123,6 +123,33 @@ Begin DesktopWindow MainWindow
       _ScrollOffset   =   0
       _ScrollWidth    =   -1
    End
+   Begin WakeGlanceTiles GlanceTiles
+      AllowAutoDeactivate=   True
+      AllowFocus      =   False
+      AllowFocusRing  =   True
+      AllowTabs       =   False
+      Backdrop        =   0
+      Enabled         =   True
+      Heading         =   ""
+      Height          =   218
+      Index           =   -2147483648
+      Left            =   879
+      LockBottom      =   False
+      LockedInPosition=   False
+      LockLeft        =   False
+      LockRight       =   True
+      LockTop         =   True
+      Scope           =   2
+      Subheading      =   ""
+      TabIndex        =   10
+      TabPanelIndex   =   0
+      TabStop         =   True
+      Tooltip         =   ""
+      Top             =   35
+      Transparent     =   True
+      Visible         =   True
+      Width           =   362
+   End
    Begin DesktopListBox DetailList
       AllowAutoDeactivate=   True
       AllowAutoHideScrollbars=   True
@@ -146,7 +173,7 @@ Begin DesktopWindow MainWindow
       HasHorizontalScrollbar=   False
       HasVerticalScrollbar=   True
       HeadingIndex    =   -1
-      Height          =   653
+      Height          =   435
       Index           =   -2147483648
       InitialParent   =   ""
       InitialValue    =   ""
@@ -164,7 +191,7 @@ Begin DesktopWindow MainWindow
       TabPanelIndex   =   0
       TabStop         =   True
       Tooltip         =   ""
-      Top             =   35
+      Top             =   253
       Transparent     =   False
       Underline       =   False
       Visible         =   True
@@ -663,9 +690,13 @@ End
 		    End Try
 		  End If
 		  
+		  mMaxTokens = 0
+		  mMaxCost = 0
 		  For Each s As WakeSessionInfo In sessions
 		    Var usage As WakeUsageGroup = WakeUsageGroup(usageBySession.Lookup(s.ID.ToString, Nil).ObjectValue)
 		    Var estimate As WakeCostEstimate = App.Prices.Estimate(If(usage Is Nil, Nil, usage.ByModel))
+		    mMaxTokens = Max(mMaxTokens, s.TotalUsage.Total)
+		    If estimate.PricedTokens > 0 Then mMaxCost = Max(mMaxCost, estimate.AmountUSD)
 		    
 		    SessionsList.AddRow(FormatTime(s.StartTime), WakeFormat.Duration(s.DurationSeconds), s.DisplayTitle, _
 		    AgentName(s.AgentID), WakeFormat.Tokens(s.TotalUsage.Total), WakeFormat.Cost(estimate), "")
@@ -695,6 +726,35 @@ End
 		  
 		  ShowDetail(SelectedSession)
 		  UpdateStatus
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub LoadSourceTotals()
+		  // Adds up the sessions of the selected agent or project for the glance tiles shown while
+		  // no session is selected.
+		  mSourceUsage = New WakeUsageGroup
+		  mSourceSessions = 0
+		  mSourceSeconds = 0
+		  mSourcePrompts = 0
+		  
+		  Var source As WakeProjectInfo = SelectedSource
+		  If source Is Nil Or mCatalog Is Nil Then Return
+		  
+		  Try
+		    For Each s As WakeSessionInfo In mCatalog.Sessions(source.AgentID, source.ID, ShowCommandsCheckBox.Value)
+		      mSourceSessions = mSourceSessions + 1
+		      mSourceSeconds = mSourceSeconds + Max(0, s.DurationSeconds)
+		      mSourcePrompts = mSourcePrompts + s.PromptCount
+		    Next
+		    For Each g As WakeUsageGroup In mCatalog.Usage(WakeCatalog.UsageGroupings.Project, Nil, source.AgentID, source.ID)
+		      For Each model As Variant In g.ByModel.Keys
+		        mSourceUsage.Add(model.StringValue, WakeTokenUsage(g.ByModel.Value(model).ObjectValue))
+		      Next
+		    Next
+		  Catch err As DatabaseException
+		    mIndexNote = "Could not read the index: " + err.Message
+		  End Try
 		End Sub
 	#tag EndMethod
 
@@ -929,25 +989,11 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
-		Private Function SortedModels(usage As WakeUsageGroup) As Pair()
-		  // model : WakeTokenUsage pairs, most tokens first.
-		  Var result() As Pair
-		  Var totals() As Int64
-		  For Each key As Variant In usage.ByModel.Keys
-		    Var amount As WakeTokenUsage = WakeTokenUsage(usage.ByModel.Value(key).ObjectValue)
-		    result.Add(key.StringValue : amount)
-		    totals.Add(-amount.Total)
-		  Next
-		  totals.SortWith(result)
-		  Return result
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
 		Private Sub ShowDetail(info As WakeSessionInfo, hit As WakeSearchHit = Nil)
 		  // A summary of one session, after the match when it comes from a search hit.
 		  // Double-clicking the session or hit opens the full timeline.
 		  DetailList.RemoveAllRows
+		  If mCatalog Is Nil Or info Is Nil Then ShowSourceGlance
 		  If mCatalog Is Nil Then Return
 		  If info Is Nil Then
 		    If HitsList.Visible And HitsList.RowCount > 0 Then
@@ -976,15 +1022,18 @@ End
 		      usage = mCatalog.SessionUsage(s.ID)
 		    End If
 		  Catch err As DatabaseException
+		    ShowSourceGlance
 		    AddDetail("Error", "Could not read the index: " + err.Message)
 		    Return
 		  End Try
 		  
 		  If s Is Nil Then
+		    ShowSourceGlance
 		    AddDetail("", "This session is no longer in the index.")
 		    Return
 		  End If
 		  
+		  ShowSessionGlance(s, usage)
 		  AddDetailHeading("Session")
 		  AddDetail("Title", s.DisplayTitle)
 		  If s.FirstPrompt <> "" And s.Title <> "" Then AddDetail("First prompt", WakeFormat.OneLine(s.FirstPrompt, 500))
@@ -1056,6 +1105,7 @@ End
 		  HitsList.Visible = searching
 		  SessionsList.Visible = Not searching
 		  
+		  LoadSourceTotals
 		  If searching Then
 		    LoadHits
 		  Else
@@ -1063,6 +1113,83 @@ End
 		    LoadSessions
 		  End If
 		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub ShowSessionGlance(s As WakeSessionInfo, usage As WakeUsageGroup)
+		  // The session's title, and tiles with its cost, tokens, time and prompts.
+		  GlanceTiles.RemoveAllTiles
+		  GlanceTiles.Heading = s.DisplayTitle
+		  GlanceTiles.Subheading = WakeFormat.ProjectName(s.ProjectPath) + " · " + FormatTime(s.StartTime)
+		  
+		  Var estimate As WakeCostEstimate = App.Prices.Estimate(usage.ByModel)
+		  GlanceTiles.AddTile("Estimated cost", WakeFormat.Cost(estimate), _
+		  If(s.HasAgentCost, WakeFormat.USD(s.AgentCostUSD) + " reported", ""), WakeGlanceTiles.kGreen)
+		  
+		  Var total As WakeTokenUsage = s.TotalUsage
+		  Var inputSide As Int64 = total.InputTokens + total.CacheWriteTokens + total.CacheReadTokens
+		  GlanceTiles.AddTile("Tokens", WakeFormat.Tokens(total.Total), _
+		  If(inputSide > 0, WakeFormat.Percent(total.CacheReadTokens, inputSide) + " from cache", ""), WakeGlanceTiles.kBlue)
+		  
+		  GlanceTiles.AddTile("Duration", WakeFormat.Duration(s.DurationSeconds), _
+		  If(s.ActiveMs > 0, WakeFormat.Duration(s.ActiveMs / 1000) + " active", ""), WakeGlanceTiles.kOrange)
+		  
+		  Var activity As String = WakeFormat.Count(s.EventCount) + " events"
+		  If s.SubagentCount = 1 Then activity = activity + " · 1 subagent"
+		  If s.SubagentCount > 1 Then activity = activity + " · " + s.SubagentCount.ToString + " subagents"
+		  GlanceTiles.AddTile("Prompts", WakeFormat.Count(s.PromptCount), activity, WakeGlanceTiles.kPurple)
+		  
+		  GlanceTiles.Refresh(False)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub ShowSourceGlance()
+		  // The selected agent or project, and tiles with the totals of its sessions.
+		  GlanceTiles.RemoveAllTiles
+		  GlanceTiles.Heading = ""
+		  GlanceTiles.Subheading = ""
+		  
+		  Var source As WakeProjectInfo = SelectedSource
+		  If source <> Nil And mCatalog <> Nil And mSourceUsage <> Nil Then
+		    GlanceTiles.Heading = If(source.ID = 0, AgentName(source.AgentID), ProjectLabel(source))
+		    GlanceTiles.Subheading = If(source.ID = 0, "All projects", source.Path)
+		    
+		    Var total As WakeTokenUsage = mSourceUsage.Total
+		    GlanceTiles.AddTile("Estimated cost", WakeFormat.Cost(App.Prices.Estimate(mSourceUsage.ByModel)), _
+		    If(mSourceSessions = 1, "1 session", WakeFormat.Count(mSourceSessions) + " sessions"), WakeGlanceTiles.kGreen)
+		    
+		    Var inputSide As Int64 = total.InputTokens + total.CacheWriteTokens + total.CacheReadTokens
+		    GlanceTiles.AddTile("Tokens", WakeFormat.Tokens(total.Total), _
+		    If(inputSide > 0, WakeFormat.Percent(total.CacheReadTokens, inputSide) + " from cache", ""), WakeGlanceTiles.kBlue)
+		    
+		    GlanceTiles.AddTile("Time", WakeFormat.Duration(mSourceSeconds), "across all sessions", WakeGlanceTiles.kOrange)
+		    
+		    Var perSession As String
+		    If mSourceSessions > 0 Then
+		      Var average As Double = mSourcePrompts / mSourceSessions
+		      perSession = average.ToString(Locale.Current, "0.#") + " per session"
+		    End If
+		    GlanceTiles.AddTile("Prompts", WakeFormat.Count(mSourcePrompts), perSession, WakeGlanceTiles.kPurple)
+		  End If
+		  
+		  GlanceTiles.Refresh(False)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function SortedModels(usage As WakeUsageGroup) As Pair()
+		  // model : WakeTokenUsage pairs, most tokens first.
+		  Var result() As Pair
+		  Var totals() As Int64
+		  For Each key As Variant In usage.ByModel.Keys
+		    Var amount As WakeTokenUsage = WakeTokenUsage(usage.ByModel.Value(key).ObjectValue)
+		    result.Add(key.StringValue : amount)
+		    totals.Add(-amount.Total)
+		  Next
+		  totals.SortWith(result)
+		  Return result
+		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
@@ -1102,7 +1229,31 @@ End
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
+		Private mMaxCost As Double
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mMaxTokens As Double
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
 		Private mProjects() As WakeProjectInfo
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mSourcePrompts As Integer
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mSourceSeconds As Double
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mSourceSessions As Integer
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mSourceUsage As WakeUsageGroup
 	#tag EndProperty
 
 
@@ -1172,9 +1323,27 @@ End
 #tag Events SessionsList
 	#tag Event
 		Function PaintCellText(g as Graphics, row as Integer, column as Integer, x as Integer, y as Integer) As Boolean
-		  // Draws a "Partial" badge for sessions the parser could not read completely.
+		  // Draws a strip under the token count and cost, as long as the largest in the list, and a
+		  // "Partial" badge for sessions the parser could not read completely.
 		  #Pragma Unused y
-		  If column <> kColumnStatus Or row > Me.LastRowIndex Then Return False
+		  If row > Me.LastRowIndex Then Return False
+		  
+		  If column = kColumnTokens Or column = kColumnCost Then
+		    Var largest As Double = If(column = kColumnTokens, mMaxTokens, mMaxCost)
+		    Var value As Double = Me.CellTagAt(row, column).DoubleValue
+		    If largest > 0 And value > 0 And Not Me.RowSelectedAt(row) Then
+		      // The list draws the text in the current colour, so put it back after the strip.
+		      Var textColor As Color = g.DrawingColor
+		      Var tint As Color = If(column = kColumnTokens, WakeGlanceTiles.kBlue, WakeGlanceTiles.kGreen)
+		      Var barWidth As Double = Max(3, (g.Width - 4) * value / largest)
+		      g.DrawingColor = Color.RGB(tint.Red, tint.Green, tint.Blue, If(Color.IsDarkMode, 60, 90))
+		      g.FillRoundRectangle(g.Width - 2 - barWidth, g.Height - 4, barWidth, 3, 3, 3)
+		      g.DrawingColor = textColor
+		    End If
+		    Return False
+		  End If
+		  
+		  If column <> kColumnStatus Then Return False
 		  
 		  Var s As WakeSessionInfo = WakeSessionInfo(Me.RowTagAt(row).ObjectValue)
 		  If s Is Nil Or Not s.IsPartial Then Return True
