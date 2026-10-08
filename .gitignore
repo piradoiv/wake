@@ -21,3 +21,6 @@ Thumbs.db
 
 # Never commit real agent transcripts
 *.real.jsonl
+
+# Xojo debug runs
+*.debug.app/

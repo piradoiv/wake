@@ -19,6 +19,7 @@ Remove anything that turns out to be wrong. Keep all three short and current.
 - No network code and no telemetry.
 - Keep everything in `Wake/Core/` free of Desktop* UI classes, because a console
   companion will reuse it later.
+- UI code reads the index through `WakeCatalog`, not with its own SQL.
 - Unknown record types and fields must be skipped and counted, never crash.
 - Transcript formats are documented in `docs/FORMATS.md`. Update it when a
   parser learns something new.

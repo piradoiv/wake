@@ -59,6 +59,43 @@ Inherits TestGroup
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub FormatDurationTest()
+		  Assert.AreEqual(WakeFormat.kUnknown, WakeFormat.Duration(-1))
+		  Assert.AreEqual("0s", WakeFormat.Duration(0))
+		  Assert.AreEqual("45s", WakeFormat.Duration(45.2))
+		  Assert.AreEqual("12m", WakeFormat.Duration(12 * 60 + 30))
+		  Assert.AreEqual("3h 05m", WakeFormat.Duration(3 * 3600 + 5 * 60))
+		  Assert.AreEqual("2d 4h", WakeFormat.Duration(52 * 3600))
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub FormatTextTest()
+		  Assert.AreEqual("Fix the test", WakeFormat.OneLine("Fix the" + &u0A + "  test", 0), "0 means no limit")
+		  Assert.AreEqual("a b c", WakeFormat.OneLine("  a" + &u0D + &u0A + "b" + &u09 + "c  ", 50))
+		  Assert.AreEqual("abcd" + WakeFormat.kEllipsis, WakeFormat.OneLine("abcdefgh", 5))
+
+		  Assert.AreEqual("demo", WakeFormat.ProjectName("/Users/dev/demo"))
+		  Assert.AreEqual("demo.app", WakeFormat.ProjectName("/Users/dev/Open Source/demo.app/"))
+		  Assert.AreEqual("repo", WakeFormat.ProjectName("C:\Users\dev\repo"))
+		  Assert.AreEqual("-Users-dev-demo", WakeFormat.ProjectName("-Users-dev-demo"))
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub FormatTokensTest()
+		  Assert.AreEqual("0", WakeFormat.Tokens(0))
+		  Assert.AreEqual("950", WakeFormat.Tokens(950))
+		  Assert.AreEqual("1.0K", WakeFormat.Tokens(1000))
+		  Assert.AreEqual("12.3K", WakeFormat.Tokens(12345))
+		  Assert.AreEqual("456K", WakeFormat.Tokens(456000))
+		  Assert.AreEqual("1.0M", WakeFormat.Tokens(999999))
+		  Assert.AreEqual("4.5M", WakeFormat.Tokens(4500000))
+		  Assert.AreEqual("1.2B", WakeFormat.Tokens(1200000000))
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub TokenUsageAddTest()
 		  Var a As New WakeTokenUsage
 		  a.InputTokens = 1

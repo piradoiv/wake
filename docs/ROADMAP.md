@@ -22,11 +22,13 @@ Each milestone ends with the tests passing and a commit.
   thread, and `App.StartIndexing` starts it at launch. 10 index tests, 33
   in total. On real data (76 sessions, about 124 MB) the first run takes 3.4 s,
   a run with nothing changed takes 0.01 s, and the index is 21 MB.
-- [ ] **4. Browse UI.** Read from the index (`App.IndexThread` reports
-  progress and completion) on the main thread's own connection. Main window: agents → projects in a source list, a
-  sessions list (date, duration, title or first prompt, agent, token total,
-  "partially parsed" badge), and the detail pane. Hide command-only sessions
-  by default.
+- [x] **4. Browse UI.** `WakeCatalog` (Core) reads projects, sessions,
+  per-model usage and subagents from the index, as `WakeProjectInfo` and
+  `WakeSessionInfo`. `WakeFormat` formats durations, token counts and titles.
+  `MainWindow`: agents → projects source list, sessions list (started,
+  duration, title, agent, tokens, "Partial" badge; sorts by value), and a
+  summary detail pane. "Show command-only sessions" is off by default.
+  File → Refresh (Cmd+R) re-indexes. 41 tests.
 - [ ] **5. Session timeline.** `DesktopHTMLViewer` fed local HTML, with no
   remote resources: collapsible tool calls and results, diffs for file edits,
   long outputs truncated with an option to expand, and the parse-report note.
@@ -60,6 +62,7 @@ machine to inspect, and the console companion.
 | The `events` table holds a one-line **summary** per event, and search text goes into `events_fts`, cut to 64K characters per event. The timeline re-parses the transcript. Persisted tool output isn't indexed. | Keeps the index at about a sixth of the transcripts' size. |
 | A session is re-indexed when the size or modification time of its file **or of its subagent files** changes. | Subagent transcripts are parsed with the parent. |
 | Files that disappear, including ones under a custom folder that's no longer available, are **removed** from the index. | The index mirrors what's on disk. |
+| The window opens its index connection **only after an indexing run finishes**, and reloads after each run. | Opening it while the thread creates or rebuilds the schema would race it. A run with nothing changed takes about 10 ms, so the wait is invisible. |
 | A session with no `cwd` (empty, or only a slash command) joins the project of **the other sessions in its folder**, if there are any. | Otherwise it shows up as a second project named after the encoded folder. |
 
 ## Working notes and gotchas
@@ -74,6 +77,15 @@ machine to inspect, and the console companion.
   id. Never change existing ids.
 - **`Assert.AreEqual(n, someArray.Count)` is ambiguous.** Assign the count to
   an `Integer` variable first.
+- **`(expression).ToString` doesn't parse.** Assign to a variable first.
+- **`String` has no `LastIndexOf`.** Split, or loop with `IndexOf`.
+- **`DesktopProgressWheel.Active` can't be set in code.** Leave it `True` in
+  the layout and toggle `Visible`.
+- **Window layouts are written by hand** in `MainWindow.xojo_window`. Copy
+  control property lists from the Xojo IDE's own windows (under
+  `~/Developer/Xojo/Xojo/<version>/IDE`), which are in the same text format.
+- **The shell can't take screenshots** (no screen-recording permission), so
+  the maintainer has to check UI changes by eye.
 - **`call` is a reserved word** in Xojo. Don't use it as a variable name.
 - **Xojo identifiers are case-insensitive.** A parameter named `usage` shadows
   a property named `Usage`.

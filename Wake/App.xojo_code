@@ -42,6 +42,7 @@ Inherits DesktopApplication
 		  If IndexThread <> Nil And IndexThread.ThreadState <> Thread.ThreadStates.NotRunning Then Return
 
 		  IndexThread = New WakeIndexThread(WakeFolders.DefaultIndexFile, WakeFolders.AllRoots)
+		  AddHandler IndexThread.Progress, AddressOf IndexThread_Progress
 		  AddHandler IndexThread.Finished, AddressOf IndexThread_Finished
 		  AddHandler IndexThread.Failed, AddressOf IndexThread_Failed
 		  IndexThread.Start
@@ -52,6 +53,10 @@ Inherits DesktopApplication
 		Private Sub IndexThread_Failed(sender As WakeIndexThread, message As String)
 		  #Pragma Unused sender
 		  System.DebugLog("Wake: " + message)
+
+		  For Each w As MainWindow In MainWindows
+		    w.IndexingFailed(message)
+		  Next
 		End Sub
 	#tag EndMethod
 
@@ -62,7 +67,34 @@ Inherits DesktopApplication
 		  For Each message As String In result.Errors
 		    System.DebugLog("Wake: " + message)
 		  Next
+
+		  For Each w As MainWindow In MainWindows
+		    w.IndexingFinished(result)
+		  Next
 		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub IndexThread_Progress(sender As WakeIndexThread, done As Integer, total As Integer, currentPath As String)
+		  #Pragma Unused sender
+		  #Pragma Unused currentPath
+
+		  For Each w As MainWindow In MainWindows
+		    w.IndexingProgress(done, total)
+		  Next
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function MainWindows() As MainWindow()
+		  // The browse windows that are open. Going through the implicit MainWindow instance
+		  // would reopen a window the user closed.
+		  Var result() As MainWindow
+		  For i As Integer = 0 To WindowCount - 1
+		    If WindowAt(i) IsA MainWindow Then result.Add(MainWindow(WindowAt(i)))
+		  Next
+		  Return result
+		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
