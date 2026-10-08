@@ -177,8 +177,8 @@ machine to inspect, and the console companion.
   `Self.Close` handler in each window. A handler in `App` closing `WindowAt(0)`
   didn't close the front window. Auto-enable left the item greyed out, so
   `App.MenuBarSelected` enables it. A new window needs its own handler.
-- **`App.Opening` sets `AllowAutoQuit = True`**, so Wake quits once its last
-  window closes.
+- **Closing the main window quits Wake** (`MainWindow.Closing` calls `Quit`).
+  `AllowAutoQuit = True` in `App.Opening` covers the last-window case.
 - **`call` is a reserved word** in Xojo. Don't use it as a variable name.
 - **Xojo identifiers are case-insensitive.** A parameter named `usage` shadows
   a property named `Usage`.

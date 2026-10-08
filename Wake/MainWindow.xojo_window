@@ -446,6 +446,9 @@ End
 	#tag Event
 		Sub Closing()
 		  CloseCatalog
+		  
+		  // Timelines and the other windows hang off the browser, so closing it quits Wake.
+		  Quit
 		End Sub
 	#tag EndEvent
 
