@@ -10,7 +10,7 @@ Protected Class WakeMarkdown
 		    Var e As WakeEvent = mEvents(i)
 		    If e.Kind <> WakeEvent.Kinds.FileEdit Then Continue
 		    count = count + 1
-		  
+		    
 		    Var added, removed As Integer
 		    For Each patchLine As String In e.Patch.Split(&u0A)
 		      If patchLine.BeginsWith("+") Then
@@ -19,7 +19,7 @@ Protected Class WakeMarkdown
 		        removed = removed + 1
 		      End If
 		    Next
-		  
+		    
 		    Var heading As String = "### " + Code(e.FilePath) + " (" + e.ToolName + ", +" + added.ToString + " −" + removed.ToString
 		    If e.HasResult And e.ResultIsError Then heading = heading + ", failed"
 		    If mOrigins(i) <> "" Then heading = heading + ", in " + mOrigins(i)
@@ -52,12 +52,12 @@ Protected Class WakeMarkdown
 		  For i As Integer = 0 To mEvents.LastIndex
 		    Var e As WakeEvent = mEvents(i)
 		    If e.Kind <> WakeEvent.Kinds.ShellCommand Then Continue
-		  
+		    
 		    If mOrigins(i) <> origin Then
 		      origin = mOrigins(i)
 		      lines.Add(If(origin = "", "# back in the main session", "# in " + origin))
 		    End If
-		  
+		    
 		    Var command As String = "$ " + e.Command.ReplaceLineEndings(&u0A)
 		    If e.HasResult And e.ResultIsError Then command = command + "  # failed"
 		    lines.Add(command)
@@ -81,7 +81,7 @@ Protected Class WakeMarkdown
 		  For Each e As WakeEvent In mSession.Events
 		    If e.Kind <> WakeEvent.Kinds.UserPrompt Then Continue
 		    number = number + 1
-		  
+		    
 		    out.Add("### " + number.ToString + ". " + TimeText(e.Timestamp))
 		    out.Add("")
 		    For Each promptLine As String In e.Text.ReplaceLineEndings(&u0A).Split(&u0A)
@@ -211,7 +211,7 @@ Protected Class WakeMarkdown
 		  For Each e As WakeEvent In session.Events
 		    mEvents.Add(e)
 		    mOrigins.Add(origin)
-		  
+		    
 		    If e.Subagent <> Nil Then
 		      Var child As WakeSession = e.Subagent
 		      Var name As String = "subagent " + If(child.SubagentType <> "", child.SubagentType, child.SubagentID)

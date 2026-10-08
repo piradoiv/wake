@@ -12,13 +12,13 @@ Protected Class WakeTimeline
 		  Select Case e.Kind
 		  Case WakeEvent.Kinds.UserPrompt
 		    AddCard(out, "user", "You", e.Timestamp, Block(e.Text, False, "prose"))
-
+		    
 		  Case WakeEvent.Kinds.AssistantText
 		    AddCard(out, "assistant", "Assistant", e.Timestamp, Block(e.Text, False, "prose"))
-
+		    
 		  Case WakeEvent.Kinds.Error
 		    AddCard(out, "error", "Error", e.Timestamp, Block(e.Text, False, "prose"))
-
+		    
 		  Case WakeEvent.Kinds.Thinking
 		    // The thinking text is usually redacted and only its signature is kept.
 		    If e.Text.Trim = "" Then
@@ -27,10 +27,10 @@ Protected Class WakeTimeline
 		      out.Add("<details class=""thinking""><summary>" + TimeHTML(e.Timestamp) + "Thinking</summary>" + _
 		      Block(e.Text, False, "prose") + "</details>")
 		    End If
-
+		    
 		  Case WakeEvent.Kinds.System
 		    AddSystem(out, e)
-
+		    
 		  Case WakeEvent.Kinds.ToolCall, WakeEvent.Kinds.ShellCommand, WakeEvent.Kinds.FileEdit, WakeEvent.Kinds.ToolResult
 		    AddTool(out, e)
 		  End Select
@@ -43,29 +43,20 @@ Protected Class WakeTimeline
 		    out.Add("<p class=""muted"">No events in this transcript.</p>")
 		    Return
 		  End If
-
+		  
 		  // Each event gets an anchor, so a search hit can scroll to it with wakeGoTo.
 		  Var uid As String = If(session.IsSubagent And session.SubagentID <> "", session.SubagentID, session.ID)
-
+		  
 		  For Each e As WakeEvent In session.Events
 		    mNextAnchor = mNextAnchor + 1
 		    Var anchor As String = "e" + mNextAnchor.ToString
 		    mAnchors.Value(uid + "/" + e.Sequence.ToString) = anchor
-
+		    
 		    out.Add("<div class=""ev"" id=""" + anchor + """>")
 		    AddEvent(out, e)
 		    out.Add("</div>")
 		  Next
 		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h0
-		Function Anchor(sessionUID As String, sequence As Integer) As String
-		  // The element id of an event in the page, or "" if there is no such event. sessionUID is the
-		  // session's or subagent's uid, as the index stores it.
-		  Call HTML
-		  Return mAnchors.Lookup(sessionUID + "/" + sequence.ToString, "").StringValue
-		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
@@ -74,20 +65,20 @@ Protected Class WakeTimeline
 		  // prompts, like the main window's.
 		  Var s As WakeSession = mSession
 		  Var facts() As String
-
+		  
 		  If s.ProjectPath <> "" Then facts.Add(s.ProjectPath)
 		  If s.GitBranch <> "" Then facts.Add(s.GitBranch)
 		  If s.StartTime <> Nil Then facts.Add(LocalTime(s.StartTime).ToString(DateTime.FormatStyles.Medium, DateTime.FormatStyles.Short))
-
+		  
 		  out.Add("<header><h1>" + EscapeHTML(DisplayTitle) + "</h1>")
 		  out.Add("<div class=""facts"">" + EscapeHTML(String.FromArray(facts, " · ")) + "</div>")
-
+		  
 		  Var total As WakeTokenUsage = s.TotalUsage
 		  Var inputSide As Int64 = total.InputTokens + total.CacheWriteTokens + total.CacheReadTokens
 		  Var activity As String = WakeFormat.Count(s.Events.Count) + " events"
 		  If s.Subagents.Count = 1 Then activity = activity + " · 1 subagent"
 		  If s.Subagents.Count > 1 Then activity = activity + " · " + s.Subagents.Count.ToString + " subagents"
-
+		  
 		  out.Add("<div class=""stats"">")
 		  out.Add("<div class=""stat cost"" id=""" + kCostTileID + """>" + CostTileHTML + "</div>")
 		  out.Add("<div class=""stat tokens"">" + StatHTML("Tokens", WakeFormat.Tokens(total.Total), _
@@ -115,10 +106,10 @@ Protected Class WakeTimeline
 		  Var label As String = "Subagent"
 		  If child.SubagentType <> "" Then label = label + " · " + child.SubagentType
 		  If child.SubagentDescription <> "" Then label = label + " · " + child.SubagentDescription
-
+		  
 		  Var facts As String = WakeFormat.Tokens(child.TotalUsage.Total) + " tokens, " + _
 		  If(child.Events.Count = 1, "1 event", WakeFormat.Count(child.Events.Count) + " events")
-
+		  
 		  out.Add("<details class=""subagent""><summary>" + EscapeHTML(label) + " <span class=""muted"">" + EscapeHTML(facts) + _
 		  "</span></summary><div class=""body"">")
 		  AddParseNote(out, child)
@@ -133,7 +124,7 @@ Protected Class WakeTimeline
 		  // as <command-name>, so the one-line form drops the tags.
 		  Var shortText As String = WakeFormat.OneLine(StripTags(e.Text), 160)
 		  If shortText = "" Then shortText = If(e.SystemSubtype <> "", e.SystemSubtype, "system")
-
+		  
 		  If e.Text.IndexOf(&u0A) < 0 And e.Text.Length <= 160 And e.Text = shortText Then
 		    out.Add("<div class=""line system"">" + TimeHTML(e.Timestamp) + EscapeHTML(shortText) + "</div>")
 		  Else
@@ -147,12 +138,12 @@ Protected Class WakeTimeline
 		Private Sub AddTool(out() As String, e As WakeEvent)
 		  Var summary As String
 		  Var body() As String
-
+		  
 		  Select Case e.Kind
 		  Case WakeEvent.Kinds.ShellCommand
 		    summary = "<span class=""tool"">" + EscapeHTML(e.ToolName) + "</span> <code>$ " + EscapeHTML(WakeFormat.OneLine(e.Command, 160)) + "</code>"
 		    If e.Command.IndexOf(&u0A) >= 0 Or e.Command.Length > 160 Then body.Add(Section("Command", Block(e.Command, False, "")))
-
+		    
 		  Case WakeEvent.Kinds.FileEdit
 		    Var added, removed As Integer
 		    For Each patchLine As String In e.Patch.Split(&u0A)
@@ -165,22 +156,22 @@ Protected Class WakeTimeline
 		    summary = "<span class=""tool"">" + EscapeHTML(e.ToolName) + "</span> <code>" + EscapeHTML(e.FilePath) + "</code>" + _
 		    " <span class=""add"">+" + added.ToString + "</span> <span class=""del"">−" + removed.ToString + "</span>"
 		    If e.Patch <> "" Then body.Add(Block(e.Patch, True, ""))
-
+		    
 		  Case WakeEvent.Kinds.ToolCall
 		    summary = "<span class=""tool"">" + EscapeHTML(e.ToolName) + "</span> " + EscapeHTML(WakeFormat.OneLine(InputSummary(e), 160))
 		    Var inputText As String = InputText(e)
 		    If inputText <> "" Then body.Add(Section("Input", Block(inputText, False, "")))
-
+		    
 		  Else
 		    summary = "<span class=""tool"">Tool result</span>"
 		  End Select
-
+		  
 		  If e.HasResult And e.ResultIsError Then summary = summary + "<span class=""badge error"">error</span>"
 		  If e.Interrupted Then summary = summary + "<span class=""badge"">interrupted</span>"
 		  If e.IsToolCall And Not e.HasResult Then summary = summary + "<span class=""badge"">no result</span>"
-
+		  
 		  If e.Subagent <> Nil Then AddSubagent(body, e.Subagent)
-
+		  
 		  // An edit's result only says the file was updated, so it is shown only when it failed.
 		  If e.HasResult And (e.Kind <> WakeEvent.Kinds.FileEdit Or e.ResultIsError) Then
 		    If e.Stdout <> "" Or e.Stderr <> "" Then
@@ -192,7 +183,7 @@ Protected Class WakeTimeline
 		      body.Add(Section("Result", "<p class=""muted"">No output.</p>"))
 		    End If
 		  End If
-
+		  
 		  // Large outputs are stored outside the transcript and read only when asked for.
 		  If e.PersistedOutputPath <> "" Then
 		    Var id As String = NewBlockID
@@ -201,7 +192,7 @@ Protected Class WakeTimeline
 		    body.Add(Section("Full output", "<div class=""persisted"" id=""" + id + """><span class=""muted"">Saved separately" + size + _
 		    ".</span> <button onclick=""wakeLoad('persisted','" + id + "',this)"">Load full output</button></div>"))
 		  End If
-
+		  
 		  Var classes As String = "tool-call" + If(e.HasResult And e.ResultIsError, " failed", "")
 		  If body.Count = 0 Then
 		    out.Add("<div class=""line " + classes + """>" + TimeHTML(e.Timestamp) + summary + "</div>")
@@ -212,6 +203,15 @@ Protected Class WakeTimeline
 		End Sub
 	#tag EndMethod
 
+	#tag Method, Flags = &h0
+		Function Anchor(sessionUID As String, sequence As Integer) As String
+		  // The element id of an event in the page, or "" if there is no such event. sessionUID is the
+		  // session's or subagent's uid, as the index stores it.
+		  Call HTML
+		  Return mAnchors.Lookup(sessionUID + "/" + sequence.ToString, "").StringValue
+		End Function
+	#tag EndMethod
+
 	#tag Method, Flags = &h21
 		Private Function Block(text As String, isDiff As Boolean, cssClass As String) As String
 		  // Text or a diff, cut to a preview when it is long. The full block stays in memory and the
@@ -220,13 +220,13 @@ Protected Class WakeTimeline
 		  Var preview() As String
 		  Var used As Integer
 		  Var truncated As Boolean
-
+		  
 		  For Each textLine As String In lines
 		    If preview.Count >= kPreviewLines Or used >= kPreviewCharacters Then
 		      truncated = True
 		      Exit
 		    End If
-
+		    
 		    Var shown As String = textLine
 		    If used + shown.Length > kPreviewCharacters Then
 		      shown = shown.Left(kPreviewCharacters - used) + WakeFormat.kEllipsis
@@ -235,16 +235,16 @@ Protected Class WakeTimeline
 		    preview.Add(shown)
 		    used = used + shown.Length + 1
 		  Next
-
+		  
 		  Var tag As String = If(isDiff, "div", "pre")
 		  Var classes As String = If(isDiff, "diff", "text") + If(cssClass <> "", " " + cssClass, "")
-
+		  
 		  If Not truncated Then Return "<" + tag + " class=""" + classes + """>" + RenderLines(preview, isDiff) + "</" + tag + ">"
-
+		  
 		  Var id As String = NewBlockID
 		  mBlocks.Value(id) = text : isDiff
 		  Var label As String = If(lines.Count > 1, "Show all " + WakeFormat.Count(lines.Count) + " lines", "Show full text")
-
+		  
 		  Return "<" + tag + " class=""" + classes + """ id=""" + id + """>" + RenderLines(preview, isDiff) + "</" + tag + ">" + _
 		  "<button class=""more"" onclick=""wakeLoad('expand','" + id + "',this)"">" + label + " (" + WakeFormat.Bytes(text.Bytes) + ")</button>"
 		End Function
@@ -289,18 +289,18 @@ Protected Class WakeTimeline
 		Function ExpandedHTML(blockID As String) As String
 		  // The full contents of a block that HTML showed only in part.
 		  If Not mBlocks.HasKey(blockID) Then Return ""
-
+		  
 		  Var entry As Pair = mBlocks.Value(blockID)
 		  Var text As String = entry.Left.StringValue
 		  Var isDiff As Boolean = entry.Right.BooleanValue
-
+		  
 		  Var limit As Integer = kExpandLimit
 		  Var note As String
 		  If text.Length > limit Then
 		    note = "[" + WakeFormat.Count(text.Length - limit) + " more characters not shown]"
 		    text = text.Left(limit)
 		  End If
-
+		  
 		  Var lines() As String = SplitLines(text)
 		  If note <> "" Then lines.Add(note)
 		  Return RenderLines(lines, isDiff)
@@ -312,7 +312,7 @@ Protected Class WakeTimeline
 		  // A self-contained page: inline style and script, and a content policy that blocks every
 		  // remote resource, so nothing in a transcript can make the viewer reach the network.
 		  If mHTML <> "" Then Return mHTML
-
+		  
 		  Var out() As String
 		  out.Add("<!DOCTYPE html><html><head><meta charset=""utf-8"">")
 		  out.Add("<meta http-equiv=""Content-Security-Policy"" content=""default-src 'none'; style-src 'unsafe-inline'; " + _
@@ -323,7 +323,7 @@ Protected Class WakeTimeline
 		  AddHeader(out)
 		  AddEvents(out, mSession)
 		  out.Add("</body></html>")
-
+		  
 		  mHTML = String.FromArray(out, &u0A)
 		  Return mHTML
 		End Function
@@ -332,7 +332,7 @@ Protected Class WakeTimeline
 	#tag Method, Flags = &h21
 		Private Function InputDictionary(e As WakeEvent) As Dictionary
 		  If e.ToolInputJSON = "" Then Return Nil
-
+		  
 		  Try
 		    Return WakeCore.AsDictionary(ParseJSON(e.ToolInputJSON))
 		  Catch err As JSONException
@@ -346,12 +346,12 @@ Protected Class WakeTimeline
 		  // The most telling input field of a tool call: a path, pattern, URL or description.
 		  Var toolInput As Dictionary = InputDictionary(e)
 		  If toolInput Is Nil Then Return ""
-
+		  
 		  For Each key As String In Array("file_path", "notebook_path", "path", "pattern", "url", "query", "description", "prompt", "command")
 		    Var value As String = WakeCore.JSONString(toolInput, key)
 		    If value <> "" Then Return value
 		  Next
-
+		  
 		  Return ""
 		End Function
 	#tag EndMethod
@@ -361,12 +361,12 @@ Protected Class WakeTimeline
 		  // The tool input as "key: value" lines, easier to read than the raw JSON.
 		  Var toolInput As Dictionary = InputDictionary(e)
 		  If toolInput Is Nil Then Return e.ToolInputJSON
-
+		  
 		  Var lines() As String
 		  For Each key As Variant In toolInput.Keys
 		    Var value As Variant = toolInput.Value(key)
 		    Var shown As String
-
+		    
 		    Select Case value.Type
 		    Case Variant.TypeString
 		      shown = value.StringValue
@@ -385,11 +385,24 @@ Protected Class WakeTimeline
 		        shown = "(unreadable)"
 		      End Try
 		    End Select
-
+		    
 		    lines.Add(key.StringValue + ": " + shown)
 		  Next
-
+		  
 		  Return String.FromArray(lines, &u0A)
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function IsTagName(name As String) As Boolean
+		  If name.Length > 40 Then Return False
+		  
+		  For i As Integer = 0 To name.Length - 1
+		    Var c As String = name.Middle(i, 1)
+		    If Not ((c >= "a" And c <= "z") Or c = "-" Or c = "_") Then Return False
+		  Next
+		  
+		  Return True
 		End Function
 	#tag EndMethod
 
@@ -419,18 +432,18 @@ Protected Class WakeTimeline
 		  // Reads a tool's persisted output, read-only and only on request.
 		  If Not mPersisted.HasKey(blockID) Then Return ""
 		  Var path As String = mPersisted.Value(blockID).StringValue
-
+		  
 		  Try
 		    Var f As New FolderItem(path, FolderItem.PathModes.Native)
 		    If Not f.Exists Then Return "<p class=""muted"">" + EscapeHTML("The saved output is no longer at " + path + ".") + "</p>"
-
+		    
 		    Var stream As BinaryStream = BinaryStream.Open(f, False)
 		    Var size As Int64 = stream.Length
 		    Var count As Integer = kPersistedLimit
 		    If size < count Then count = size
 		    Var text As String = stream.Read(count, Encodings.UTF8)
 		    stream.Close
-
+		    
 		    If size > count Then
 		      // Don't leave half a multi-byte character at the cut.
 		      Var cut As Integer = text.Bytes
@@ -440,7 +453,7 @@ Protected Class WakeTimeline
 		      If cut > 0 And text.MiddleBytes(cut - 1, 1).AscByte >= &hC0 Then cut = cut - 1
 		      text = text.LeftBytes(cut) + &u0A + "[" + WakeFormat.Bytes(size - cut) + " more not shown]"
 		    End If
-
+		    
 		    Return Block(text, False, "")
 		  Catch err As IOException
 		    Return "<p class=""muted"">" + EscapeHTML("The saved output could not be read: " + err.Message) + "</p>"
@@ -453,7 +466,7 @@ Protected Class WakeTimeline
 	#tag Method, Flags = &h21
 		Private Function RenderLines(lines() As String, isDiff As Boolean) As String
 		  If Not isDiff Then Return EscapeHTML(String.FromArray(lines, &u0A))
-
+		  
 		  Var parts() As String
 		  For Each patchLine As String In lines
 		    Var kind As String = "ctx"
@@ -466,7 +479,7 @@ Protected Class WakeTimeline
 		    End If
 		    parts.Add("<div class=""dl " + kind + """>" + EscapeHTML(patchLine) + "</div>")
 		  Next
-
+		  
 		  Return String.FromArray(parts, "")
 		End Function
 	#tag EndMethod
@@ -482,7 +495,7 @@ Protected Class WakeTimeline
 		  Case "cost"
 		    Return CostTileHTML
 		  End Select
-
+		  
 		  Return ""
 		End Function
 	#tag EndMethod
@@ -532,21 +545,28 @@ Protected Class WakeTimeline
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Function StatHTML(caption As String, value As String, detail As String) As String
+		  Return "<div class=""cap"">" + EscapeHTML(caption) + "</div><div class=""val"">" + EscapeHTML(value) + "</div>" + _
+		  "<div class=""sub"">" + EscapeHTML(detail) + "</div>"
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function StripTags(text As String) As String
 		  // Removes tag-like markers such as <command-name> and </bash-stdout>, keeping their content.
 		  Var result() As String
 		  Var pos As Integer
-
+		  
 		  While pos < text.Length
 		    Var openAt As Integer = text.IndexOf(pos, "<")
 		    If openAt < 0 Then Exit
-
+		    
 		    Var closeAt As Integer = text.IndexOf(openAt, ">")
 		    If closeAt < 0 Then Exit
-
+		    
 		    Var name As String = text.Middle(openAt + 1, closeAt - openAt - 1)
 		    If name.BeginsWith("/") Then name = name.Middle(1)
-
+		    
 		    If name <> "" And IsTagName(name) Then
 		      result.Add(text.Middle(pos, openAt - pos))
 		      result.Add(" ")
@@ -555,29 +575,9 @@ Protected Class WakeTimeline
 		    End If
 		    pos = closeAt + 1
 		  Wend
-
+		  
 		  If pos < text.Length Then result.Add(text.Middle(pos))
 		  Return String.FromArray(result, "")
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function IsTagName(name As String) As Boolean
-		  If name.Length > 40 Then Return False
-
-		  For i As Integer = 0 To name.Length - 1
-		    Var c As String = name.Middle(i, 1)
-		    If Not ((c >= "a" And c <= "z") Or c = "-" Or c = "_") Then Return False
-		  Next
-
-		  Return True
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function StatHTML(caption As String, value As String, detail As String) As String
-		  Return "<div class=""cap"">" + EscapeHTML(caption) + "</div><div class=""val"">" + EscapeHTML(value) + "</div>" + _
-		  "<div class=""sub"">" + EscapeHTML(detail) + "</div>"
 		End Function
 	#tag EndMethod
 
@@ -653,7 +653,7 @@ Protected Class WakeTimeline
 	#tag Method, Flags = &h21
 		Private Function TimeHTML(timestamp As DateTime) As String
 		  If timestamp Is Nil Then Return ""
-
+		  
 		  Var d As DateTime = LocalTime(timestamp)
 		  Return "<span class=""time"">" + d.Hour.ToString(Locale.Raw, "00") + ":" + d.Minute.ToString(Locale.Raw, "00") + ":" + _
 		  d.Second.ToString(Locale.Raw, "00") + "</span>"
