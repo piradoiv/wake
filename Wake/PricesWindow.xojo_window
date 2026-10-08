@@ -185,6 +185,15 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Sub EditNextCell()
+		  // Runs just after a Tab press, so the cell being left has already been committed.
+		  If mNextRow < 0 Or mNextRow > PricesList.LastRowIndex Then Return
+		  PricesList.SelectedRowIndex = mNextRow
+		  PricesList.EditCellAt(mNextRow, mNextColumn)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function FormatPrice(value As Double) As String
 		  If value <= 0 Then Return ""
 		  Return value.ToString(Locale.Raw, "0.00####")
@@ -255,6 +264,15 @@ End
 	#tag EndMethod
 
 
+	#tag Property, Flags = &h21
+		Private mNextColumn As Integer
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mNextRow As Integer = -1
+	#tag EndProperty
+
+
 	#tag Constant, Name = kColumnCacheRead, Type = Double, Dynamic = False, Default = \"5", Scope = Private
 	#tag EndConstant
 
@@ -288,5 +306,38 @@ End
 		  #Pragma Unused column
 		  CommitRow(row)
 		End Sub
+	#tag EndEvent
+	#tag Event
+		Function CellKeyDown(row as Integer, column as Integer, key as String) As Boolean
+		  // Tab edits the next price, going on to the next model's Input after Cache read.
+		  // Shift+Tab goes back. Some systems send Shift+Tab as &u19.
+		  If key <> &u09 And key <> &u19 Then Return False
+		  
+		  Var nextRow As Integer = row
+		  Var nextColumn As Integer = column
+		  If key = &u19 Or Keyboard.AsyncShiftKey Then
+		    nextColumn = nextColumn - 1
+		    If nextColumn < kColumnInput Then
+		      nextColumn = kColumnCacheRead
+		      nextRow = nextRow - 1
+		    End If
+		  Else
+		    nextColumn = nextColumn + 1
+		    If nextColumn > kColumnCacheRead Then
+		      nextColumn = kColumnInput
+		      nextRow = nextRow + 1
+		    End If
+		  End If
+		  
+		  // Past the first or last price, Tab just ends editing as usual.
+		  If nextRow < 0 Or nextRow > Me.LastRowIndex Then Return False
+		  
+		  // Start the next edit once this key press is done, so the current cell is committed
+		  // through CellAction first.
+		  mNextRow = nextRow
+		  mNextColumn = nextColumn
+		  Timer.CallLater(0, AddressOf EditNextCell)
+		  Return True
+		End Function
 	#tag EndEvent
 #tag EndEvents

@@ -63,7 +63,7 @@ Each milestone ends with the tests passing and a commit.
   Export as Markdown (Cmd+E) in both windows. `WakeCore.LoadSession` now
   loads transcripts for the timeline and the export. 82 tests. On real data
   (80 sessions) the slowest export takes 0.13 s and the largest is 880 KB.
-  README updated. The new windows still need a check by eye.
+  README updated, and the new windows checked in the app.
 
 After v0.1: Codex CLI and Gemini CLI parsers, once real sessions exist on a
 machine to inspect, and the console companion.
@@ -108,8 +108,9 @@ machine to inspect, and the console companion.
 - **Don't keep notes in `Wake/CLAUDE.md`.** Xojo's agentic mode deletes it.
   Use the root `CLAUDE.md` and this file.
 - **Write files the way the IDE saves them**, or its next save shows up as a
-  diff. A blank line inside a method body holds the body's indentation (two
-  tabs and two spaces), not nothing. Event signatures keep the IDE's own
+  diff. A blank line inside a method body holds the indentation of the block
+  it's in: two tabs and two spaces at the top of the body, two more spaces
+  inside each `If`, `For`, `Try` and so on. Methods are sorted by name. Event signatures keep the IDE's own
   spelling, such as `DocumentComplete(url as String)`. The IDE re-saves only
   the items it has opened, so older files may still have empty blank lines.
   Commit a reformat on its own ("Reformat X as saved by the Xojo IDE").
