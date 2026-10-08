@@ -63,7 +63,7 @@ End
 		  mSessionID = info.ID
 		  Title = info.DisplayTitle
 		  mTimeline = WakeTimeline.Load(info.AgentID, info.FilePath)
-
+		  
 		  mLoadingPage = True
 		  TimelineViewer.LoadPage(mTimeline.HTML, Nil)
 		End Sub
@@ -95,7 +95,7 @@ End
 		End Function
 	#tag EndEvent
 	#tag Event
-		Sub DocumentComplete(URL as String)
+		Sub DocumentComplete(url as String)
 		  #Pragma Unused URL
 		  mLoadingPage = False
 		End Sub
