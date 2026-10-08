@@ -173,6 +173,8 @@ machine to inspect, and the console companion.
   on tinted tiles. Colour constants are `Type = Color`.
 - **`PaintCellText` draws the cell text in `g.DrawingColor`** when it returns
   False, so restore that colour after drawing anything else in the cell.
+- **Xojo adds no File → Close item.** `FileClose` (Cmd+W) is handled in `App`
+  and closes `WindowAt(0)`, the frontmost window.
 - **`call` is a reserved word** in Xojo. Don't use it as a variable name.
 - **Xojo identifiers are case-insensitive.** A parameter named `usage` shadows
   a property named `Usage`.
