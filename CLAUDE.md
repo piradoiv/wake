@@ -35,5 +35,8 @@ Remove anything that turns out to be wrong. Keep all three short and current.
 - Parser tests use XojoUnit. To run them, create a `WakeRunTests` marker file
   in `Wake/`, then `Wake/XojoRunProject.txt`. Results are written to
   `tests/results.xml`.
+- After adding project items or editing window or menu files by hand, ask
+  the maintainer to save the project in the Xojo IDE, then commit the IDE's
+  reformat separately before the next piece of work.
 - Don't keep notes in `Wake/CLAUDE.md`: Xojo's agentic mode manages the agent
   files inside the project folder and deletes that file when it runs.

@@ -80,6 +80,12 @@ machine to inspect, and the console companion.
   `Wake/XojoCompileErrors.txt` to appear.
 - **Don't keep notes in `Wake/CLAUDE.md`.** Xojo's agentic mode deletes it.
   Use the root `CLAUDE.md` and this file.
+- **Write files the way the IDE saves them**, or its next save shows up as a
+  diff. A blank line inside a method body holds the body's indentation (two
+  tabs and two spaces), not nothing. Event signatures keep the IDE's own
+  spelling, such as `DocumentComplete(url as String)`. The IDE re-saves only
+  the items it has opened, so older files may still have empty blank lines.
+  Commit a reformat on its own ("Reformat X as saved by the Xojo IDE").
 - **Adding project items:** create the file first, then add its line to
   `Wake/Wake.xojo_project` with a fresh unique `&h…` id and the parent folder's
   id. Never change existing ids.
