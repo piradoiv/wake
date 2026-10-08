@@ -115,13 +115,19 @@ A `user` record is a prompt the person typed when all of these are true:
 - `message.content` is a string, or a list of `text`/`image` blocks with no
   `tool_result`.
 - `isMeta` isn't `true`.
-- The text doesn't start with a CLI tag such as `<command-name>`,
-  `<local-command-stdout>` or `<task-notification>`. These are slash commands
-  and their output, or background notifications. Wake shows them as system
-  events.
+- The text doesn't start with a CLI wrapper: `<command-…>`,
+  `<local-command-…>`, `<task-notification>`, `<bash-input>`, `<bash-stdout>`,
+  `<bash-stderr>` or `[Request interrupted by user`. These are slash commands,
+  `!` shell commands and their output, or background notifications. Wake shows
+  them as system events.
 
 In the sample, 342 user records were plain prompts, 59 were `isMeta` and 50
 were command wrappers.
+
+**Command-only sessions.** 9 of the 75 sessions in the sample contain nothing
+but a slash command such as `/clear` (an `isMeta` caveat, the command wrapper
+and its output). They have no prompt and no assistant response. Wake parses
+them correctly with zero prompts. The browse UI should hide them by default.
 
 ### Assistant messages and token usage
 

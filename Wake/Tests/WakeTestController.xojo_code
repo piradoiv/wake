@@ -7,6 +7,8 @@ Inherits TestController
 		  Var group As TestGroup
 		  
 		  group = New HarnessTests(Self, "Harness")
+		  group = New WakeCoreTests(Self, "WakeCore")
+		  group = New ClaudeCodeParserTests(Self, "ClaudeCodeParser")
 		  
 		  #Pragma Unused group
 		End Sub
