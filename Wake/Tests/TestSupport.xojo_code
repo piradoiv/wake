@@ -21,6 +21,36 @@ Protected Module TestSupport
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub AppendLine(f As FolderItem, line As String)
+		  // Only for scratch copies of fixtures. Never use this on a real transcript.
+		  Var output As TextOutputStream
+		  If f.Exists Then
+		    output = TextOutputStream.Open(f)
+		  Else
+		    output = TextOutputStream.Create(f)
+		  End If
+		  output.Encoding = Encodings.UTF8
+		  output.WriteLine(line)
+		  output.Close
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub CopyFolder(source As FolderItem, destination As FolderItem)
+		  // Recursive copy, used to give tests a scratch copy of the fixtures.
+		  If Not destination.Exists Then destination.CreateFolder
+
+		  For Each child As FolderItem In source.Children
+		    If child.IsFolder Then
+		      CopyFolder(child, destination.Child(child.Name))
+		    Else
+		      child.CopyTo(destination.Child(child.Name))
+		    End If
+		  Next
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function CountEvents(session As WakeSession, kind As WakeEvent.Kinds) As Integer
 		  Var total As Integer
 		  For Each e As WakeEvent In session.Events
@@ -36,6 +66,15 @@ Protected Module TestSupport
 		    If e.ToolUseID = toolUseID Then Return e
 		  Next
 		  Return Nil
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function NewScratchFolder() As FolderItem
+		  // An empty folder in the system temporary folder. Remove it with RemoveScratchFolder.
+		  Var f As FolderItem = SpecialFolder.Temporary.Child(kScratchPrefix + System.Random.InRange(100000, 999999).ToString)
+		  f.CreateFolder
+		  Return f
 		End Function
 	#tag EndMethod
 
@@ -78,6 +117,19 @@ Protected Module TestSupport
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub RemoveScratchFolder(f As FolderItem)
+		  // Refuses anything that isn't a scratch folder made by NewScratchFolder.
+		  If f Is Nil Or Not f.Exists Or Not f.Name.BeginsWith(kScratchPrefix) Then Return
+
+		  Try
+		    f.RemoveFolderAndContents
+		  Catch err As IOException
+		    System.DebugLog("Wake tests: could not remove " + f.NativePath + ": " + err.Message)
+		  End Try
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function RepositoryFolder() As FolderItem
 		  Var project As FolderItem = ProjectFolder
 		  If project Is Nil Then Return Nil
@@ -85,6 +137,9 @@ Protected Module TestSupport
 		End Function
 	#tag EndMethod
 
+
+	#tag Constant, Name = kScratchPrefix, Type = String, Dynamic = False, Default = \"wake-test-", Scope = Public
+	#tag EndConstant
 
 	#tag Constant, Name = kProjectFileName, Type = String, Dynamic = False, Default = \"Wake.xojo_project", Scope = Public
 	#tag EndConstant

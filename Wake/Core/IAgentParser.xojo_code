@@ -30,6 +30,18 @@ Protected Interface IAgentParser
 		End Function
 	#tag EndMethod
 
+	#tag Method, Flags = &h0
+		Function RelatedFiles(f As FolderItem) As FolderItem()
+
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function SessionFiles(root As FolderItem) As FolderItem()
+
+		End Function
+	#tag EndMethod
+
 
 End Interface
 #tag EndInterface

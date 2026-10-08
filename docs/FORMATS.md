@@ -47,7 +47,9 @@ have not been verified yet.
 - **`<encoded-cwd>` is lossy.** `/`, spaces and `.` all become `-`. For example
   `/Users/dev/Open Source/wake` becomes `-Users-dev-Open-Source-wake`, so the
   original path can't be decoded reliably. Read the project path from the
-  `cwd` field of the records and use the folder name only as a fallback.
+  `cwd` field of the records. Empty and command-only sessions have no `cwd`.
+  Wake puts them in the project of the other sessions in the same folder, and
+  uses the folder name only when there are none.
 - Every file in the sample contained exactly one `sessionId`, and it matched
   the file name.
 

@@ -439,6 +439,59 @@ Implements IAgentParser
 		End Function
 	#tag EndMethod
 
+	#tag Method, Flags = &h0
+		Function RelatedFiles(f As FolderItem) As FolderItem()
+		  // Part of the IAgentParser interface.
+		  // Subagent transcripts and their metadata are parsed with the session, so a change to
+		  // any of them means the session has to be indexed again. tool-results/ is read on demand.
+		  Var result() As FolderItem
+		  If f Is Nil Or f.Parent Is Nil Then Return result
+
+		  Var name As String = f.Name
+		  If name.EndsWith(".jsonl") Then name = name.Left(name.Length - 6)
+
+		  Try
+		    Var folder As FolderItem = f.Parent.Child(name).Child("subagents")
+		    If folder Is Nil Or Not folder.Exists Or Not folder.IsFolder Then Return result
+
+		    For Each child As FolderItem In folder.Children
+		      If child.IsFolder Or Not child.Name.BeginsWith("agent-") Then Continue
+		      If child.Name.EndsWith(".jsonl") Or child.Name.EndsWith(".meta.json") Then result.Add(child)
+		    Next
+		  Catch err As IOException
+		    // Unreadable side files: the session is still indexed from its main transcript.
+		  End Try
+
+		  Return result
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function SessionFiles(root As FolderItem) As FolderItem()
+		  // Part of the IAgentParser interface.
+		  // root is normally ~/.claude/projects, with one folder per project. A custom folder may
+		  // also be a single project folder, so session files directly inside root count too.
+		  Var result() As FolderItem
+		  If root Is Nil Or Not root.Exists Or Not root.IsFolder Then Return result
+
+		  Try
+		    For Each child As FolderItem In root.Children
+		      If child.IsFolder Then
+		        For Each candidate As FolderItem In child.Children
+		          If IsSessionFile(candidate) Then result.Add(candidate)
+		        Next
+		      ElseIf IsSessionFile(child) Then
+		        result.Add(child)
+		      End If
+		    Next
+		  Catch err As IOException
+		    // A folder that can't be listed contributes no sessions.
+		  End Try
+
+		  Return result
+		End Function
+	#tag EndMethod
+
 	#tag Method, Flags = &h21
 		Private Function ParseTranscript(f As FolderItem, isSubagent As Boolean) As WakeSession
 		  Var session As New WakeSession

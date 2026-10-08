@@ -4,21 +4,23 @@ Inherits DesktopApplication
 	#tag Event
 		Sub Opening()
 		  #If DebugBuild Then
-		    RunTestsIfRequested
+		    If RunTestsIfRequested Then Return
 		  #EndIf
+
+		  StartIndexing
 		End Sub
 	#tag EndEvent
 
 
 	#tag Method, Flags = &h21
-		Private Sub RunTestsIfRequested()
+		Private Function RunTestsIfRequested() As Boolean
 		  // Debug-only test mode: when a WakeRunTests marker file sits next to the project file,
 		  // run every XojoUnit group, export JUnit XML to tests/results.xml and quit.
 		  Var project As FolderItem = TestSupport.ProjectFolder
-		  If project Is Nil Then Return
+		  If project Is Nil Then Return False
 
 		  Var marker As FolderItem = project.Child(kTestMarkerName)
-		  If marker Is Nil Or Not marker.Exists Then Return
+		  If marker Is Nil Or Not marker.Exists Then Return False
 
 		  Try
 		    marker.Remove
@@ -30,6 +32,36 @@ Inherits DesktopApplication
 		  AddHandler mTestController.AllTestsFinished, AddressOf TestController_AllTestsFinished
 		  mTestController.LoadTestGroups
 		  mTestController.Start
+		  Return True
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub StartIndexing()
+		  // Brings the index up to date in the background. Does nothing if a run is in progress.
+		  If IndexThread <> Nil And IndexThread.ThreadState <> Thread.ThreadStates.NotRunning Then Return
+
+		  IndexThread = New WakeIndexThread(WakeFolders.DefaultIndexFile, WakeFolders.AllRoots)
+		  AddHandler IndexThread.Finished, AddressOf IndexThread_Finished
+		  AddHandler IndexThread.Failed, AddressOf IndexThread_Failed
+		  IndexThread.Start
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub IndexThread_Failed(sender As WakeIndexThread, message As String)
+		  #Pragma Unused sender
+		  System.DebugLog("Wake: " + message)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub IndexThread_Finished(sender As WakeIndexThread, result As WakeIndexRunResult)
+		  #Pragma Unused sender
+		  System.DebugLog("Wake: indexed " + result.Summary)
+		  For Each message As String In result.Errors
+		    System.DebugLog("Wake: " + message)
+		  Next
 		End Sub
 	#tag EndMethod
 
@@ -50,6 +82,10 @@ Inherits DesktopApplication
 		End Sub
 	#tag EndMethod
 
+
+	#tag Property, Flags = &h0
+		IndexThread As WakeIndexThread
+	#tag EndProperty
 
 	#tag Property, Flags = &h21
 		Private mTestController As WakeTestController

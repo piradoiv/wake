@@ -217,6 +217,26 @@ Inherits TestGroup
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub SessionFilesTest()
+		  Var parser As New ClaudeCodeParser
+		  Var projects As FolderItem = TestSupport.FixturesFolder("claude-code").Child("projects")
+
+		  Var allCount As Integer = parser.SessionFiles(projects).Count
+		  Assert.AreEqual(6, allCount, "projects root")
+
+		  Var oneProjectCount As Integer = parser.SessionFiles(projects.Child("-Users-dev-demo")).Count
+		  Assert.AreEqual(5, oneProjectCount, "a single project folder added as a custom root")
+
+		  Var related() As FolderItem = parser.RelatedFiles(TestSupport.ClaudeFixture(4))
+		  Var relatedCount As Integer = related.Count
+		  Assert.AreEqual(2, relatedCount, "subagent transcript and metadata")
+
+		  Var noneCount As Integer = parser.RelatedFiles(TestSupport.ClaudeFixture(1)).Count
+		  Assert.AreEqual(0, noneCount)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub UsageCountedOncePerMessageTest()
 		  // Every record of a split response repeats the same usage; it must count once.
 		  Var basic As WakeSession = TestSupport.ParseClaudeFixture(1)

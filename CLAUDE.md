@@ -24,6 +24,10 @@ Remove anything that turns out to be wrong. Keep all three short and current.
   parser learns something new.
 - Never copy real transcripts into `tests/fixtures`. Fixtures are
   hand-written and anonymized.
+- The SQLite index is a disposable cache. When you change its schema, bump
+  `WakeIndex.kSchemaVersion` instead of writing a migration.
+- Tests that change files work on a scratch copy made with
+  `TestSupport.NewScratchFolder` and `CopyFolder`, never on `tests/fixtures`.
 - Parser tests use XojoUnit. To run them, create a `WakeRunTests` marker file
   in `Wake/`, then `Wake/XojoRunProject.txt`. Results are written to
   `tests/results.xml`.

@@ -53,6 +53,24 @@ Protected Class WakeSession
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function IsCommandOnly() As Boolean
+		  // True when the session has no prompt and no response: only slash commands such as
+		  // /clear, or nothing at all. The browse UI hides these by default.
+		  If PromptCount > 0 Then Return False
+
+		  For Each e As WakeEvent In Events
+		    Select Case e.Kind
+		    Case WakeEvent.Kinds.AssistantText, WakeEvent.Kinds.Thinking, WakeEvent.Kinds.ToolCall, _
+		      WakeEvent.Kinds.ShellCommand, WakeEvent.Kinds.FileEdit
+		      Return False
+		    End Select
+		  Next
+
+		  Return True
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub NoteTimestamp(timestamp As DateTime)
 		  If timestamp Is Nil Then Return
 

@@ -9,6 +9,7 @@ Inherits TestController
 		  group = New HarnessTests(Self, "Harness")
 		  group = New WakeCoreTests(Self, "WakeCore")
 		  group = New ClaudeCodeParserTests(Self, "ClaudeCodeParser")
+		  group = New WakeIndexTests(Self, "WakeIndex")
 		  
 		  #Pragma Unused group
 		End Sub
