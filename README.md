@@ -44,6 +44,14 @@ launch rebuild it.
   versions. Wake skips and counts anything it doesn't understand, and shows
   partially parsed sessions with a note.
 
+## Why "Wake"?
+
+A boat leaves a wake behind it: a trail across the water that shows where it
+has been. Coding agents leave one too, in the transcripts they write as they
+work. Wake lets you look back along that trail to see what the agent was
+asked, what it read, what it ran and what it changed, without ever disturbing
+it.
+
 ## Supported agents
 
 | Agent       | Status        | Versions tested     |
