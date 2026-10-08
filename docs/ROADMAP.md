@@ -119,6 +119,10 @@ machine to inspect, and the console companion.
 
 ## Working notes and gotchas
 
+- **Shared borders in MainWindow:** neighbouring bordered list boxes overlap by
+  1 px so their borders draw as one line: the left lists' right border and
+  `DetailList`'s left border both sit at x 880. `GlanceTiles` draws no border,
+  so it starts at 881 and the left list's border shows beside it.
 - **Running tests:** create `Wake/WakeRunTests`, then `Wake/XojoRunProject.txt`.
   Wait for the trigger file to disappear, then for `tests/results.xml` or
   `Wake/XojoCompileErrors.txt` to appear.

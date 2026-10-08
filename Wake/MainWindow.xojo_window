@@ -133,7 +133,7 @@ Begin DesktopWindow MainWindow
       Heading         =   ""
       Height          =   218
       Index           =   -2147483648
-      Left            =   879
+      Left            =   881
       LockBottom      =   False
       LockedInPosition=   False
       LockLeft        =   False
@@ -148,7 +148,7 @@ Begin DesktopWindow MainWindow
       Top             =   35
       Transparent     =   True
       Visible         =   True
-      Width           =   362
+      Width           =   360
    End
    Begin DesktopListBox DetailList
       AllowAutoDeactivate=   True
@@ -178,7 +178,7 @@ Begin DesktopWindow MainWindow
       InitialParent   =   ""
       InitialValue    =   ""
       Italic          =   False
-      Left            =   879
+      Left            =   880
       LockBottom      =   True
       LockedInPosition=   False
       LockLeft        =   False
@@ -195,7 +195,7 @@ Begin DesktopWindow MainWindow
       Transparent     =   False
       Underline       =   False
       Visible         =   True
-      Width           =   362
+      Width           =   361
       _ScrollOffset   =   0
       _ScrollWidth    =   -1
    End
