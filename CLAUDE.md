@@ -24,6 +24,10 @@ Remove anything that turns out to be wrong. Keep all three short and current.
   companion will reuse it later.
 - UI code reads the index through `WakeCatalog`, not with its own SQL.
 - Unknown record types and fields must be skipped and counted, never crash.
+- Reports and analyses stay generic: no rules for a particular language, file
+  type, project or tool. Patterns come from the shape of a call (a line range,
+  a search, a whole-file read), and file types, files and programs come only
+  from the user's data. Suggested fixes are worded for any developer.
 - Transcript formats are documented in `docs/FORMATS.md`. Update it when a
   parser learns something new.
 - Never copy real transcripts into `tests/fixtures`. Fixtures are
