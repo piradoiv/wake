@@ -8,10 +8,10 @@ Protected Class WakeEvent
 		  Var name As String = path.NthField("/", path.CountFields("/"))
 		  Var count As Integer = name.CountFields(".")
 		  If count < 2 Then Return ""
-
+		  
 		  Var extension As String = name.NthField(".", count)
 		  If extension = "" Or extension.Length > 15 Or name.Length = extension.Length + 1 Then Return ""
-
+		  
 		  Var hasLetter As Boolean
 		  For i As Integer = 0 To extension.Length - 1
 		    Var c As String = extension.Middle(i, 1)
@@ -22,7 +22,7 @@ Protected Class WakeEvent
 		    End If
 		  Next
 		  If Not hasLetter Then Return ""
-
+		  
 		  Return "." + extension.Lowercase
 		End Function
 	#tag EndMethod
@@ -62,7 +62,7 @@ Protected Class WakeEvent
 		  Case Kinds.System
 		    Return "system"
 		  End Select
-
+		  
 		  Return "unknown"
 		End Function
 	#tag EndMethod
@@ -81,7 +81,7 @@ Protected Class WakeEvent
 		  // The program a shell command runs, such as "sed" or "git". Leading cd, export, source and
 		  // VAR=value parts are skipped, so `cd x && sed -n 1p f` gives "sed".
 		  If Kind <> Kinds.ShellCommand Then Return ""
-
+		  
 		  Var atStart As Boolean = True
 		  For Each word As String In ShellWords
 		    If word = &u01 Then
@@ -89,14 +89,14 @@ Protected Class WakeEvent
 		      Continue
 		    End If
 		    If Not atStart Or word.IndexOf("=") > 0 Or word.BeginsWith("-") Then Continue
-
+		    
 		    If word = "cd" Or word = "export" Or word = "pushd" Or word = "source" Or word = "." Then
 		      atStart = False
 		      Continue
 		    End If
 		    Return word.NthField("/", word.CountFields("/"))
 		  Next
-
+		  
 		  Return ""
 		End Function
 	#tag EndMethod
@@ -112,10 +112,10 @@ Protected Class WakeEvent
 		  Var inWord As Boolean
 		  Var quote As String
 		  Var i As Integer
-
+		  
 		  While i < line.Length
 		    Var c As String = line.Middle(i, 1)
-
+		    
 		    If quote <> "" Then
 		      If c = quote Then
 		        quote = ""
@@ -144,10 +144,10 @@ Protected Class WakeEvent
 		      current = current + c
 		      inWord = True
 		    End If
-
+		    
 		    i = i + 1
 		  Wend
-
+		  
 		  If inWord Then words.Add(current)
 		  Return words
 		End Function
@@ -157,7 +157,7 @@ Protected Class WakeEvent
 		Function Summary() As String
 		  // One line describing the event, for lists and search results.
 		  Var line As String
-
+		  
 		  Select Case Kind
 		  Case Kinds.ShellCommand
 		    line = "$ " + Command
@@ -172,7 +172,7 @@ Protected Class WakeEvent
 		  Else
 		    line = Text
 		  End Select
-
+		  
 		  line = line.ReplaceLineEndings(" ").Trim
 		  If line.Length > 200 Then line = line.Left(199) + "…"
 		  Return line
@@ -184,7 +184,7 @@ Protected Class WakeEvent
 		  // The file or folder a tool call worked on: its file_path, notebook_path or path input. For a
 		  // shell command, the last word on its first line that looks like a file name.
 		  If FilePath <> "" Then Return FilePath
-
+		  
 		  If Kind = Kinds.ShellCommand Then
 		    Var words() As String = ShellWords
 		    For i As Integer = words.LastIndex DownTo 1
@@ -194,7 +194,7 @@ Protected Class WakeEvent
 		    Next
 		    Return ""
 		  End If
-
+		  
 		  If ToolInputJSON = "" Then Return ""
 		  Try
 		    Var toolInput As Dictionary = WakeCore.AsDictionary(ParseJSON(ToolInputJSON))
@@ -205,7 +205,7 @@ Protected Class WakeEvent
 		  Catch err As JSONException
 		    Return ""
 		  End Try
-
+		  
 		  Return ""
 		End Function
 	#tag EndMethod
