@@ -864,8 +864,9 @@ End
 		    label = "File"
 		  End Select
 		  
-		  // By file and by intent show how often reads were repeated, and what a read costs.
-		  Var showReads As Boolean = grouping = WakeCatalog.ToolGroupings.File Or grouping = WakeCatalog.ToolGroupings.Pattern
+		  // By file shows how often each file was read again, and what a read of it costs. By intent
+		  // doesn't: its re-reads are a group of their own.
+		  Var showReads As Boolean = grouping = WakeCatalog.ToolGroupings.File
 		  If showReads Then
 		    SetHeaders(Array(label, "Calls", "Read again", "≈ Added", "≈ Per read", "≈ Re-read", "≈ Total", "Est. cost"))
 		  Else
@@ -884,11 +885,22 @@ End
 		  Var calls As Integer
 		  Var added, carried As Int64
 		  
-		  For Each g As WakeToolUsageGroup In groups
+		  // Files with the same name show as many parent folders as it takes to tell them apart.
+		  Var fileNames() As String
+		  If grouping = WakeCatalog.ToolGroupings.File Then
+		    Var paths() As String
+		    For Each g As WakeToolUsageGroup In groups
+		      paths.Add(g.Key)
+		    Next
+		    fileNames = WakeFormat.ShortPaths(paths)
+		  End If
+		  
+		  For index As Integer = 0 To groups.LastIndex
+		    Var g As WakeToolUsageGroup = groups(index)
 		    Var perCall As Int64 = If(g.Calls > 0, g.AddedTokens \ g.Calls, 0)
 		    Var estimate As WakeCostEstimate = App.Prices.Estimate(g.ByModel)
 		    Var shown As String = If(g.Key = "", "(none)", g.Key)
-		    If grouping = WakeCatalog.ToolGroupings.File Then shown = WakeFormat.ProjectName(g.Key)
+		    If grouping = WakeCatalog.ToolGroupings.File Then shown = fileNames(index)
 		    If grouping = WakeCatalog.ToolGroupings.Pattern Then shown = g.Label
 		    
 		    // Read again sorts by re-reads, then by reads.

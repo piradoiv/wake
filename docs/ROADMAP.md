@@ -135,10 +135,13 @@ Each milestone below is one session's work, ending with tests and a commit.
 - [x] **15. Waste per file.** `WakeToolUsageGroup` gains `Reads`,
   `Rereads`, `LineRangeReads` and `ReadSessionCount`. `ToolUsage` takes an
   optional group of another grouping to stay within (`withinGrouping`,
-  `withinKey`), such as the files of one intent. "By file" and "By intent"
-  show "Read again" (re-reads of reads, with share) and ≈ per read; a
-  selected file's status line reads "Read N times in M sessions, R of them
-  again in the same session".
+  `withinKey`), such as the files of one intent. "By file" shows "Read
+  again" (re-reads of reads, with share) and ≈ per read, and names files
+  that share a name with as many parent folders as it takes
+  (`WakeFormat.ShortPaths`); a selected file's status line reads "Read N
+  times in M sessions, R of them again in the same session". "By intent"
+  keeps sessions and ≈ per call: its re-reads are their own row, so "Read
+  again" was always 0% or 100% there (seen in the app).
 - [x] **16. Export the findings as tasks.** `WakeTokenReport` (Core) builds
   Markdown for a period: totals, then a section per intent (re-reads
   included) with ≈ tokens, share, cost when priced, the advice, the top 5

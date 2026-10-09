@@ -139,6 +139,16 @@ Inherits TestGroup
 		  Assert.AreEqual("demo", WakeFormat.ProjectName("/Users/dev/demo"))
 		  Assert.AreEqual("demo.app", WakeFormat.ProjectName("/Users/dev/Open Source/demo.app/"))
 		  Assert.AreEqual("repo", WakeFormat.ProjectName("C:\Users\dev\repo"))
+		  
+		  Var short() As String = WakeFormat.ShortPaths(Array("/a/web/app/main.go", "/b/api/src/main.go", _
+		  "/c/cli/src/main.go", "/d/README.md", "C:\repo\README.md"))
+		  Assert.AreEqual("main.go — app", short(0), "one folder is enough")
+		  Assert.AreEqual("main.go — api/src", short(1), "two folders needed")
+		  Assert.AreEqual("main.go — cli/src", short(2))
+		  Assert.AreEqual("README.md — d", short(3))
+		  Assert.AreEqual("README.md — repo", short(4))
+		  short = WakeFormat.ShortPaths(Array("/x/notes.txt"))
+		  Assert.AreEqual("notes.txt", short(0), "unique names stay short")
 		  Assert.AreEqual("-Users-dev-demo", WakeFormat.ProjectName("-Users-dev-demo"))
 		End Sub
 	#tag EndMethod

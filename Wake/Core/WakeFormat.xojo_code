@@ -109,6 +109,46 @@ Protected Module WakeFormat
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function ShortPaths(paths() As String) As String()
+		  // A short name for each path: its file name, followed by as many parent folders as it takes
+		  // to tell apart files with the same name, as in "main.c — server/src".
+		  Var parts() As Variant
+		  Var labels() As String
+		  For Each path As String In paths
+		    Var words() As String
+		    For Each word As String In path.ReplaceAll("\", "/").Split("/")
+		      If word <> "" Then words.Add(word)
+		    Next
+		    parts.Add(words)
+		    labels.Add(If(words.Count = 0, path, words(words.LastIndex)))
+		  Next
+		  
+		  For depth As Integer = 1 To 64
+		    Var counts As New Dictionary
+		    For Each label As String In labels
+		      counts.Value(label) = counts.Lookup(label, 0).IntegerValue + 1
+		    Next
+		    
+		    Var changed As Boolean
+		    For i As Integer = 0 To labels.LastIndex
+		      If counts.Value(labels(i)).IntegerValue < 2 Then Continue
+		      Var words() As String = parts(i)
+		      If depth > words.LastIndex Then Continue
+		      Var folders() As String
+		      For j As Integer = words.LastIndex - depth To words.LastIndex - 1
+		        folders.Add(words(j))
+		      Next
+		      labels(i) = words(words.LastIndex) + " — " + String.FromArray(folders, "/")
+		      changed = True
+		    Next
+		    If Not changed Then Exit
+		  Next
+		  
+		  Return labels
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function Tokens(amount As Int64) As String
 		  // Compact token count: "950", "12.3K", "4.5M", "1.2B".
 		  If amount < 1000 Then Return amount.ToString
