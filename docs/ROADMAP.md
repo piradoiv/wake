@@ -99,7 +99,94 @@ Each milestone ends with the tests passing and a commit.
   The Usage window has these four groupings below the usual three, with
   calls, sessions, ≈ added, ≈ per call, ≈ re-read, ≈ total and cost. Schema 5.
   Schema 6 re-reads commands with quote-aware splitting. 93 tests. On real
-  data (all projects) indexing takes 7.9 s and a query 8–14 ms. Shell commands on `.xojo_code` files were the largest group.
+  data (all projects) indexing takes 7.9 s and a query 8–14 ms. Shell
+  commands on `.xojo_code` files were the largest group.
+
+### Next: from "where the tokens went" to "what to do about it"
+
+Goal: a developer sees that, say, `sed` is expensive and can tell *why* and
+*what to change*. Everything stays generic (see the rule in `CLAUDE.md`):
+patterns come from the shape of a call, never from a language or project.
+Each milestone below is one session's work, ending with tests and a commit.
+
+- [ ] **13. Drill down to the calls.** In the Usage window, selecting a row
+  of a tool grouping lists that group's calls below it, most tokens first.
+  - Core: `WakeCatalog.ToolCalls(grouping, key, fromTime, limit)` returns
+    `WakeToolCallInfo`s (new class in `Core/Index`): session id and uid,
+    session title, seq, timestamp, tool, the event's `summary` (join
+    `events` on `session_id` and `seq`), target, ≈ added, ≈ re-read and
+    usage by model for the cost. Default limit 500.
+  - UI: a second list box under `UsageList` (columns: time, session,
+    call, ≈ added, ≈ re-read, cost), shown only for tool groupings, with the
+    same `RowComparison` sorting by cell tag. Double-clicking a call opens
+    its timeline at that event, the way search hits do (`SessionWindow.
+    ShowEvent(uid, seq)`). Copy the list's property list from `UsageList`.
+    This edits the window by hand, so ask the maintainer to save afterwards.
+  - Tests: on the fixtures, the `Read` group lists 2 calls, the larger
+    first, with their summaries; a subagent's call (`Grep`) points to the
+    subagent's uid.
+
+- [ ] **14. Group calls by intent.** Classify every tool call by what it
+  was trying to get, so the fix is obvious from the group.
+  - Core: a `WakeCallPattern` module with an enum and `Classify(e As
+    WakeEvent)`. Patterns and the shape that decides them:
+    - **Line range:** Read with `offset`/`limit`; `sed -n` with numeric
+      addresses (`10,80p`); `head`; `tail`.
+    - **Section:** `sed`/`awk` with a regex address range (`/a/,/b/p`).
+    - **Whole file:** Read without a range; `cat`, `less`, `more` with a file.
+    - **Search:** Grep; `grep`, `rg`, `ag`, `ack`, `git grep`.
+    - **Listing:** Glob; `ls`, `find`, `tree`, `git ls-files`.
+    - **Edit:** Edit, MultiEdit, Write, NotebookEdit.
+    - **Web:** WebFetch, WebSearch, browser MCP tools (name contains
+      `browser` or `chrome`).
+    - **Run:** any other shell command (builds, tests, git, scripts).
+    - **Other:** everything else.
+    Use `WakeEvent.ShellWords` for shell commands (make it public if
+    needed), and the program from `ShellProgram`.
+  - **Re-reads:** in `WakeSession.ComputeStats`, flag a read (line range,
+    section, whole file) of a target already read earlier in the same
+    session, unless an Edit or Write to that target came in between.
+  - `WakeCallPattern.Advice(pattern)` gives one generic sentence per
+    pattern, e.g. line range: "Reads by line number suggest the agent
+    can't ask for a symbol or section by name. A tool or index that returns
+    one function or section by name would send less."; whole file: "Whole
+    files sent at once. An outline first, then only the parts needed, would
+    send less."; re-reads: "The same file read again in a session. It is
+    already in the context, so guidance or a cache can avoid it."
+  - Index: `tool_usage` gains `pattern TEXT` and `is_reread INTEGER`.
+    Bump `kSchemaVersion`. `WakeCatalog.ToolGroupings` gains `Pattern`,
+    with re-reads as their own group ("Re-read") ahead of their pattern.
+  - UI: "By intent" in the grouping popup; the advice shows in the status
+    line for the selected row and as the label's tooltip.
+  - Tests: classification of hand-built events across languages (`.py`,
+    `.go`, `.ts`, `.rs`, a file with spaces in its path); a re-read, and a
+    read after an edit that is not a re-read. Add a fixture session 7 to
+    `generate_claude_code.py` with a `sed -n` range, `cat`, `head`, a
+    regex-range `awk`, and the same file read twice, and document it in
+    `tests/fixtures/README.md`.
+
+- [ ] **15. Waste per file.** The "By file" grouping shows what makes a
+  file expensive to work with.
+  - Catalog: `ToolUsage` also returns, per group, reads, re-reads and the
+    number of distinct line-range reads. Add these to `WakeToolUsageGroup`.
+  - UI: for "By file" and "By intent", show reads, re-reads (with share)
+    and ≈ per read instead of sessions and ≈ per call. Status line for a
+    selected file: "Read N times in M sessions, R of them again in the
+    same session".
+  - Tests: on fixture session 7, the twice-read file has 1 re-read.
+
+- [ ] **16. Export the findings as tasks.** File → Export Report in the
+  Usage window writes Markdown that a developer can paste into an issue or
+  give to an agent as a spec.
+  - Core: `WakeTokenReport` builds it from the catalog for a period: totals,
+    then one section per intent with ≈ tokens, cost, calls, the advice, the
+    top 5 files, and 3 example calls (most expensive) as code blocks, using
+    `WakeMarkdown`'s fence rule. Re-reads get their own section. Examples
+    are commands from the user's own transcripts, and the user chooses
+    where the file goes.
+  - Tests: the report for the fixtures has a section per pattern present,
+    fences longer than any backtick run in an example, and no section for
+    patterns with no calls.
 
 After v0.1: Codex CLI and Gemini CLI parsers, once real sessions exist on a
 machine to inspect, and the console companion.
