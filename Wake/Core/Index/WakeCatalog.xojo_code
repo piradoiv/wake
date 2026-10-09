@@ -312,7 +312,7 @@ Protected Class WakeCatalog
 		  // A call has a row per model, so its rows are summed up. Its summary comes from its event.
 		  Var rs As RowSet = mIndex.Database.SelectSQL("SELECT t.session_id, t.seq, max(t.timestamp) AS timestamp, " + _
 		  "max(t.tool) AS tool, max(t.target) AS target, sum(t.added_tokens) AS added, sum(t.carried_tokens) AS carried, " + _
-		  "max(us.uid) AS event_uid, max(ts.id) AS top_id, " + _
+		  "max(us.uid) AS event_uid, max(ts.id) AS top_id, max(t.pattern) AS pattern, max(t.is_reread) AS is_reread, " + _
 		  "(SELECT e.summary FROM events e WHERE e.session_id = t.session_id AND e.seq = t.seq LIMIT 1) AS summary" + _
 		  source + " GROUP BY t.session_id, t.seq ORDER BY sum(t.added_tokens + t.carried_tokens) DESC, " + _
 		  "max(t.timestamp) DESC, t.session_id, t.seq LIMIT ?", callValues)
@@ -333,6 +333,8 @@ Protected Class WakeCatalog
 		    c.AddedTokens = row.Column("added").Int64Value
 		    c.CarriedTokens = row.Column("carried").Int64Value
 		    c.EventSessionUID = row.Column("event_uid").StringValue
+		    c.PatternKey = row.Column("pattern").StringValue
+		    If row.Column("is_reread").IntegerValue = 1 Then c.PatternKey = WakeCallPattern.kKeyReread
 		    
 		    // Session is filled in below, once per session. Until then it holds only the id.
 		    Var topID As Integer = row.Column("top_id").IntegerValue

@@ -130,7 +130,8 @@ Each milestone below is one session's work, ending with tests and a commit.
   index stores that as the target. `tool_usage` gains `pattern` and
   `is_reread` (schema 7). `ToolGroupings.Pattern` puts re-reads in their
   own group. "By intent" in the Usage window, with the advice as the
-  label's tooltip and in the status line. Fixture session 7 is in its own
+  label's tooltip and in the status line. The calls list has an Intent
+  column (`WakeToolCallInfo.PatternKey`) for every grouping. Fixture session 7 is in its own
   root, `claude-code/patterns/`.
 - [x] **15. Waste per file.** `WakeToolUsageGroup` gains `Reads`,
   `Rereads`, `LineRangeReads` and `ReadSessionCount`. `ToolUsage` takes an

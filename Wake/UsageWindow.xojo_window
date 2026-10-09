@@ -198,8 +198,8 @@ Begin DesktopWindow UsageWindow
       AllowRowDragging=   False
       AllowRowReordering=   False
       Bold            =   False
-      ColumnCount     =   6
-      ColumnWidths    =   "140,220,*,90,90,110"
+      ColumnCount     =   7
+      ColumnWidths    =   "140,220,100,*,90,90,110"
       DefaultRowHeight=   22
       DropIndicatorVisible=   False
       Enabled         =   True
@@ -639,6 +639,7 @@ End
 		  Next
 		  CallsList.HeaderAt(kCallColumnTime) = "Time"
 		  CallsList.HeaderAt(kCallColumnSession) = "Session"
+		  CallsList.HeaderAt(kCallColumnIntent) = "Intent"
 		  CallsList.HeaderAt(kCallColumnCall) = "Call"
 		  CallsList.HeaderAt(kCallColumnAdded) = "≈ Added"
 		  CallsList.HeaderAt(kCallColumnCarried) = "≈ Re-read"
@@ -673,13 +674,16 @@ End
 		    Var shownTime As String = WakeFormat.kUnknown
 		    If c.Timestamp <> Nil Then shownTime = c.Timestamp.ToString(DateTime.FormatStyles.Medium, DateTime.FormatStyles.Short)
 		    
-		    CallsList.AddRow(shownTime, title, description, WakeFormat.Tokens(c.AddedTokens), _
+		    Var intent As String = WakeCallPattern.Label(c.PatternKey)
+		    CallsList.AddRow(shownTime, title, intent, description, WakeFormat.Tokens(c.AddedTokens), _
 		    WakeFormat.Tokens(c.CarriedTokens), If(estimate.HasTokens, WakeFormat.Cost(estimate), WakeFormat.kUnknown))
 		    
 		    Var row As Integer = CallsList.LastAddedRowIndex
 		    CallsList.RowTagAt(row) = c
 		    CallsList.CellTagAt(row, kCallColumnTime) = If(c.Timestamp Is Nil, 0.0, c.Timestamp.SecondsFrom1970)
 		    CallsList.CellTagAt(row, kCallColumnSession) = title
+		    CallsList.CellTagAt(row, kCallColumnIntent) = intent
+		    CallsList.CellTooltipAt(row, kCallColumnIntent) = WakeCallPattern.Advice(c.PatternKey)
 		    CallsList.CellTagAt(row, kCallColumnCall) = description
 		    CallsList.CellTagAt(row, kCallColumnAdded) = c.AddedTokens
 		    CallsList.CellTagAt(row, kCallColumnCarried) = c.CarriedTokens
@@ -993,16 +997,19 @@ End
 	#tag EndProperty
 
 
-	#tag Constant, Name = kCallColumnAdded, Type = Double, Dynamic = False, Default = \"3", Scope = Private
+	#tag Constant, Name = kCallColumnAdded, Type = Double, Dynamic = False, Default = \"4", Scope = Private
 	#tag EndConstant
 
-	#tag Constant, Name = kCallColumnCall, Type = Double, Dynamic = False, Default = \"2", Scope = Private
+	#tag Constant, Name = kCallColumnCall, Type = Double, Dynamic = False, Default = \"3", Scope = Private
 	#tag EndConstant
 
-	#tag Constant, Name = kCallColumnCarried, Type = Double, Dynamic = False, Default = \"4", Scope = Private
+	#tag Constant, Name = kCallColumnCarried, Type = Double, Dynamic = False, Default = \"5", Scope = Private
 	#tag EndConstant
 
-	#tag Constant, Name = kCallColumnCost, Type = Double, Dynamic = False, Default = \"5", Scope = Private
+	#tag Constant, Name = kCallColumnCost, Type = Double, Dynamic = False, Default = \"6", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kCallColumnIntent, Type = Double, Dynamic = False, Default = \"2", Scope = Private
 	#tag EndConstant
 
 	#tag Constant, Name = kCallColumnSession, Type = Double, Dynamic = False, Default = \"1", Scope = Private
@@ -1088,7 +1095,8 @@ End
 	#tag Event
 		Function RowComparison(row1 as Integer, row2 as Integer, column as Integer, ByRef result as Integer) As Boolean
 		  // Times and numbers sort by value. A call with no price sorts below every priced one.
-		  result = CompareCells(Me, row1, row2, column, column = kCallColumnSession Or column = kCallColumnCall)
+		  result = CompareCells(Me, row1, row2, column, column = kCallColumnSession Or column = kCallColumnIntent Or _
+		  column = kCallColumnCall)
 		  Return True
 		End Function
 	#tag EndEvent

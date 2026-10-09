@@ -95,6 +95,19 @@ Inherits TestGroup
 		  count = calls.Count
 		  Assert.AreEqual(1, count)
 		  If count = 1 Then Assert.AreEqual("/Users/dev/lab/src/config.py", calls(0).TargetPath)
+		  If count = 1 Then Assert.AreEqual(WakeCallPattern.kKeyReread, calls(0).PatternKey)
+		  
+		  // A file's calls carry their intents.
+		  calls = mCatalog.ToolCalls(WakeCatalog.ToolGroupings.File, "/Users/dev/lab/src/config.py")
+		  Var keys() As String
+		  For Each c As WakeToolCallInfo In calls
+		    keys.Add(c.PatternKey)
+		  Next
+		  count = keys.Count
+		  Assert.AreEqual(4, count)
+		  Assert.IsTrue(keys.IndexOf(WakeCallPattern.kKeyEdit) >= 0)
+		  Assert.IsTrue(keys.IndexOf(WakeCallPattern.kKeyLineRange) >= 0)
+		  Assert.IsTrue(keys.IndexOf(WakeCallPattern.kKeyWholeFile) >= 0)
 		End Sub
 	#tag EndMethod
 
