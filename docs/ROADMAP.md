@@ -91,10 +91,15 @@ Each milestone ends with the tests passing and a commit.
   `WakeTimeline.CostsJSON`, so the page still doesn't depend on prices.
   91 tests. On real data (12 sessions) the estimates match a Python reference
   exactly, and the slowest page takes 0.16 s.
-- [ ] **12. Where the tokens went.** Store each tool call's estimate in the
-  index and show it grouped by tool, file type and shell command, across
-  sessions and periods, with cost. The goal is to show which reads are
-  worth replacing with a narrower tool.
+- [x] **12. Where the tokens went.** The index keeps a `tool_usage` row per
+  tool call and model, with the estimated tokens added and re-read, the
+  shell program (`WakeEvent.ShellProgram`), the target path and its file
+  type (`TargetPath`, `FileType`). `WakeCatalog.ToolUsage` groups them by
+  tool, tool and file type, shell command or file as `WakeToolUsageGroup`s.
+  The Usage window has these four groupings below the usual three, with
+  calls, sessions, ≈ added, ≈ per call, ≈ re-read, ≈ total and cost. Schema 5.
+  93 tests. On real data (all projects) indexing takes 7.9 s and a query
+  8–14 ms. Shell commands on `.xojo_code` files were the largest group.
 
 After v0.1: Codex CLI and Gemini CLI parsers, once real sessions exist on a
 machine to inspect, and the console companion.
@@ -120,6 +125,8 @@ machine to inspect, and the console companion.
 | The timeline **opens in its own window** (`SessionWindow`), one per session. | It needs the full width for diffs and output, and two sessions can be compared side by side. |
 | The timeline page has a **CSP of `default-src 'none'`** with inline style and script, and the viewer **cancels every navigation** after the page loads. | Transcripts are untrusted text. Nothing in them may load a remote resource or move the viewer off the page. |
 | The timeline page holds **no amounts**. Its cost slots are filled by `wakeSetCosts` after load and after every price change. | Reloading the page would lose the scroll position and the open blocks. |
+| Where the tokens went is a set of **groupings in the Usage window**, not its own window. | It shares the period, tiles and chart, and needs no new layout. |
+| A shell command's **program** is the first word of its first line after `cd`, `export` and `VAR=value` parts, and its **target** is the last file-like word on that line. | Commands rarely say what they read in a structured way. This finds `sed`, `cat` and `grep` reads of a file. Loops show up as `for`. |
 | Token figures per tool call are **estimates, marked ≈**, from context growth between responses, split among the inputs by text length. | Transcripts record usage only per response, so this is the only per-result signal. Attachments and reminders Wake can't see inflate it a little. |
 | Search words match as **prefixes**, `"quoted text"` as a phrase, and every term must match. Every term is quoted, so FTS5 operators are plain words. | Search as you type needs partial words, and no input may raise an FTS5 syntax error. |
 | Search lives **in the main window**, scoped by the source-list selection, not in its own window. | Agent and project filters come for free, and the detail pane shows the hit's session. |
@@ -217,6 +224,9 @@ machine to inspect, and the console companion.
   connection, and the index uses WAL so the UI can read during indexing.
   Shared lazy globals such as `AgentRegistry.Parsers` must be filled on the
   main thread before the thread starts.
+- **A new index table goes in `CreateSchema`'s drop list** as well as in
+  `SchemaStatements`, or the next schema bump fails because the table
+  already exists.
 - **Foreign-key cascades fire triggers**, so deleting a `files` row clears
   its sessions, events and `events_fts` rows. A test checks this.
 - **Async XojoUnit tests:** call `AsyncAwait(seconds)` before starting the

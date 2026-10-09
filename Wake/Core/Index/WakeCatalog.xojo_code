@@ -278,6 +278,72 @@ Protected Class WakeCatalog
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function ToolUsage(grouping As ToolGroupings, fromTime As DateTime = Nil) As WakeToolUsageGroup()
+		  // Estimated tokens per tool, tool and file type, shell command or file, from tool calls
+		  // made from fromTime on, with the most tokens (added plus re-read) first. Each group is
+		  // split by model so it can be priced. Raises DatabaseException.
+		  Var keyExpression As String
+		  Var clauses() As String
+		  Var values() As Variant
+
+		  Select Case grouping
+		  Case ToolGroupings.Tool
+		    keyExpression = "t.tool"
+		  Case ToolGroupings.ToolAndFileType
+		    keyExpression = "CASE WHEN t.file_type = '' THEN t.tool ELSE t.tool || ' ' || t.file_type END"
+		  Case ToolGroupings.Command
+		    keyExpression = "t.command"
+		    clauses.Add("t.command <> ''")
+		  Case ToolGroupings.File
+		    keyExpression = "t.target"
+		    clauses.Add("t.target <> ''")
+		  End Select
+		  clauses.Add("1 = 1")
+
+		  If fromTime <> Nil Then
+		    clauses.Add("coalesce(t.timestamp, us.start_time) >= ?")
+		    values.Add(fromTime.SecondsFrom1970)
+		  End If
+
+		  // Subagent calls count toward the session that started the subagent.
+		  Var source As String = " FROM tool_usage t JOIN sessions us ON us.id = t.session_id " + _
+		  "JOIN sessions ts ON ts.id = coalesce(us.parent_id, us.id) WHERE " + String.FromArray(clauses, " AND ")
+
+		  Var groups() As WakeToolUsageGroup
+		  Var byKey As Dictionary = WakeCore.NewCaseSensitiveDictionary
+
+		  Var rs As RowSet = mIndex.Database.SelectSQL("SELECT " + keyExpression + " AS group_key, " + _
+		  "sum(t.is_first) AS calls, sum(t.added_tokens) AS added, sum(t.carried_tokens) AS carried, " + _
+		  "count(DISTINCT ts.id) AS session_count" + source + _
+		  " GROUP BY group_key ORDER BY sum(t.added_tokens + t.carried_tokens) DESC, calls DESC, group_key", values)
+
+		  For Each row As DatabaseRow In rs
+		    Var g As New WakeToolUsageGroup
+		    g.Key = row.Column("group_key").StringValue
+		    g.Label = g.Key
+		    g.Calls = row.Column("calls").IntegerValue
+		    g.AddedTokens = row.Column("added").Int64Value
+		    g.CarriedTokens = row.Column("carried").Int64Value
+		    g.SessionCount = row.Column("session_count").IntegerValue
+		    groups.Add(g)
+		    byKey.Value(g.Key) = g
+		  Next
+
+		  rs = mIndex.Database.SelectSQL("SELECT " + keyExpression + " AS group_key, t.model AS model, " + _
+		  "sum(t.input_tokens) AS input_tokens, 0 AS output_tokens, sum(t.cache_write_tokens) AS cache_write_tokens, " + _
+		  "sum(t.cache_write_1h_tokens) AS cache_write_1h_tokens, sum(t.cache_read_tokens) AS cache_read_tokens" + _
+		  source + " AND t.model <> '' GROUP BY group_key, t.model", values)
+
+		  For Each row As DatabaseRow In rs
+		    Var g As WakeToolUsageGroup = WakeToolUsageGroup(byKey.Lookup(row.Column("group_key").StringValue, Nil).ObjectValue)
+		    If g <> Nil Then g.Add(row.Column("model").StringValue, UsageFrom(row))
+		  Next
+
+		  Return groups
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function Usage(grouping As UsageGroupings, fromTime As DateTime = Nil, agentID As String = "", projectID As Integer = 0) As WakeUsageGroup()
 		  // Token usage per day, project, model or top-level session, split by model so it can be
 		  // priced. Subagent usage counts toward the session that started it. fromTime limits it to
@@ -385,6 +451,13 @@ Protected Class WakeCatalog
 		Private mIndex As WakeIndex
 	#tag EndProperty
 
+
+	#tag Enum, Name = ToolGroupings, Type = Integer, Flags = &h0
+		Tool
+		  ToolAndFileType
+		  Command
+		File
+	#tag EndEnum
 
 	#tag Enum, Name = UsageGroupings, Type = Integer, Flags = &h0
 		Day

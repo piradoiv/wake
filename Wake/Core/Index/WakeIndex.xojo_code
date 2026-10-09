@@ -29,7 +29,7 @@ Protected Class WakeIndex
 
 		  mDB.BeginTransaction
 		  Try
-		    For Each name As String In Array("events_fts", "events", "usage", "session_models", "sessions", "projects", "files", "meta")
+		    For Each name As String In Array("events_fts", "events", "tool_usage", "usage", "session_models", "sessions", "projects", "files", "meta")
 		      mDB.ExecuteSQL("DROP TABLE IF EXISTS " + name)
 		    Next
 
@@ -140,11 +140,57 @@ Protected Class WakeIndex
 		  Next
 
 		  InsertEvents(sessionID, session)
+		  InsertToolUsage(sessionID, session)
 
 		  For Each child As WakeSession In session.Subagents
 		    InsertSession(fileID, sessionID, projectID, child)
 		  Next
 		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub InsertToolUsage(sessionID As Integer, session As WakeSession)
+		  // One row per tool call and model, with the estimated tokens its result added and the cache
+		  // reads of them later. is_first marks one row per call, so calls can be counted.
+		  For Each e As WakeEvent In session.Events
+		    If Not e.IsToolCall Then Continue
+
+		    Var byModel As Dictionary = WakeCore.NewCaseSensitiveDictionary
+		    If e.AddedUsage <> Nil Then
+		      For Each key As Variant In e.AddedUsage.ByModel.Keys
+		        byModel.Value(key) = True
+		      Next
+		    End If
+		    If e.CarriedUsage <> Nil Then
+		      For Each key As Variant In e.CarriedUsage.ByModel.Keys
+		        byModel.Value(key) = True
+		      Next
+		    End If
+		    If byModel.KeyCount = 0 Then byModel.Value("") = True
+
+		    Var isFirst As Integer = 1
+		    For Each key As Variant In byModel.Keys
+		      Var model As String = key.StringValue
+		      Var added As WakeTokenUsage = ModelUsage(e.AddedUsage, model)
+		      Var carried As WakeTokenUsage = ModelUsage(e.CarriedUsage, model)
+
+		      mDB.ExecuteSQL("INSERT INTO tool_usage (session_id, seq, is_first, timestamp, tool, command, file_type, " + _
+		      "target, model, added_tokens, carried_tokens, input_tokens, cache_write_tokens, cache_write_1h_tokens, " + _
+		      "cache_read_tokens) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", _
+		      sessionID, e.Sequence, isFirst, TimeValue(e.Timestamp), e.ToolName, e.ShellProgram, e.FileType, _
+		      e.TargetPath, model, added.Total, carried.CacheReadTokens, added.InputTokens, added.CacheWriteTokens, _
+		      added.CacheWrite1hTokens, carried.CacheReadTokens)
+		      isFirst = 0
+		    Next
+		  Next
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function ModelUsage(group As WakeUsageGroup, model As String) As WakeTokenUsage
+		  If group <> Nil And group.ByModel.HasKey(model) Then Return WakeTokenUsage(group.ByModel.Value(model).ObjectValue)
+		  Return New WakeTokenUsage
+		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
@@ -285,6 +331,17 @@ Protected Class WakeIndex
 		  "is_error INTEGER NOT NULL DEFAULT 0, subagent_uid TEXT NOT NULL DEFAULT '')")
 		  s.Add("CREATE INDEX events_session ON events (session_id, seq)")
 
+		  // Estimated tokens per tool call, split by model so they can be priced. added_tokens is what
+		  // its result added to the context, as input and cache writes; carried_tokens is how often
+		  // later responses read it again, as cache reads.
+		  s.Add("CREATE TABLE tool_usage (session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE, " + _
+		  "seq INTEGER NOT NULL, is_first INTEGER NOT NULL, timestamp REAL, tool TEXT NOT NULL, " + _
+		  "command TEXT NOT NULL DEFAULT '', file_type TEXT NOT NULL DEFAULT '', target TEXT NOT NULL DEFAULT '', " + _
+		  "model TEXT NOT NULL, added_tokens INTEGER NOT NULL, carried_tokens INTEGER NOT NULL, " + _
+		  "input_tokens INTEGER NOT NULL, cache_write_tokens INTEGER NOT NULL, cache_write_1h_tokens INTEGER NOT NULL, " + _
+		  "cache_read_tokens INTEGER NOT NULL)")
+		  s.Add("CREATE INDEX tool_usage_session ON tool_usage (session_id)")
+
 		  // The rowid of each search row is the id of its event.
 		  s.Add("CREATE VIRTUAL TABLE events_fts USING fts5(body, tokenize = 'unicode61 remove_diacritics 2')")
 		  s.Add("CREATE TRIGGER events_fts_delete AFTER DELETE ON events BEGIN " + _
@@ -369,7 +426,7 @@ Protected Class WakeIndex
 	#tag Constant, Name = kMaxSearchTextLength, Type = Double, Dynamic = False, Default = \"65536", Scope = Public
 	#tag EndConstant
 
-	#tag Constant, Name = kSchemaVersion, Type = Double, Dynamic = False, Default = \"4", Scope = Public
+	#tag Constant, Name = kSchemaVersion, Type = Double, Dynamic = False, Default = \"5", Scope = Public
 	#tag EndConstant
 
 

@@ -1,5 +1,39 @@
 #tag Class
 Protected Class WakeEvent
+	#tag Method, Flags = &h21
+		Private Shared Function ExtensionOf(path As String) As String
+		  // The lowercased extension of a file name, such as ".xojo_code", or "" when it has none.
+		  // Version numbers and decimals such as "1.5" have no letter, so they don't count.
+		  path = path.ReplaceAll("\", "/")
+		  Var name As String = path.NthField("/", path.CountFields("/"))
+		  Var count As Integer = name.CountFields(".")
+		  If count < 2 Then Return ""
+
+		  Var extension As String = name.NthField(".", count)
+		  If extension = "" Or extension.Length > 15 Or name.Length = extension.Length + 1 Then Return ""
+
+		  Var hasLetter As Boolean
+		  For i As Integer = 0 To extension.Length - 1
+		    Var c As String = extension.Middle(i, 1)
+		    If (c >= "a" And c <= "z") Or (c >= "A" And c <= "Z") Then
+		      hasLetter = True
+		    ElseIf Not ((c >= "0" And c <= "9") Or c = "_" Or c = "-") Then
+		      Return ""
+		    End If
+		  Next
+		  If Not hasLetter Then Return ""
+
+		  Return "." + extension.Lowercase
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function FileType() As String
+		  // The extension of the file a tool call worked on, such as ".xojo_code", or "".
+		  Return ExtensionOf(TargetPath)
+		End Function
+	#tag EndMethod
+
 	#tag Method, Flags = &h0
 		Function IsToolCall() As Boolean
 		  Return Kind = Kinds.ToolCall Or Kind = Kinds.ShellCommand Or Kind = Kinds.FileEdit
@@ -43,6 +77,30 @@ Protected Class WakeEvent
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function ShellProgram() As String
+		  // The program a shell command runs, such as "sed" or "git". Leading cd, export and
+		  // VAR=value parts are skipped, so `cd x && sed -n 1p f` gives "sed".
+		  If Kind <> Kinds.ShellCommand Then Return ""
+
+		  Var firstLine As String = Command.ReplaceLineEndings(&u0A).NthField(&u0A, 1)
+		  For Each separator As String In Array("&&", "||", "|", ";")
+		    firstLine = firstLine.ReplaceAll(separator, &u0A)
+		  Next
+
+		  For Each part As String In firstLine.Split(&u0A)
+		    For Each word As String In part.Trim.Split(" ")
+		      If word = "" Or word.IndexOf("=") > 0 Then Continue
+		      If word = "cd" Or word = "export" Or word = "pushd" Or word = "source" Then Exit
+		      word = word.ReplaceAll("""", "").ReplaceAll("'", "")
+		      Return word.NthField("/", word.CountFields("/"))
+		    Next
+		  Next
+
+		  Return ""
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function Summary() As String
 		  // One line describing the event, for lists and search results.
 		  Var line As String
@@ -65,6 +123,37 @@ Protected Class WakeEvent
 		  line = line.ReplaceLineEndings(" ").Trim
 		  If line.Length > 200 Then line = line.Left(199) + "…"
 		  Return line
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function TargetPath() As String
+		  // The file or folder a tool call worked on: its file_path, notebook_path or path input. For a
+		  // shell command, the last word on its first line that looks like a file name.
+		  If FilePath <> "" Then Return FilePath
+
+		  If Kind = Kinds.ShellCommand Then
+		    Var words() As String = Command.ReplaceLineEndings(&u0A).NthField(&u0A, 1).Split(" ")
+		    For i As Integer = words.LastIndex DownTo 1
+		      Var word As String = words(i).ReplaceAll("""", "").ReplaceAll("'", "")
+		      If word.BeginsWith("-") Or word.IndexOf(".") < 0 Then Continue
+		      If ExtensionOf(word) <> "" Then Return word
+		    Next
+		    Return ""
+		  End If
+
+		  If ToolInputJSON = "" Then Return ""
+		  Try
+		    Var toolInput As Dictionary = WakeCore.AsDictionary(ParseJSON(ToolInputJSON))
+		    For Each key As String In Array("file_path", "notebook_path", "path")
+		      Var value As String = WakeCore.JSONString(toolInput, key)
+		      If value <> "" Then Return value
+		    Next
+		  Catch err As JSONException
+		    Return ""
+		  End Try
+
+		  Return ""
 		End Function
 	#tag EndMethod
 

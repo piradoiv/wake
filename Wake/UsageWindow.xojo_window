@@ -353,16 +353,6 @@ End
 		    mCatalog = New WakeCatalog(index)
 		  End If
 		  
-		  Var grouping As WakeCatalog.UsageGroupings = WakeCatalog.UsageGroupings(GroupPopup.RowTagAt(GroupPopup.SelectedRowIndex).IntegerValue)
-		  Select Case grouping
-		  Case WakeCatalog.UsageGroupings.Day
-		    UsageList.HeaderAt(kColumnLabel) = "Day"
-		  Case WakeCatalog.UsageGroupings.Project
-		    UsageList.HeaderAt(kColumnLabel) = "Project"
-		  Else
-		    UsageList.HeaderAt(kColumnLabel) = "Model"
-		  End Select
-		  
 		  Var periodStart As DateTime
 		  Var days As Integer = PeriodPopup.RowTagAt(PeriodPopup.SelectedRowIndex).IntegerValue
 		  If days > 0 Then
@@ -370,7 +360,25 @@ End
 		    Var midnight As New DateTime(now.Year, now.Month, now.Day)
 		    periodStart = midnight.SubtractInterval(0, 0, days - 1)
 		  End If
-		  
+
+		  Var tag As Integer = GroupPopup.RowTagAt(GroupPopup.SelectedRowIndex).IntegerValue
+		  If tag >= kToolGroupingBase Then
+		    Var toolGrouping As Integer = tag - kToolGroupingBase
+		    ShowToolUsage(WakeCatalog.ToolGroupings(toolGrouping), periodStart)
+		    ShowGlance(periodStart)
+		    Return
+		  End If
+
+		  Var grouping As WakeCatalog.UsageGroupings = WakeCatalog.UsageGroupings(tag)
+		  Var label As String = "Model"
+		  Select Case grouping
+		  Case WakeCatalog.UsageGroupings.Day
+		    label = "Day"
+		  Case WakeCatalog.UsageGroupings.Project
+		    label = "Project"
+		  End Select
+		  SetHeaders(Array(label, "Sessions", "Input", "Output", "Cache write", "Cache read", "Total", "Est. cost"))
+
 		  Var groups() As WakeUsageGroup
 		  Try
 		    groups = mCatalog.Usage(grouping, periodStart)
@@ -413,6 +421,14 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Sub SetHeaders(labels() As String)
+		  For column As Integer = 0 To labels.LastIndex
+		    UsageList.HeaderAt(column) = labels(column)
+		  Next
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Sub SetUp()
 		  mLoading = True
 		  
@@ -423,6 +439,18 @@ End
 		  GroupPopup.RowTagAt(GroupPopup.LastAddedRowIndex) = Integer(WakeCatalog.UsageGroupings.Project)
 		  GroupPopup.AddRow("By model")
 		  GroupPopup.RowTagAt(GroupPopup.LastAddedRowIndex) = Integer(WakeCatalog.UsageGroupings.Model)
+
+		  // Tool groupings show where the tokens went. Their tags are kToolGroupingBase plus their
+		  // WakeCatalog.ToolGroupings value.
+		  GroupPopup.AddSeparator
+		  GroupPopup.AddRow("By tool")
+		  GroupPopup.RowTagAt(GroupPopup.LastAddedRowIndex) = kToolGroupingBase + Integer(WakeCatalog.ToolGroupings.Tool)
+		  GroupPopup.AddRow("By tool and file type")
+		  GroupPopup.RowTagAt(GroupPopup.LastAddedRowIndex) = kToolGroupingBase + Integer(WakeCatalog.ToolGroupings.ToolAndFileType)
+		  GroupPopup.AddRow("By shell command")
+		  GroupPopup.RowTagAt(GroupPopup.LastAddedRowIndex) = kToolGroupingBase + Integer(WakeCatalog.ToolGroupings.Command)
+		  GroupPopup.AddRow("By file")
+		  GroupPopup.RowTagAt(GroupPopup.LastAddedRowIndex) = kToolGroupingBase + Integer(WakeCatalog.ToolGroupings.File)
 		  GroupPopup.SelectedRowIndex = 0
 		  
 		  // Each period row's tag is its length in days, counted back from the end of today.
@@ -439,13 +467,6 @@ End
 		  PeriodPopup.RowTagAt(PeriodPopup.LastAddedRowIndex) = 0
 		  PeriodPopup.SelectedRowIndex = 2
 		  
-		  UsageList.HeaderAt(kColumnSessions) = "Sessions"
-		  UsageList.HeaderAt(kColumnInput) = "Input"
-		  UsageList.HeaderAt(kColumnOutput) = "Output"
-		  UsageList.HeaderAt(kColumnCacheWrite) = "Cache write"
-		  UsageList.HeaderAt(kColumnCacheRead) = "Cache read"
-		  UsageList.HeaderAt(kColumnTotal) = "Total"
-		  UsageList.HeaderAt(kColumnCost) = "Est. cost"
 		  For column As Integer = kColumnSessions To kColumnCost
 		    UsageList.ColumnAlignmentAt(column) = DesktopListBox.Alignments.Right
 		  Next
@@ -576,6 +597,83 @@ End
 		End Sub
 	#tag EndMethod
 
+	#tag Method, Flags = &h21
+		Private Sub ShowToolUsage(grouping As WakeCatalog.ToolGroupings, periodStart As DateTime)
+		  // Where the tokens went: what each group's tool results added to the context, and how often
+		  // later responses read them again. Both are estimates, so they're marked with ≈.
+		  Var label As String
+		  Select Case grouping
+		  Case WakeCatalog.ToolGroupings.Tool
+		    label = "Tool"
+		  Case WakeCatalog.ToolGroupings.ToolAndFileType
+		    label = "Tool and file type"
+		  Case WakeCatalog.ToolGroupings.Command
+		    label = "Shell command"
+		  Else
+		    label = "File"
+		  End Select
+		  SetHeaders(Array(label, "Calls", "Sessions", "≈ Added", "≈ Per call", "≈ Re-read", "≈ Total", "Est. cost"))
+		  
+		  Var groups() As WakeToolUsageGroup
+		  Try
+		    groups = mCatalog.ToolUsage(grouping, periodStart)
+		  Catch err As DatabaseException
+		    StatusLabel.Text = "Could not read the index: " + err.Message
+		    Return
+		  End Try
+		  
+		  Var all As New WakeUsageGroup
+		  Var calls As Integer
+		  Var added, carried As Int64
+		  
+		  For Each g As WakeToolUsageGroup In groups
+		    Var perCall As Int64 = If(g.Calls > 0, g.AddedTokens \ g.Calls, 0)
+		    Var estimate As WakeCostEstimate = App.Prices.Estimate(g.ByModel)
+		    Var shown As String = If(g.Key = "", "(none)", g.Key)
+		    If grouping = WakeCatalog.ToolGroupings.File Then shown = WakeFormat.ProjectName(g.Key)
+		    
+		    UsageList.AddRow(shown, WakeFormat.Count(g.Calls), WakeFormat.Count(g.SessionCount), WakeFormat.Tokens(g.AddedTokens), _
+		    WakeFormat.Tokens(perCall), WakeFormat.Tokens(g.CarriedTokens), WakeFormat.Tokens(g.AddedTokens + g.CarriedTokens), _
+		    If(estimate.HasTokens, WakeFormat.Cost(estimate), WakeFormat.kUnknown))
+		    
+		    Var row As Integer = UsageList.LastAddedRowIndex
+		    UsageList.CellTagAt(row, kColumnLabel) = shown
+		    UsageList.CellTagAt(row, kColumnSessions) = g.Calls
+		    UsageList.CellTagAt(row, kColumnInput) = g.SessionCount
+		    UsageList.CellTagAt(row, kColumnOutput) = g.AddedTokens
+		    UsageList.CellTagAt(row, kColumnCacheWrite) = perCall
+		    UsageList.CellTagAt(row, kColumnCacheRead) = g.CarriedTokens
+		    UsageList.CellTagAt(row, kColumnTotal) = g.AddedTokens + g.CarriedTokens
+		    UsageList.CellTagAt(row, kColumnCost) = If(estimate.PricedTokens > 0, estimate.AmountUSD, -1.0)
+		    If grouping = WakeCatalog.ToolGroupings.File Then UsageList.CellTooltipAt(row, kColumnLabel) = g.Key
+		    If estimate.UnpricedModels.Count > 0 Then
+		      UsageList.CellTooltipAt(row, kColumnCost) = "No price set for " + String.FromArray(estimate.UnpricedModels, ", ")
+		    End If
+		    
+		    calls = calls + g.Calls
+		    added = added + g.AddedTokens
+		    carried = carried + g.CarriedTokens
+		    For Each model As Variant In g.ByModel.Keys
+		      all.Add(model.StringValue, WakeTokenUsage(g.ByModel.Value(model).ObjectValue))
+		    Next
+		  Next
+		  
+		  If UsageList.SortingColumn >= 0 Then UsageList.Sort
+		  
+		  // Commands and files cover only some calls, so their totals aren't summed up here.
+		  Var parts() As String
+		  If grouping = WakeCatalog.ToolGroupings.Tool Or grouping = WakeCatalog.ToolGroupings.ToolAndFileType Then
+		    parts.Add(WakeFormat.Count(calls) + " tool calls")
+		    parts.Add("≈" + WakeFormat.Tokens(added) + " added")
+		    parts.Add("≈" + WakeFormat.Tokens(carried) + " re-read")
+		    Var estimate As WakeCostEstimate = App.Prices.Estimate(all.ByModel)
+		    If estimate.PricedTokens > 0 Then parts.Add("estimated cost " + WakeFormat.Cost(estimate))
+		  End If
+		  parts.Add("estimated from how the context grows between responses")
+		  StatusLabel.Text = String.FromArray(parts, " · ")
+		End Sub
+	#tag EndMethod
+
 
 	#tag Property, Flags = &h21
 		Private mCatalog As WakeCatalog
@@ -618,6 +716,9 @@ End
 	#tag EndConstant
 
 	#tag Constant, Name = kMinChartDays, Type = Double, Dynamic = False, Default = \"14", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kToolGroupingBase, Type = Double, Dynamic = False, Default = \"100", Scope = Private
 	#tag EndConstant
 
 

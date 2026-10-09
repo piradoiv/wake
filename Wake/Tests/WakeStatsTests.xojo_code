@@ -95,6 +95,15 @@ Inherits TestGroup
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Function FindToolGroup(groups() As WakeToolUsageGroup, key As String) As WakeToolUsageGroup
+		  For Each g As WakeToolUsageGroup In groups
+		    If g.Key = key Then Return g
+		  Next
+		  Return Nil
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function LocalDay(isoTime As String) As String
 		  // The calendar day of isoTime in the local time zone, as the catalog groups it.
 		  Var utc As DateTime = WakeCore.ParseISO8601(isoTime)
@@ -237,6 +246,48 @@ Inherits TestGroup
 		  Assert.AreEqual(110, WakeTokenUsage(g.ByModel.Value("claude-haiku-4-5-20251001").ObjectValue).InputTokens, "subagent included")
 		  Assert.AreEqual(s4.TotalUsage.Total, g.Total.Total)
 		  Assert.AreEqual(100, g.Total.CacheWrite1hTokens)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub ToolUsageTest()
+		  // Session 2's Reads added 640 and 628 tokens, each read again by three later responses.
+		  Var byTool() As WakeToolUsageGroup = mCatalog.ToolUsage(WakeCatalog.ToolGroupings.Tool)
+		  Var reads As WakeToolUsageGroup = FindToolGroup(byTool, "Read")
+		  Assert.IsNotNil(reads)
+		  If reads Is Nil Then Return
+		  Assert.AreEqual(2, reads.Calls)
+		  Assert.AreEqual(1268, reads.AddedTokens)
+		  Assert.AreEqual(3804, reads.CarriedTokens)
+		  Assert.AreEqual(1, reads.SessionCount)
+		  Assert.AreEqual(1268, reads.Total.InputTokens, "the response read them as plain input")
+		  Assert.AreEqual(3804, reads.Total.CacheReadTokens)
+		  Assert.AreEqual("Read", byTool(0).Key, "most tokens first")
+		  
+		  Var grep As WakeToolUsageGroup = FindToolGroup(byTool, "Grep")
+		  Assert.IsNotNil(grep, "the subagent's call")
+		  If grep <> Nil Then Assert.AreEqual(0, grep.AddedTokens, "its context didn't grow")
+		  
+		  Var byType() As WakeToolUsageGroup = mCatalog.ToolUsage(WakeCatalog.ToolGroupings.ToolAndFileType)
+		  Assert.IsNotNil(FindToolGroup(byType, "Read .c"))
+		  Assert.IsNotNil(FindToolGroup(byType, "Write .md"))
+		  Assert.IsNotNil(FindToolGroup(byType, "Bash"), "make test names no file")
+		  
+		  Var byCommand() As WakeToolUsageGroup = mCatalog.ToolUsage(WakeCatalog.ToolGroupings.Command)
+		  Var commandCount As Integer = byCommand.Count
+		  Assert.AreEqual(1, commandCount, "only shell commands")
+		  Assert.AreEqual("make", byCommand(0).Key)
+		  Assert.AreEqual(2, byCommand(0).Calls)
+		  
+		  Var byFile() As WakeToolUsageGroup = mCatalog.ToolUsage(WakeCatalog.ToolGroupings.File)
+		  Var mainFile As WakeToolUsageGroup = FindToolGroup(byFile, "/Users/dev/demo/main.c")
+		  Assert.IsNotNil(mainFile)
+		  If mainFile <> Nil Then Assert.AreEqual(2, mainFile.Calls, "read and edited")
+		  
+		  Var later As DateTime = DateTime.Now.AddInterval(0, 0, 1)
+		  Var none() As WakeToolUsageGroup = mCatalog.ToolUsage(WakeCatalog.ToolGroupings.Tool, later)
+		  Var noneCount As Integer = none.Count
+		  Assert.AreEqual(0, noneCount, "nothing in the future")
 		End Sub
 	#tag EndMethod
 

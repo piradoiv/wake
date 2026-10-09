@@ -168,6 +168,41 @@ Inherits TestGroup
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub ToolTargetTest()
+		  // The program and file a tool call worked on, used to group where the tokens went.
+		  Var e As New WakeEvent
+		  e.Kind = WakeEvent.Kinds.ShellCommand
+		  e.Command = "cd ""/Users/dev/my app"" && sed -n 1,80p Core/WakeTimeline.xojo_code"
+		  Assert.AreEqual("sed", e.ShellProgram)
+		  Assert.AreEqual("Core/WakeTimeline.xojo_code", e.TargetPath)
+		  Assert.AreEqual(".xojo_code", e.FileType)
+
+		  e.Command = "FOO=1 /usr/bin/git log --oneline"
+		  Assert.AreEqual("git", e.ShellProgram)
+		  Assert.AreEqual("", e.FileType)
+
+		  e.Command = "python3 -I - <<'EOF'" + &u0A + "open('notes.txt')"
+		  Assert.AreEqual("python3", e.ShellProgram)
+		  Assert.AreEqual("", e.TargetPath, "only the first line is looked at")
+
+		  e.Command = "grep -n ""foo.bar"" README.md"
+		  Assert.AreEqual(".md", e.FileType, "the last file-like word wins")
+
+		  e.Command = "sleep 1.5"
+		  Assert.AreEqual("", e.FileType, "a number is not a file type")
+
+		  Var readCall As New WakeEvent
+		  readCall.Kind = WakeEvent.Kinds.ToolCall
+		  readCall.ToolInputJSON = "{""file_path"": ""/Users/dev/app/Main.XOJO_WINDOW""}"
+		  Assert.AreEqual(".xojo_window", readCall.FileType)
+		  Assert.AreEqual("", readCall.ShellProgram, "not a shell command")
+
+		  readCall.ToolInputJSON = "{""file_path"": ""/Users/dev/app/.gitignore""}"
+		  Assert.AreEqual("", readCall.FileType, "a dot file has no extension")
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub TokenUsageAddTest()
 		  Var a As New WakeTokenUsage
 		  a.InputTokens = 1

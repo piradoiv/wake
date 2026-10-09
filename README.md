@@ -18,11 +18,18 @@ ran, which files it changed and how many tokens it used.
   command such as `/clear` are hidden unless you ask for them.
 - **Read a session as a timeline** (double-click it, or Cmd+O): prompts and
   answers, tool calls with their output, file edits as coloured diffs, and
-  subagents nested under the call that started them.
+  subagents nested under the call that started them. Each response shows its
+  time and tokens, each tool call its duration and the tokens its result
+  added to the context, and each prompt the totals for its turn, all with
+  their estimated cost.
 - **Search** prompts, answers, commands and output across all sessions
   (Cmd+F), filtered by kind of event and by period. Opening a match scrolls
   the timeline to it.
 - **See usage** per day, project or model for a period (Window → Usage, Cmd+U).
+- **See where the tokens went** by tool, tool and file type, shell command or
+  file, in the same window. The figures are estimates from how the context
+  grows between responses. They show which reads are worth replacing with a
+  narrower tool.
 - **Estimate costs** from your own price table (Window → Prices). Wake ships no
   prices, because they change: enter them per million tokens from your
   provider's price list. The cost the agent itself reports is shown next to
