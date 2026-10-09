@@ -247,6 +247,9 @@ machine to inspect, and the console companion.
   the items it has opened, so older files may still have empty blank lines.
   Commit a reformat on its own ("Reformat X as saved by the Xojo IDE"), so
   commit your own work before asking for the save.
+- **Stage files by name, never `git commit -a`.** The IDE saves files in
+  the background (reformats, project settings), and `-a` sweeps them into
+  your commit. Run `git status` first and commit IDE changes on their own.
 - **Adding project items:** create the file first, then add its line to
   `Wake/Wake.xojo_project` with a fresh unique `&h…` id and the parent folder's
   id. Never change existing ids.
