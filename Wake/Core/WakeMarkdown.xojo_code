@@ -185,15 +185,15 @@ Protected Class WakeMarkdown
 		End Sub
 	#tag EndMethod
 
-	#tag Method, Flags = &h21
-		Private Function Cell(text As String) As String
+	#tag Method, Flags = &h0
+		Shared Function Cell(text As String) As String
 		  // Text that stays inside one table cell.
 		  Return WakeFormat.OneLine(text, 0).ReplaceAll("|", "\|")
 		End Function
 	#tag EndMethod
 
-	#tag Method, Flags = &h21
-		Private Function Code(text As String) As String
+	#tag Method, Flags = &h0
+		Shared Function Code(text As String) As String
 		  // Inline code that holds any text: the delimiter is longer than any backtick run inside.
 		  Var ticks As String = "`"
 		  While text.IndexOf(ticks) >= 0

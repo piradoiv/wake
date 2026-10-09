@@ -32,6 +32,15 @@ Begin Menu MainMenuBar
          AutoEnable = True
          Visible = True
       End
+      Begin DesktopMenuItem FileExportReport
+         SpecialMenu = 0
+         Index = -2147483648
+         Text = "Export &Report…"
+         Symbol = ""
+         AutoEnabled = True
+         AutoEnable = True
+         Visible = True
+      End
       Begin DesktopMenuItem FileRefresh
          SpecialMenu = 0
          Index = -2147483648

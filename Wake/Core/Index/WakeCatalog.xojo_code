@@ -387,6 +387,9 @@ Protected Class WakeCatalog
 		  Case ToolGroupings.File
 		    clauses.Add("t.target <> ''")
 		    Return "t.target"
+		  Case ToolGroupings.Pattern
+		    // A re-read counts as a re-read, not as the kind of read it was.
+		    Return "CASE WHEN t.is_reread = 1 THEN '" + WakeCallPattern.kKeyReread + "' ELSE t.pattern END"
 		  Else
 		    Return "t.tool"
 		  End Select
@@ -394,14 +397,24 @@ Protected Class WakeCatalog
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
-		Function ToolUsage(grouping As ToolGroupings, fromTime As DateTime = Nil) As WakeToolUsageGroup()
-		  // Estimated tokens per tool, tool and file type, shell command or file, from tool calls
-		  // made from fromTime on, with the most tokens (added plus re-read) first. Each group is
-		  // split by model so it can be priced. Raises DatabaseException.
+		Function ToolUsage(grouping As ToolGroupings, fromTime As DateTime = Nil, withinGrouping As ToolGroupings = ToolGroupings.Tool, withinKey As String = "") As WakeToolUsageGroup()
+		  // Estimated tokens per tool, tool and file type, shell command, file or pattern, from tool
+		  // calls made from fromTime on, with the most tokens (added plus re-read) first. Each group
+		  // is split by model so it can be priced, and counts its reads and re-reads. A withinKey
+		  // limits it to the calls in that group of withinGrouping, such as the files of one pattern.
+		  // Raises DatabaseException.
 		  Var clauses() As String
 		  Var values() As Variant
 		  Var keyExpression As String = ToolGroupKey(grouping, clauses)
 		  clauses.Add("1 = 1")
+		  
+		  If withinKey <> "" Then
+		    clauses.Add(ToolGroupKey(withinGrouping, clauses) + " = ?")
+		    values.Add(withinKey)
+		  End If
+		  
+		  Var isRead As String = "t.pattern IN ('" + WakeCallPattern.kKeyLineRange + "', '" + _
+		  WakeCallPattern.kKeySection + "', '" + WakeCallPattern.kKeyWholeFile + "')"
 		  
 		  If fromTime <> Nil Then
 		    clauses.Add("coalesce(t.timestamp, us.start_time) >= ?")
@@ -417,17 +430,24 @@ Protected Class WakeCatalog
 		  
 		  Var rs As RowSet = mIndex.Database.SelectSQL("SELECT " + keyExpression + " AS group_key, " + _
 		  "sum(t.is_first) AS calls, sum(t.added_tokens) AS added, sum(t.carried_tokens) AS carried, " + _
-		  "count(DISTINCT ts.id) AS session_count" + source + _
+		  "count(DISTINCT ts.id) AS session_count, sum(t.is_first * (" + isRead + ")) AS reads, " + _
+		  "sum(t.is_first * t.is_reread) AS rereads, " + _
+		  "sum(t.is_first * (t.pattern = '" + WakeCallPattern.kKeyLineRange + "')) AS line_range_reads, " + _
+		  "count(DISTINCT CASE WHEN " + isRead + " THEN ts.id END) AS read_session_count" + source + _
 		  " GROUP BY group_key ORDER BY sum(t.added_tokens + t.carried_tokens) DESC, calls DESC, group_key", values)
 		  
 		  For Each row As DatabaseRow In rs
 		    Var g As New WakeToolUsageGroup
 		    g.Key = row.Column("group_key").StringValue
-		    g.Label = g.Key
+		    g.Label = If(grouping = ToolGroupings.Pattern, WakeCallPattern.Label(g.Key), g.Key)
 		    g.Calls = row.Column("calls").IntegerValue
 		    g.AddedTokens = row.Column("added").Int64Value
 		    g.CarriedTokens = row.Column("carried").Int64Value
 		    g.SessionCount = row.Column("session_count").IntegerValue
+		    g.Reads = row.Column("reads").IntegerValue
+		    g.Rereads = row.Column("rereads").IntegerValue
+		    g.LineRangeReads = row.Column("line_range_reads").IntegerValue
+		    g.ReadSessionCount = row.Column("read_session_count").IntegerValue
 		    groups.Add(g)
 		    byKey.Value(g.Key) = g
 		  Next
@@ -551,7 +571,8 @@ Protected Class WakeCatalog
 		Tool
 		  ToolAndFileType
 		  Command
-		File
+		  File
+		Pattern
 	#tag EndEnum
 
 	#tag Enum, Name = UsageGroupings, Type = Integer, Flags = &h0

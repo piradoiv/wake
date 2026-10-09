@@ -120,67 +120,32 @@ Each milestone below is one session's work, ending with tests and a commit.
   lists share the space below the chart (`LayOutLists`, also on resize).
   94 tests.
 
-- [ ] **14. Group calls by intent.** Classify every tool call by what it
-  was trying to get, so the fix is obvious from the group.
-  - Core: a `WakeCallPattern` module with an enum and `Classify(e As
-    WakeEvent)`. Patterns and the shape that decides them:
-    - **Line range:** Read with `offset`/`limit`; `sed -n` with numeric
-      addresses (`10,80p`); `head`; `tail`.
-    - **Section:** `sed`/`awk` with a regex address range (`/a/,/b/p`).
-    - **Whole file:** Read without a range; `cat`, `less`, `more` with a file.
-    - **Search:** Grep; `grep`, `rg`, `ag`, `ack`, `git grep`.
-    - **Listing:** Glob; `ls`, `find`, `tree`, `git ls-files`.
-    - **Edit:** Edit, MultiEdit, Write, NotebookEdit.
-    - **Web:** WebFetch, WebSearch, browser MCP tools (name contains
-      `browser` or `chrome`).
-    - **Run:** any other shell command (builds, tests, git, scripts).
-    - **Other:** everything else.
-    Use `WakeEvent.ShellWords` for shell commands (make it public if
-    needed), and the program from `ShellProgram`.
-  - **Re-reads:** in `WakeSession.ComputeStats`, flag a read (line range,
-    section, whole file) of a target already read earlier in the same
-    session, unless an Edit or Write to that target came in between.
-  - `WakeCallPattern.Advice(pattern)` gives one generic sentence per
-    pattern, e.g. line range: "Reads by line number suggest the agent
-    can't ask for a symbol or section by name. A tool or index that returns
-    one function or section by name would send less."; whole file: "Whole
-    files sent at once. An outline first, then only the parts needed, would
-    send less."; re-reads: "The same file read again in a session. It is
-    already in the context, so guidance or a cache can avoid it."
-  - Index: `tool_usage` gains `pattern TEXT` and `is_reread INTEGER`.
-    Bump `kSchemaVersion`. `WakeCatalog.ToolGroupings` gains `Pattern`,
-    with re-reads as their own group ("Re-read") ahead of their pattern.
-  - UI: "By intent" in the grouping popup; the advice shows in the status
-    line for the selected row and as the label's tooltip.
-  - Tests: classification of hand-built events across languages (`.py`,
-    `.go`, `.ts`, `.rs`, a file with spaces in its path); a re-read, and a
-    read after an edit that is not a re-read. Add a fixture session 7 to
-    `generate_claude_code.py` with a `sed -n` range, `cat`, `head`, a
-    regex-range `awk`, and the same file read twice, and document it in
-    `tests/fixtures/README.md`.
-
-- [ ] **15. Waste per file.** The "By file" grouping shows what makes a
-  file expensive to work with.
-  - Catalog: `ToolUsage` also returns, per group, reads, re-reads and the
-    number of distinct line-range reads. Add these to `WakeToolUsageGroup`.
-  - UI: for "By file" and "By intent", show reads, re-reads (with share)
-    and ≈ per read instead of sessions and ≈ per call. Status line for a
-    selected file: "Read N times in M sessions, R of them again in the
-    same session".
-  - Tests: on fixture session 7, the twice-read file has 1 re-read.
-
-- [ ] **16. Export the findings as tasks.** File → Export Report in the
-  Usage window writes Markdown that a developer can paste into an issue or
-  give to an agent as a spec.
-  - Core: `WakeTokenReport` builds it from the catalog for a period: totals,
-    then one section per intent with ≈ tokens, cost, calls, the advice, the
-    top 5 files, and 3 example calls (most expensive) as code blocks, using
-    `WakeMarkdown`'s fence rule. Re-reads get their own section. Examples
-    are commands from the user's own transcripts, and the user chooses
-    where the file goes.
-  - Tests: the report for the fixtures has a section per pattern present,
-    fences longer than any backtick run in an example, and no section for
-    patterns with no calls.
+- [x] **14. Group calls by intent.** `WakeCallPattern` (Core module)
+  classifies each tool call from its shape: line range, section, whole
+  file, search, listing, edit, web, run or other, with a `Label` and a
+  generic `Advice` per key. `WakeSession.ComputeStats` sets `WakeEvent.
+  Pattern` and `IsReread` (a read of a file already read in the same
+  context with no edit in between). `WakeEvent.ResolvedTargetPath` joins
+  relative shell paths to the session's folder (or a leading `cd`), and the
+  index stores that as the target. `tool_usage` gains `pattern` and
+  `is_reread` (schema 7). `ToolGroupings.Pattern` puts re-reads in their
+  own group. "By intent" in the Usage window, with the advice as the
+  label's tooltip and in the status line. Fixture session 7 is in its own
+  root, `claude-code/patterns/`.
+- [x] **15. Waste per file.** `WakeToolUsageGroup` gains `Reads`,
+  `Rereads`, `LineRangeReads` and `ReadSessionCount`. `ToolUsage` takes an
+  optional group of another grouping to stay within (`withinGrouping`,
+  `withinKey`), such as the files of one intent. "By file" and "By intent"
+  show "Read again" (re-reads of reads, with share) and ≈ per read; a
+  selected file's status line reads "Read N times in M sessions, R of them
+  again in the same session".
+- [x] **16. Export the findings as tasks.** `WakeTokenReport` (Core) builds
+  Markdown for a period: totals, then a section per intent (re-reads
+  included) with ≈ tokens, share, cost when priced, the advice, the top 5
+  files and the 3 most expensive calls fenced with `WakeMarkdown.Fence`.
+  File → Export Report (Usage window only). 102 tests. On real data
+  (6,035 calls) indexing takes 13.7 s (7.9 s at schema 6, on less data),
+  and the report 0.23 s.
 
 After v0.1: Codex CLI and Gemini CLI parsers, once real sessions exist on a
 machine to inspect, and the console companion.
@@ -207,7 +172,10 @@ machine to inspect, and the console companion.
 | The timeline page has a **CSP of `default-src 'none'`** with inline style and script, and the viewer **cancels every navigation** after the page loads. | Transcripts are untrusted text. Nothing in them may load a remote resource or move the viewer off the page. |
 | The timeline page holds **no amounts**. Its cost slots are filled by `wakeSetCosts` after load and after every price change. | Reloading the page would lose the scroll position and the open blocks. |
 | Where the tokens went is a set of **groupings in the Usage window**, not its own window. | It shares the period, tiles and chart, and needs no new layout. |
-| A shell command's **program** is the first word of its first line after `cd`, `export`, `source` and `VAR=value` parts, and its **target** is the last file-like word on that line. Words are split the way the shell would: quotes keep spaces, and only unquoted `&&`, `\|\|`, `\|`, `&` and `;` start a new command. | Commands rarely say what they read in a structured way. This finds `sed`, `cat` and `grep` reads of a file. Loops show up as `for`. |
+| A shell command's **program** is the first word of its first line after `cd`, `export`, `source` and `VAR=value` parts, and its **target** is the last file-like word on that line. Words are split the way the shell would: quotes keep spaces, and only unquoted `&&`, `\|\|`, `\|`, `&`, `;`, `$(`, `(`, `)` and backticks start a new command. | Commands rarely say what they read in a structured way. This finds `sed`, `cat` and `grep` reads of a file, also in `f=$(grep …)`. Loops show up as `for`. |
+| A call's **intent** comes only from its shape: the tool, the program and how it asks (`sed -n 10,80p` is a line range, `/a/,/b/` a section, `sed -n /x/p` a search, `sed -i` and `cat > f` an edit). Only the first command of a line counts. | The rule in `CLAUDE.md`: reports work for any language and project. |
+| A **re-read** is any read (line range, section, whole file) of a file already read in the same context, unless an edit or write to it came in between. Compaction starts a new context. Re-reads are their own intent, not counted in their read's pattern. | The content is already in the context, so reading it again is the waste to show. After an edit or compaction, reading again is needed. |
+| Index **targets are resolved** against the session's folder (or a leading `cd`). | Otherwise `src/a.c` and `/work/src/a.c` are two files, and re-reads across shell and Read are missed. |
 | Token figures per tool call are **estimates, marked ≈**, from context growth between responses, split among the inputs by text length. | Transcripts record usage only per response, so this is the only per-result signal. Attachments and reminders Wake can't see inflate it a little. |
 | Search words match as **prefixes**, `"quoted text"` as a phrase, and every term must match. Every term is quoted, so FTS5 operators are plain words. | Search as you type needs partial words, and no input may raise an FTS5 syntax error. |
 | Search lives **in the main window**, scoped by the source-list selection, not in its own window. | Agent and project filters come for free, and the detail pane shows the hit's session. |
@@ -317,6 +285,9 @@ machine to inspect, and the console companion.
   work and `AsyncComplete` in the callback. Remove any `AddHandler` that
   points back at the test, or the test is never released and `TearDown`
   never runs.
+- **Fixtures that would change shared counts** go in a root of their own
+  under `tests/fixtures/claude-code/` (like `patterns/`), indexed only by
+  their own test group. Adding a session to `projects/` breaks a dozen counts.
 - **Checking against real data:** a temporary test group that parses
   `~/.claude/projects` and writes a summary to the scratchpad, compared with
   a Python reference, is a good check. Never commit it, and never copy real

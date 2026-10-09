@@ -34,9 +34,30 @@ Protected Class WakeEvent
 		End Function
 	#tag EndMethod
 
+	#tag Method, Flags = &h21
+		Private Shared Function IsAbsolutePath(path As String) As Boolean
+		  // A Unix path, a home-relative path, a drive letter or a network share.
+		  If path.BeginsWith("/") Or path.BeginsWith("~") Or path.BeginsWith("\\") Then Return True
+		  Return path.Length > 2 And path.Middle(1, 1) = ":" And (path.Middle(2, 1) = "\" Or path.Middle(2, 1) = "/")
+		End Function
+	#tag EndMethod
+
 	#tag Method, Flags = &h0
 		Function IsToolCall() As Boolean
 		  Return Kind = Kinds.ToolCall Or Kind = Kinds.ShellCommand Or Kind = Kinds.FileEdit
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Shared Function JoinPath(folder As String, relative As String) As String
+		  // folder and relative joined with the folder's own separator. A leading ./ is dropped.
+		  Var separator As String = If(folder.IndexOf("/") < 0 And folder.IndexOf("\") >= 0, "\", "/")
+		  While relative.BeginsWith("./") Or relative.BeginsWith(".\")
+		    relative = relative.Middle(2)
+		  Wend
+		  If relative = "." Or relative = "" Then Return folder
+		  If folder.EndsWith(separator) Then Return folder + relative
+		  Return folder + separator + relative
 		End Function
 	#tag EndMethod
 
@@ -67,23 +88,13 @@ Protected Class WakeEvent
 		End Function
 	#tag EndMethod
 
-	#tag Method, Flags = &h0
-		Function ResultSeconds() As Double
-		  // How long a tool call took, from the call to its result, or -1 when unknown.
-		  If Timestamp Is Nil Or ResultTimestamp Is Nil Then Return -1
-		  Var span As Double = ResultTimestamp.SecondsFrom1970 - Timestamp.SecondsFrom1970
-		  Return If(span < 0, -1, span)
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h0
-		Function ShellProgram() As String
-		  // The program a shell command runs, such as "sed" or "git". Leading cd, export, source and
-		  // VAR=value parts are skipped, so `cd x && sed -n 1p f` gives "sed".
-		  If Kind <> Kinds.ShellCommand Then Return ""
-		  
+	#tag Method, Flags = &h21
+		Private Shared Function ProgramIndex(words() As String) As Integer
+		  // The index of the word that names the program, skipping leading cd, export, source and
+		  // VAR=value parts, or -1.
 		  Var atStart As Boolean = True
-		  For Each word As String In ShellWords
+		  For i As Integer = 0 To words.LastIndex
+		    Var word As String = words(i)
 		    If word = &u01 Then
 		      atStart = True
 		      Continue
@@ -94,17 +105,82 @@ Protected Class WakeEvent
 		      atStart = False
 		      Continue
 		    End If
-		    Return word.NthField("/", word.CountFields("/"))
+		    Return i
 		  Next
 		  
-		  Return ""
+		  Return -1
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function ResolvedTargetPath(folder As String) As String
+		  // TargetPath, with a relative path joined to the folder the command ran in: folder, or the
+		  // folder of a leading `cd`. So `src/a.c` and `/work/src/a.c` name the same file.
+		  Var target As String = TargetPath
+		  If target = "" Or folder = "" Or IsAbsolutePath(target) Then Return target
+		  
+		  Var base As String = folder
+		  If Kind = Kinds.ShellCommand Then
+		    Var words() As String = ShellWords
+		    If words.Count > 1 And (words(0) = "cd" Or words(0) = "pushd") And words(1) <> &u01 Then
+		      If IsAbsolutePath(words(1)) Then
+		        base = words(1)
+		      Else
+		        base = JoinPath(folder, words(1))
+		      End If
+		    End If
+		  End If
+		  
+		  Return JoinPath(base, target)
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function ResultSeconds() As Double
+		  // How long a tool call took, from the call to its result, or -1 when unknown.
+		  If Timestamp Is Nil Or ResultTimestamp Is Nil Then Return -1
+		  Var span As Double = ResultTimestamp.SecondsFrom1970 - Timestamp.SecondsFrom1970
+		  Return If(span < 0, -1, span)
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function ShellArguments() As String()
+		  // The program a shell command runs, followed by its arguments up to the next &&, ||, |, &
+		  // or ;. Quotes are removed, so a quoted path with spaces is one word.
+		  Var result() As String
+		  If Kind <> Kinds.ShellCommand Then Return result
+		  
+		  Var words() As String = ShellWords
+		  Var first As Integer = ProgramIndex(words)
+		  If first < 0 Then Return result
+		  For i As Integer = first To words.LastIndex
+		    If words(i) = &u01 Then Exit
+		    result.Add(words(i))
+		  Next
+		  Return result
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function ShellProgram() As String
+		  // The program a shell command runs, such as "sed" or "git". Leading cd, export, source and
+		  // VAR=value parts are skipped, so `cd x && sed -n 1p f` gives "sed".
+		  If Kind <> Kinds.ShellCommand Then Return ""
+		  
+		  Var words() As String = ShellWords
+		  Var first As Integer = ProgramIndex(words)
+		  If first < 0 Then Return ""
+		  Var word As String = words(first)
+		  Return word.NthField("/", word.CountFields("/"))
 		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
 		Private Function ShellWords() As String()
 		  // The words of the command's first line, with quotes removed, so a quoted path with spaces
-		  // stays one word. Each unquoted &&, ||, |, & or ; becomes &u01, where a new command starts.
+		  // stays one word. Each unquoted &&, ||, |, &, ;, $(, (, ) or backtick becomes &u01, where a
+		  // new command starts, so the program of `f=$(grep x a.c)` is grep.
 		  // Only the first 2,000 characters are read: that's where the program and its files are.
 		  Var line As String = Command.ReplaceLineEndings(&u0A).NthField(&u0A, 1).Left(2000)
 		  Var words() As String
@@ -132,11 +208,13 @@ Protected Class WakeEvent
 		      i = i + 1
 		      current = current + line.Middle(i, 1)
 		      inWord = True
-		    ElseIf c = " " Or c = &u09 Or c = "&" Or c = "|" Or c = ";" Then
+		    ElseIf c = " " Or c = &u09 Or c = "&" Or c = "|" Or c = ";" Or c = "(" Or c = ")" Or c = "`" Or _
+		      (c = "$" And line.Middle(i + 1, 1) = "(") Then
 		      If inWord Then words.Add(current)
 		      current = ""
 		      inWord = False
-		      If c = "&" Or c = "|" Or c = ";" Then
+		      If c = "$" Then i = i + 1
+		      If c <> " " And c <> &u09 Then
 		        If (c = "&" Or c = "|") And line.Middle(i + 1, 1) = c Then i = i + 1
 		        words.Add(&u01)
 		      End If
@@ -244,6 +322,10 @@ Protected Class WakeEvent
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
+		IsReread As Boolean
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
 		Kind As Kinds
 	#tag EndProperty
 
@@ -257,6 +339,10 @@ Protected Class WakeEvent
 
 	#tag Property, Flags = &h0
 		Patch As String
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		Pattern As WakeCallPattern.Patterns
 	#tag EndProperty
 
 	#tag Property, Flags = &h0

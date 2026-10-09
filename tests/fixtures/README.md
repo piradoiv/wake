@@ -15,7 +15,7 @@ python3 tests/fixtures/generate_claude_code.py "$PWD/tests/fixtures/claude-code/
 ```
 
 If you change the generator, update the expected values below and the tests
-that use them.
+that use them. Session 7 is written to `claude-code/patterns/` (see below).
 
 ## Claude Code sessions
 
@@ -34,3 +34,17 @@ are excluded. Columns are: input / output / cache write / cache read.
 | 6 | `-Users-dev-Open-Source-demo-app`| `cwd` with a space and a dot. The folder name can't be decoded. | Project path is `/Users/dev/Open Source/demo.app` (from `cwd`). Tokens 7 / 9 / 0 / 0. |
 
 `-Users-dev-demo/memory/` isn't a session and must be ignored by discovery.
+
+## Call patterns (`claude-code/patterns/`)
+
+Session 7 lives in its own root, so the counts above don't change. Only the
+call-pattern and report tests index it. Regenerating writes both roots:
+
+```sh
+rm -rf tests/fixtures/claude-code/projects tests/fixtures/claude-code/patterns
+python3 tests/fixtures/generate_claude_code.py "$PWD/tests/fixtures/claude-code/projects"
+```
+
+| N | Project folder   | What it covers | Expected |
+|---|------------------|----------------|----------|
+| 7 | `-Users-dev-lab` | One tool call per response, each growing the context: `sed -n '10,80p' src/config.py`, `cat "docs/user guide.md"`, `head -n 20 src/server.go`, a regex-range `awk`, Read of `config.py` with `offset`/`limit`, Edit of `config.py`, Read of the whole `config.py`, and ``grep -rn "```" docs``. Shell paths are relative to `cwd` `/Users/dev/lab`. | Patterns: line range, whole file, line range, section, line range (a **re-read**), edit, whole file (not a re-read: it follows the edit), search. `config.py`: 4 calls, 3 reads, 1 re-read, 2 line-range reads. |

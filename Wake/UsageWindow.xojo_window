@@ -316,6 +316,13 @@ End
 	#tag EndMenuHandler
 
 	#tag MenuHandler
+		Function FileExportReport() As Boolean Handles FileExportReport.Action
+		  ExportReport
+		  Return True
+		End Function
+	#tag EndMenuHandler
+
+	#tag MenuHandler
 		Function WindowPrices() As Boolean Handles WindowPrices.Action
 		  PricesWindow.Show
 		  Return True
@@ -389,6 +396,40 @@ End
 		End Function
 	#tag EndMethod
 
+	#tag Method, Flags = &h21
+		Private Sub ExportReport()
+		  // Asks where to save a Markdown report of where the tokens went in the chosen period, with
+		  // what to change for each kind of call, and writes it there.
+		  If mCatalog Is Nil Then Return
+		  
+		  Var periodLabel As String = PeriodPopup.RowTextAt(PeriodPopup.SelectedRowIndex)
+		  Var text As String
+		  Try
+		    Var report As New WakeTokenReport(mCatalog, App.Prices, mPeriodStart, periodLabel)
+		    text = report.Markdown
+		  Catch err As DatabaseException
+		    MessageBox("Could not read the index: " + err.Message)
+		    Return
+		  End Try
+		  
+		  Var f As FolderItem = FolderItem.ShowSaveFileDialog("", "Where the tokens went - " + periodLabel + ".md")
+		  If f Is Nil Then Return
+		  If f.Name.EndsWith(".jsonl") Then
+		    MessageBox("Wake doesn't write over transcripts. Choose another name.")
+		    Return
+		  End If
+		  
+		  Try
+		    Var output As TextOutputStream = TextOutputStream.Create(f)
+		    output.Encoding = Encodings.UTF8
+		    output.Write(text)
+		    output.Close
+		  Catch err As IOException
+		    MessageBox("Could not save the report: " + err.Message)
+		  End Try
+		End Sub
+	#tag EndMethod
+
 	#tag Method, Flags = &h0
 		Sub IndexingFinished()
 		  // The index changed or was rebuilt, so read it again on a fresh connection.
@@ -449,6 +490,7 @@ End
 		  // up in the tiles above the list and below it.
 		  UsageList.RemoveAllRows
 		  CallsList.RemoveAllRows
+		  StatusLabel.Tooltip = ""
 		  GlanceTiles.RemoveAllTiles
 		  GlanceTiles.Refresh(False)
 		  DayChart.RemoveAllBars
@@ -563,6 +605,8 @@ End
 		  // Tool groupings show where the tokens went. Their tags are kToolGroupingBase plus their
 		  // WakeCatalog.ToolGroupings value.
 		  GroupPopup.AddSeparator
+		  GroupPopup.AddRow("By intent")
+		  GroupPopup.RowTagAt(GroupPopup.LastAddedRowIndex) = kToolGroupingBase + Integer(WakeCatalog.ToolGroupings.Pattern)
 		  GroupPopup.AddRow("By tool")
 		  GroupPopup.RowTagAt(GroupPopup.LastAddedRowIndex) = kToolGroupingBase + Integer(WakeCatalog.ToolGroupings.Tool)
 		  GroupPopup.AddRow("By tool and file type")
@@ -611,7 +655,9 @@ End
 		  CallsList.RemoveAllRows
 		  If mToolGrouping < 0 Or mCatalog Is Nil Or UsageList.SelectedRowIndex < 0 Then Return
 		  
-		  Var key As String = UsageList.RowTagAt(UsageList.SelectedRowIndex).StringValue
+		  Var g As WakeToolUsageGroup = WakeToolUsageGroup(UsageList.RowTagAt(UsageList.SelectedRowIndex).ObjectValue)
+		  If g Is Nil Then Return
+		  Var key As String = g.Key
 		  Var calls() As WakeToolCallInfo
 		  Try
 		    calls = mCatalog.ToolCalls(WakeCatalog.ToolGroupings(mToolGrouping), key, mPeriodStart)
@@ -772,6 +818,35 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Sub ShowSelectionStatus()
+		  // What the selected intent suggests, or how often the selected file was read. With no row
+		  // selected, the totals.
+		  If mToolGrouping < 0 Then Return
+		  StatusLabel.Text = mToolStatus
+		  StatusLabel.Tooltip = ""
+		  If UsageList.SelectedRowIndex < 0 Then Return
+		  
+		  Var g As WakeToolUsageGroup = WakeToolUsageGroup(UsageList.RowTagAt(UsageList.SelectedRowIndex).ObjectValue)
+		  If g Is Nil Then Return
+		  
+		  Select Case WakeCatalog.ToolGroupings(mToolGrouping)
+		  Case WakeCatalog.ToolGroupings.Pattern
+		    StatusLabel.Text = WakeCallPattern.Advice(g.Key)
+		    StatusLabel.Tooltip = StatusLabel.Text
+		  Case WakeCatalog.ToolGroupings.File
+		    If g.Reads = 0 Then
+		      StatusLabel.Text = "Not read in this period"
+		    Else
+		      StatusLabel.Text = "Read " + If(g.Reads = 1, "once", WakeFormat.Count(g.Reads) + " times") + " in " + _
+		      If(g.ReadSessionCount = 1, "1 session", WakeFormat.Count(g.ReadSessionCount) + " sessions") + ", " + _
+		      WakeFormat.Count(g.Rereads) + " of them again in the same session"
+		    End If
+		    StatusLabel.Tooltip = g.Key
+		  End Select
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Sub ShowToolUsage(grouping As WakeCatalog.ToolGroupings, periodStart As DateTime)
 		  // Where the tokens went: what each group's tool results added to the context, and how often
 		  // later responses read them again. Both are estimates, so they're marked with ≈.
@@ -783,10 +858,19 @@ End
 		    label = "Tool and file type"
 		  Case WakeCatalog.ToolGroupings.Command
 		    label = "Shell command"
+		  Case WakeCatalog.ToolGroupings.Pattern
+		    label = "Intent"
 		  Else
 		    label = "File"
 		  End Select
-		  SetHeaders(Array(label, "Calls", "Sessions", "≈ Added", "≈ Per call", "≈ Re-read", "≈ Total", "Est. cost"))
+		  
+		  // By file and by intent show how often reads were repeated, and what a read costs.
+		  Var showReads As Boolean = grouping = WakeCatalog.ToolGroupings.File Or grouping = WakeCatalog.ToolGroupings.Pattern
+		  If showReads Then
+		    SetHeaders(Array(label, "Calls", "Read again", "≈ Added", "≈ Per read", "≈ Re-read", "≈ Total", "Est. cost"))
+		  Else
+		    SetHeaders(Array(label, "Calls", "Sessions", "≈ Added", "≈ Per call", "≈ Re-read", "≈ Total", "Est. cost"))
+		  End If
 		  
 		  Var groups() As WakeToolUsageGroup
 		  Try
@@ -805,22 +889,42 @@ End
 		    Var estimate As WakeCostEstimate = App.Prices.Estimate(g.ByModel)
 		    Var shown As String = If(g.Key = "", "(none)", g.Key)
 		    If grouping = WakeCatalog.ToolGroupings.File Then shown = WakeFormat.ProjectName(g.Key)
+		    If grouping = WakeCatalog.ToolGroupings.Pattern Then shown = g.Label
 		    
-		    UsageList.AddRow(shown, WakeFormat.Count(g.Calls), WakeFormat.Count(g.SessionCount), WakeFormat.Tokens(g.AddedTokens), _
-		    WakeFormat.Tokens(perCall), WakeFormat.Tokens(g.CarriedTokens), WakeFormat.Tokens(g.AddedTokens + g.CarriedTokens), _
+		    // Read again sorts by re-reads, then by reads.
+		    Var secondText As String = WakeFormat.Count(g.SessionCount)
+		    Var secondTag As Double = g.SessionCount
+		    Var perText As String = WakeFormat.Tokens(perCall)
+		    Var perTag As Int64 = perCall
+		    If showReads Then
+		      secondText = WakeFormat.kUnknown
+		      secondTag = -1
+		      perText = WakeFormat.kUnknown
+		      perTag = -1
+		      If g.Reads > 0 Then
+		        secondText = WakeFormat.Count(g.Rereads) + " of " + WakeFormat.Count(g.Reads) + " (" + WakeFormat.Percent(g.Rereads, g.Reads) + ")"
+		        secondTag = g.Rereads + g.Reads / 1000000000.0
+		        perTag = g.AddedTokens \ g.Reads
+		        perText = WakeFormat.Tokens(perTag)
+		      End If
+		    End If
+		    
+		    UsageList.AddRow(shown, WakeFormat.Count(g.Calls), secondText, WakeFormat.Tokens(g.AddedTokens), _
+		    perText, WakeFormat.Tokens(g.CarriedTokens), WakeFormat.Tokens(g.AddedTokens + g.CarriedTokens), _
 		    If(estimate.HasTokens, WakeFormat.Cost(estimate), WakeFormat.kUnknown))
 		    
 		    Var row As Integer = UsageList.LastAddedRowIndex
-		    UsageList.RowTagAt(row) = g.Key
+		    UsageList.RowTagAt(row) = g
 		    UsageList.CellTagAt(row, kColumnLabel) = shown
 		    UsageList.CellTagAt(row, kColumnSessions) = g.Calls
-		    UsageList.CellTagAt(row, kColumnInput) = g.SessionCount
+		    UsageList.CellTagAt(row, kColumnInput) = secondTag
 		    UsageList.CellTagAt(row, kColumnOutput) = g.AddedTokens
-		    UsageList.CellTagAt(row, kColumnCacheWrite) = perCall
+		    UsageList.CellTagAt(row, kColumnCacheWrite) = perTag
 		    UsageList.CellTagAt(row, kColumnCacheRead) = g.CarriedTokens
 		    UsageList.CellTagAt(row, kColumnTotal) = g.AddedTokens + g.CarriedTokens
 		    UsageList.CellTagAt(row, kColumnCost) = If(estimate.PricedTokens > 0, estimate.AmountUSD, -1.0)
 		    If grouping = WakeCatalog.ToolGroupings.File Then UsageList.CellTooltipAt(row, kColumnLabel) = g.Key
+		    If grouping = WakeCatalog.ToolGroupings.Pattern Then UsageList.CellTooltipAt(row, kColumnLabel) = WakeCallPattern.Advice(g.Key)
 		    If estimate.UnpricedModels.Count > 0 Then
 		      UsageList.CellTooltipAt(row, kColumnCost) = "No price set for " + String.FromArray(estimate.UnpricedModels, ", ")
 		    End If
@@ -837,7 +941,8 @@ End
 		  
 		  // Commands and files cover only some calls, so their totals aren't summed up here.
 		  Var parts() As String
-		  If grouping = WakeCatalog.ToolGroupings.Tool Or grouping = WakeCatalog.ToolGroupings.ToolAndFileType Then
+		  If grouping = WakeCatalog.ToolGroupings.Tool Or grouping = WakeCatalog.ToolGroupings.ToolAndFileType Or _
+		    grouping = WakeCatalog.ToolGroupings.Pattern Then
 		    parts.Add(WakeFormat.Count(calls) + " tool calls")
 		    parts.Add("≈" + WakeFormat.Tokens(added) + " added")
 		    parts.Add("≈" + WakeFormat.Tokens(carried) + " re-read")
@@ -845,7 +950,8 @@ End
 		    If estimate.PricedTokens > 0 Then parts.Add("estimated cost " + WakeFormat.Cost(estimate))
 		  End If
 		  parts.Add("estimated from how the context grows between responses")
-		  StatusLabel.Text = String.FromArray(parts, " · ")
+		  mToolStatus = String.FromArray(parts, " · ")
+		  StatusLabel.Text = mToolStatus
 		End Sub
 	#tag EndMethod
 
@@ -868,6 +974,10 @@ End
 
 	#tag Property, Flags = &h21
 		Private mToolGrouping As Integer = -1
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mToolStatus As String
 	#tag EndProperty
 
 
@@ -953,6 +1063,7 @@ End
 	#tag Event
 		Sub SelectionChanged()
 		  ShowCalls
+		  ShowSelectionStatus
 		End Sub
 	#tag EndEvent
 #tag EndEvents

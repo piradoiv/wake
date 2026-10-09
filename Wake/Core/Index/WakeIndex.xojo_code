@@ -168,6 +168,8 @@ Protected Class WakeIndex
 		    End If
 		    If byModel.KeyCount = 0 Then byModel.Value("") = True
 		    
+		    // Relative paths are joined to the session's folder, so each file is one target.
+		    Var target As String = e.ResolvedTargetPath(session.ProjectPath)
 		    Var isFirst As Integer = 1
 		    For Each key As Variant In byModel.Keys
 		      Var model As String = key.StringValue
@@ -175,11 +177,11 @@ Protected Class WakeIndex
 		      Var carried As WakeTokenUsage = ModelUsage(e.CarriedUsage, model)
 		      
 		      mDB.ExecuteSQL("INSERT INTO tool_usage (session_id, seq, is_first, timestamp, tool, command, file_type, " + _
-		      "target, model, added_tokens, carried_tokens, input_tokens, cache_write_tokens, cache_write_1h_tokens, " + _
-		      "cache_read_tokens) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", _
+		      "target, pattern, is_reread, model, added_tokens, carried_tokens, input_tokens, cache_write_tokens, " + _
+		      "cache_write_1h_tokens, cache_read_tokens) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", _
 		      sessionID, e.Sequence, isFirst, TimeValue(e.Timestamp), e.ToolName, e.ShellProgram, e.FileType, _
-		      e.TargetPath, model, added.Total, carried.CacheReadTokens, added.InputTokens, added.CacheWriteTokens, _
-		      added.CacheWrite1hTokens, carried.CacheReadTokens)
+		      target, WakeCallPattern.Key(e.Pattern), If(e.IsReread, 1, 0), model, added.Total, carried.CacheReadTokens, _
+		      added.InputTokens, added.CacheWriteTokens, added.CacheWrite1hTokens, carried.CacheReadTokens)
 		      isFirst = 0
 		    Next
 		  Next
@@ -311,11 +313,12 @@ Protected Class WakeIndex
 		  
 		  // Estimated tokens per tool call, split by model so they can be priced. added_tokens is what
 		  // its result added to the context, as input and cache writes; carried_tokens is how often
-		  // later responses read it again, as cache reads.
+		  // later responses read it again, as cache reads. pattern is a WakeCallPattern key, and
+		  // is_reread marks a read of a file already read in the same context.
 		  s.Add("CREATE TABLE tool_usage (session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE, " + _
 		  "seq INTEGER NOT NULL, is_first INTEGER NOT NULL, timestamp REAL, tool TEXT NOT NULL, " + _
 		  "command TEXT NOT NULL DEFAULT '', file_type TEXT NOT NULL DEFAULT '', target TEXT NOT NULL DEFAULT '', " + _
-		  "model TEXT NOT NULL, added_tokens INTEGER NOT NULL, carried_tokens INTEGER NOT NULL, " + _
+		  "pattern TEXT NOT NULL DEFAULT '', is_reread INTEGER NOT NULL DEFAULT 0, model TEXT NOT NULL, added_tokens INTEGER NOT NULL, carried_tokens INTEGER NOT NULL, " + _
 		  "input_tokens INTEGER NOT NULL, cache_write_tokens INTEGER NOT NULL, cache_write_1h_tokens INTEGER NOT NULL, " + _
 		  "cache_read_tokens INTEGER NOT NULL)")
 		  s.Add("CREATE INDEX tool_usage_session ON tool_usage (session_id)")
@@ -426,7 +429,7 @@ Protected Class WakeIndex
 	#tag Constant, Name = kMaxSearchTextLength, Type = Double, Dynamic = False, Default = \"65536", Scope = Public
 	#tag EndConstant
 
-	#tag Constant, Name = kSchemaVersion, Type = Double, Dynamic = False, Default = \"6", Scope = Public
+	#tag Constant, Name = kSchemaVersion, Type = Double, Dynamic = False, Default = \"7", Scope = Public
 	#tag EndConstant
 
 

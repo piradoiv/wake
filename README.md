@@ -26,10 +26,17 @@ ran, which files it changed and how many tokens it used.
   (Cmd+F), filtered by kind of event and by period. Opening a match scrolls
   the timeline to it.
 - **See usage** per day, project or model for a period (Window → Usage, Cmd+U).
-- **See where the tokens went** by tool, tool and file type, shell command or
-  file, in the same window. The figures are estimates from how the context
-  grows between responses. They show which reads are worth replacing with a
-  narrower tool.
+- **See where the tokens went** by intent, tool, tool and file type, shell
+  command or file, in the same window. The figures are estimates from how the
+  context grows between responses. Intents group calls by what they were
+  after (a line range, a section, a whole file, a search, a listing, an edit,
+  the web, a command) and say what would send less. Files read again in the
+  same session are counted apart. Select a row to list its calls, most
+  expensive first, and double-click one to open it in its timeline.
+- **Export the findings as a report** (File → Export Report in the Usage
+  window): a Markdown task list with a section per intent, its advice, the
+  files it cost most on and the most expensive calls, ready to paste into an
+  issue or hand to an agent.
 - **Estimate costs** from your own price table (Window → Prices). Wake ships no
   prices, because they change: enter them per million tokens from your
   provider's price list. The cost the agent itself reports is shown next to

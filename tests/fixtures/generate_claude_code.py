@@ -170,6 +170,37 @@ s.user("2026-09-05T18:30:00.000Z", "Hello", promptId="p-6")
 s.assistant("2026-09-05T18:30:01.000Z", "msg_space_01", {"type": "text", "text": "Hi! How can I help?"}, usage(7, 9), stop="end_turn")
 s.write(os.path.join(OUT, "-Users-dev-Open-Source-demo-app"))
 
+# 7. Call patterns: line ranges, a whole file, a section, a search, and the same file read twice.
+LAB = "/Users/dev/lab"
+s = Session(7, LAB)
+s.user("2026-08-30T09:00:00.000Z", "Find where the settings are loaded.", promptId="p-7")
+calls = [
+    ("Bash", {"command": "sed -n '10,80p' src/config.py", "description": "Show part of config"}, "def load():\n    return read_settings()", 400),
+    ("Bash", {"command": 'cat "docs/user guide.md"', "description": "Show the guide"}, "# User guide\n\nSettings live in settings.toml.", 900),
+    ("Bash", {"command": "head -n 20 src/server.go", "description": "Show the start of server.go"}, "package main\n\nfunc main() {}", 200),
+    ("Bash", {"command": "awk '/^func Load/,/^}/' src/loader.go", "description": "Show the Load function"}, "func Load() error {\n\treturn nil\n}", 300),
+    ("Read", {"file_path": LAB + "/src/config.py", "offset": 10, "limit": 40}, "10\tdef load():\n11\t    return read_settings()", 350),
+    ("Edit", {"file_path": LAB + "/src/config.py", "old_string": "read_settings()", "new_string": "read_settings(path)", "replace_all": False},
+     "The file " + LAB + "/src/config.py has been updated successfully.", 50),
+    ("Read", {"file_path": LAB + "/src/config.py"}, "1\tdef load():\n2\t    return read_settings(path)", 700),
+    ("Bash", {"command": 'grep -rn "```" docs', "description": "Find code fences"}, "docs/user guide.md:3:```", 120),
+]
+context, output = 0, 20
+for k, (tool, tool_input, text, growth) in enumerate(calls, 1):
+    ts = "2026-08-30T09:00:%02d.000Z" % (k * 2)
+    u = usage(5, output, growth if k > 1 else 1000, context + output if k > 1 else 0)
+    context = 5 + u["cache_creation_input_tokens"] + u["cache_read_input_tokens"]
+    a = s.assistant(ts, "msg_pat_%02d" % k, {"type": "tool_use", "id": "toolu_pat_%02d" % k, "name": tool, "input": tool_input}, u)
+    if tool == "Bash":
+        tur = {"stdout": text, "stderr": "", "interrupted": False, "isImage": False, "noOutputExpected": False}
+    else:
+        tur = {"filePath": tool_input["file_path"]}
+    s.result("2026-08-30T09:00:%02d.500Z" % (k * 2), "toolu_pat_%02d" % k, text, tur, a)
+s.assistant("2026-08-30T09:00:20.000Z", "msg_pat_99", {"type": "text", "text": "Settings are loaded in src/config.py."},
+    usage(5, 30, 80, context + output), stop="end_turn")
+# Its own root, next to projects/, so the other tests' counts don't change.
+s.write(os.path.join(os.path.dirname(OUT), "patterns", "-Users-dev-lab"))
+
 # Not a session: memory notes are ignored.
 mem = os.path.join(DEMO_DIR, "memory"); os.makedirs(mem, exist_ok=True)
 with open(os.path.join(mem, "MEMORY.md"), "w") as f: f.write("- [Example](example.md) - not a transcript\n")

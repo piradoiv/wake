@@ -130,6 +130,25 @@ Protected Class WakeSession
 		    Next
 		  Next
 		  
+		  // Each tool call's pattern, and reads of a file already read in this context: since the
+		  // session started or was last compacted, and with no change to the file in between.
+		  Var read As Dictionary = WakeCore.NewCaseSensitiveDictionary
+		  For Each e As WakeEvent In Events
+		    If e.Response <> Nil And e.Response.StartsNewContext And e.Response.FirstSequence = e.Sequence Then read.RemoveAll
+		    If Not e.IsToolCall Then Continue
+		    
+		    e.Pattern = WakeCallPattern.Classify(e)
+		    Var target As String = e.ResolvedTargetPath(ProjectPath)
+		    If target = "" Then Continue
+		    
+		    If WakeCallPattern.IsRead(e.Pattern) Then
+		      e.IsReread = read.HasKey(target)
+		      read.Value(target) = True
+		    ElseIf e.Pattern = WakeCallPattern.Patterns.Edit Then
+		      If read.HasKey(target) Then read.Remove(target)
+		    End If
+		  Next
+		  
 		  // A turn runs from a prompt to the next one, and includes the subagents it started.
 		  Var prompt As WakeEvent
 		  For Each e As WakeEvent In Events
