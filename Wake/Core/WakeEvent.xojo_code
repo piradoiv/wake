@@ -78,25 +78,78 @@ Protected Class WakeEvent
 
 	#tag Method, Flags = &h0
 		Function ShellProgram() As String
-		  // The program a shell command runs, such as "sed" or "git". Leading cd, export and
+		  // The program a shell command runs, such as "sed" or "git". Leading cd, export, source and
 		  // VAR=value parts are skipped, so `cd x && sed -n 1p f` gives "sed".
 		  If Kind <> Kinds.ShellCommand Then Return ""
 
-		  Var firstLine As String = Command.ReplaceLineEndings(&u0A).NthField(&u0A, 1)
-		  For Each separator As String In Array("&&", "||", "|", ";")
-		    firstLine = firstLine.ReplaceAll(separator, &u0A)
-		  Next
+		  Var atStart As Boolean = True
+		  For Each word As String In ShellWords
+		    If word = &u01 Then
+		      atStart = True
+		      Continue
+		    End If
+		    If Not atStart Or word.IndexOf("=") > 0 Or word.BeginsWith("-") Then Continue
 
-		  For Each part As String In firstLine.Split(&u0A)
-		    For Each word As String In part.Trim.Split(" ")
-		      If word = "" Or word.IndexOf("=") > 0 Then Continue
-		      If word = "cd" Or word = "export" Or word = "pushd" Or word = "source" Then Exit
-		      word = word.ReplaceAll("""", "").ReplaceAll("'", "")
-		      Return word.NthField("/", word.CountFields("/"))
-		    Next
+		    If word = "cd" Or word = "export" Or word = "pushd" Or word = "source" Or word = "." Then
+		      atStart = False
+		      Continue
+		    End If
+		    Return word.NthField("/", word.CountFields("/"))
 		  Next
 
 		  Return ""
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function ShellWords() As String()
+		  // The words of the command's first line, with quotes removed, so a quoted path with spaces
+		  // stays one word. Each unquoted &&, ||, |, & or ; becomes &u01, where a new command starts.
+		  // Only the first 2,000 characters are read: that's where the program and its files are.
+		  Var line As String = Command.ReplaceLineEndings(&u0A).NthField(&u0A, 1).Left(2000)
+		  Var words() As String
+		  Var current As String
+		  Var inWord As Boolean
+		  Var quote As String
+		  Var i As Integer
+
+		  While i < line.Length
+		    Var c As String = line.Middle(i, 1)
+
+		    If quote <> "" Then
+		      If c = quote Then
+		        quote = ""
+		      ElseIf c = "\" And quote = """" And i + 1 < line.Length Then
+		        i = i + 1
+		        current = current + line.Middle(i, 1)
+		      Else
+		        current = current + c
+		      End If
+		    ElseIf c = """" Or c = "'" Then
+		      quote = c
+		      inWord = True
+		    ElseIf c = "\" And i + 1 < line.Length Then
+		      i = i + 1
+		      current = current + line.Middle(i, 1)
+		      inWord = True
+		    ElseIf c = " " Or c = &u09 Or c = "&" Or c = "|" Or c = ";" Then
+		      If inWord Then words.Add(current)
+		      current = ""
+		      inWord = False
+		      If c = "&" Or c = "|" Or c = ";" Then
+		        If (c = "&" Or c = "|") And line.Middle(i + 1, 1) = c Then i = i + 1
+		        words.Add(&u01)
+		      End If
+		    Else
+		      current = current + c
+		      inWord = True
+		    End If
+
+		    i = i + 1
+		  Wend
+
+		  If inWord Then words.Add(current)
+		  Return words
 		End Function
 	#tag EndMethod
 
@@ -133,10 +186,10 @@ Protected Class WakeEvent
 		  If FilePath <> "" Then Return FilePath
 
 		  If Kind = Kinds.ShellCommand Then
-		    Var words() As String = Command.ReplaceLineEndings(&u0A).NthField(&u0A, 1).Split(" ")
+		    Var words() As String = ShellWords
 		    For i As Integer = words.LastIndex DownTo 1
-		      Var word As String = words(i).ReplaceAll("""", "").ReplaceAll("'", "")
-		      If word.BeginsWith("-") Or word.IndexOf(".") < 0 Then Continue
+		      Var word As String = words(i)
+		      If word = &u01 Or word.BeginsWith("-") Or word.IndexOf(".") < 0 Then Continue
 		      If ExtensionOf(word) <> "" Then Return word
 		    Next
 		    Return ""

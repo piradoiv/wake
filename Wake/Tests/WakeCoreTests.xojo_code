@@ -191,6 +191,16 @@ Inherits TestGroup
 		  e.Command = "sleep 1.5"
 		  Assert.AreEqual("", e.FileType, "a number is not a file type")
 
+		  e.Command = "XD=""/Applications/Xojo 2026 Release 3""; grep -rl ""ForeignKeyChecks"" ""$XD"""
+		  Assert.AreEqual("grep", e.ShellProgram, "a quoted assignment with spaces is one word")
+
+		  e.Command = "grep -c ""a|b;c"" notes.md | wc -l"
+		  Assert.AreEqual("grep", e.ShellProgram)
+		  Assert.AreEqual("notes.md", e.TargetPath, "quoted | and ; don't start a command")
+
+		  e.Command = "sed -n 1,20p '/Users/dev/my app/Main.xojo_code'"
+		  Assert.AreEqual("/Users/dev/my app/Main.xojo_code", e.TargetPath, "a quoted path keeps its spaces")
+
 		  Var readCall As New WakeEvent
 		  readCall.Kind = WakeEvent.Kinds.ToolCall
 		  readCall.ToolInputJSON = "{""file_path"": ""/Users/dev/app/Main.XOJO_WINDOW""}"
