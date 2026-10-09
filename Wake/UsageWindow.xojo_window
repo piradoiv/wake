@@ -360,7 +360,7 @@ End
 		    Var midnight As New DateTime(now.Year, now.Month, now.Day)
 		    periodStart = midnight.SubtractInterval(0, 0, days - 1)
 		  End If
-
+		  
 		  Var tag As Integer = GroupPopup.RowTagAt(GroupPopup.SelectedRowIndex).IntegerValue
 		  If tag >= kToolGroupingBase Then
 		    Var toolGrouping As Integer = tag - kToolGroupingBase
@@ -368,7 +368,7 @@ End
 		    ShowGlance(periodStart)
 		    Return
 		  End If
-
+		  
 		  Var grouping As WakeCatalog.UsageGroupings = WakeCatalog.UsageGroupings(tag)
 		  Var label As String = "Model"
 		  Select Case grouping
@@ -378,7 +378,7 @@ End
 		    label = "Project"
 		  End Select
 		  SetHeaders(Array(label, "Sessions", "Input", "Output", "Cache write", "Cache read", "Total", "Est. cost"))
-
+		  
 		  Var groups() As WakeUsageGroup
 		  Try
 		    groups = mCatalog.Usage(grouping, periodStart)
@@ -439,7 +439,7 @@ End
 		  GroupPopup.RowTagAt(GroupPopup.LastAddedRowIndex) = Integer(WakeCatalog.UsageGroupings.Project)
 		  GroupPopup.AddRow("By model")
 		  GroupPopup.RowTagAt(GroupPopup.LastAddedRowIndex) = Integer(WakeCatalog.UsageGroupings.Model)
-
+		  
 		  // Tool groupings show where the tokens went. Their tags are kToolGroupingBase plus their
 		  // WakeCatalog.ToolGroupings value.
 		  GroupPopup.AddSeparator
