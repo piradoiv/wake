@@ -202,8 +202,10 @@ End
 
 	#tag Method, Flags = &h0
 		Sub PricesChanged()
-		  // Only the cost tile depends on the prices, and it is native, so the page stays as it is.
+		  // The page doesn't depend on prices: the tiles are native, and the page's costs are filled
+		  // in by script, so it keeps its scroll position and open blocks.
 		  ShowTiles
+		  If Not mLoadingPage Then ShowCosts
 		End Sub
 	#tag EndMethod
 
@@ -211,6 +213,14 @@ End
 		Function SessionID() As Integer
 		  Return mSessionID
 		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub ShowCosts()
+		  // The JSON holds only generated ids and formatted amounts, never transcript text.
+		  If mTimeline Is Nil Then Return
+		  TimelineViewer.ExecuteJavaScript("wakeSetCosts(" + mTimeline.CostsJSON(App.Prices) + ");")
+		End Sub
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
@@ -313,7 +323,8 @@ End
 		Sub DocumentComplete(url as String)
 		  #Pragma Unused URL
 		  mLoadingPage = False
-		  
+		  ShowCosts
+
 		  // A search hit asked for an event before the page was ready. Anchors are generated ids,
 		  // never transcript text.
 		  If mPendingAnchor <> "" Then

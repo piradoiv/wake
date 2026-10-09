@@ -100,6 +100,15 @@ Protected Module WakeFormat
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function Seconds(value As Double) As String
+		  // A short span with tenths under ten seconds ("0.4s", "3.2s"), otherwise as Duration.
+		  If value < 0 Then Return kUnknown
+		  If value < 9.95 Then Return value.ToString(Locale.Raw, "0.0") + "s"
+		  Return Duration(value)
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function Tokens(amount As Int64) As String
 		  // Compact token count: "950", "12.3K", "4.5M", "1.2B".
 		  If amount < 1000 Then Return amount.ToString

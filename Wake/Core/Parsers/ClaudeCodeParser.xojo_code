@@ -27,6 +27,7 @@ Implements IAgentParser
 		  e.ResultTimestamp = timestamp
 		  e.ResultIsError = WakeCore.JSONBoolean(block, "is_error")
 		  e.ResultText = ToolResultText(block.Lookup("content", Nil), session.Report)
+		  session.NoteInput(e, timestamp)
 
 		  // toolUseResult holds richer, tool-specific output than the text sent to the model.
 		  Var details As Dictionary = WakeCore.AsDictionary(toolUseResult)
@@ -50,6 +51,14 @@ Implements IAgentParser
 
 		  Var agentID As String = WakeCore.JSONString(details, "agentId")
 		  If agentID <> "" Then e.SubagentID = agentID
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub AttachResponse(e As WakeEvent, response As WakeResponse)
+		  If response Is Nil Then Return
+		  e.Response = response
+		  If response.FirstSequence < 0 Then response.FirstSequence = e.Sequence
 		End Sub
 	#tag EndMethod
 
@@ -103,11 +112,15 @@ Implements IAgentParser
 
 		  // One response is written as several records (thinking, text, tool_use), and every copy
 		  // repeats the same usage. Count it once per message id.
+		  Var response As WakeResponse
 		  If Not isError Then
 		    Var key As String = If(messageID <> "", messageID, WakeCore.JSONString(record, "requestId"))
-		    If key = "" Or Not seenMessages.HasKey(key) Then
-		      If key <> "" Then seenMessages.Value(key) = True
-		      session.AddUsage(model, UsageFrom(WakeCore.JSONDictionary(message, "usage")), timestamp)
+		    If key <> "" And seenMessages.HasKey(key) Then
+		      response = WakeResponse(seenMessages.Value(key).ObjectValue)
+		      response.NoteRecord(timestamp)
+		    Else
+		      response = session.AddResponse(model, UsageFrom(WakeCore.JSONDictionary(message, "usage")), timestamp)
+		      If key <> "" Then seenMessages.Value(key) = response
 		    End If
 		  End If
 
@@ -117,6 +130,7 @@ Implements IAgentParser
 		    e.Text = content.StringValue
 		    e.MessageID = messageID
 		    e.Model = model
+		    AttachResponse(e, response)
 		    Return
 		  End If
 
@@ -147,6 +161,7 @@ Implements IAgentParser
 		    If e <> Nil Then
 		      e.MessageID = messageID
 		      e.Model = model
+		      AttachResponse(e, response)
 		    End If
 		  Next
 		End Sub
@@ -206,7 +221,7 @@ Implements IAgentParser
 		  Var subtype As String = WakeCore.JSONString(record, "subtype")
 
 		  If subtype = "turn_duration" Then
-		    session.ActiveDurationMs = session.ActiveDurationMs + WakeCore.JSONInteger(record, "durationMs")
+		    session.NoteTurnDuration(WakeCore.JSONInteger(record, "durationMs"))
 		    Return
 		  End If
 
@@ -293,6 +308,7 @@ Implements IAgentParser
 		  End If
 
 		  e.Text = text
+		  session.NoteInput(e, timestamp)
 		End Sub
 	#tag EndMethod
 
@@ -346,6 +362,7 @@ Implements IAgentParser
 		      subagent.SubagentID = baseName.Middle(6)
 		      ReadSubagentMeta(subagent, folder.Child(baseName + ".meta.json"))
 
+		      subagent.ComputeStats
 		      session.Subagents.Add(subagent)
 		      LinkSubagent(session, subagent)
 		    Next
@@ -435,6 +452,7 @@ Implements IAgentParser
 		  // Never raises for bad content: anything that can't be read is counted in session.Report.
 		  Var session As WakeSession = ParseTranscript(f, False)
 		  If session.Report.FileError = "" Then LoadSubagents(session)
+		  session.ComputeStats
 		  Return session
 		End Function
 	#tag EndMethod

@@ -34,6 +34,15 @@ Protected Class WakeEvent
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function ResultSeconds() As Double
+		  // How long a tool call took, from the call to its result, or -1 when unknown.
+		  If Timestamp Is Nil Or ResultTimestamp Is Nil Then Return -1
+		  Var span As Double = ResultTimestamp.SecondsFrom1970 - Timestamp.SecondsFrom1970
+		  Return If(span < 0, -1, span)
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function Summary() As String
 		  // One line describing the event, for lists and search results.
 		  Var line As String
@@ -59,6 +68,22 @@ Protected Class WakeEvent
 		End Function
 	#tag EndMethod
 
+
+	#tag Property, Flags = &h0
+		AddedTokens As Int64
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		AddedUsage As WakeUsageGroup
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		CarriedTokens As Int64
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		CarriedUsage As WakeUsageGroup
+	#tag EndProperty
 
 	#tag Property, Flags = &h0
 		Command As String
@@ -98,6 +123,10 @@ Protected Class WakeEvent
 
 	#tag Property, Flags = &h0
 		PersistedOutputSize As Int64
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		Response As WakeResponse
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
@@ -154,6 +183,18 @@ Protected Class WakeEvent
 
 	#tag Property, Flags = &h0
 		ToolUseID As String
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		TurnActiveMs As Int64
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		TurnResponses As Integer
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		TurnUsage As WakeUsageGroup
 	#tag EndProperty
 
 

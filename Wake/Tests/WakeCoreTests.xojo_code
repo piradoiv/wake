@@ -12,6 +12,56 @@ Inherits TestGroup
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub CompactionEndsReReadTest()
+		  // A context that shrinks to less than half was compacted: what came before isn't read again.
+		  Var s As New WakeSession
+		  Var prompt As WakeEvent = s.AddEvent(WakeEvent.Kinds.UserPrompt, Nil)
+		  prompt.Text = "go"
+		  s.NoteInput(prompt, Nil)
+		  Call s.AddResponse("m", NewUsage(10, 5, 1000, 0), Nil)
+
+		  Var readCall As WakeEvent = s.AddEvent(WakeEvent.Kinds.ToolCall, Nil)
+		  readCall.HasResult = True
+		  readCall.ResultText = "contents"
+		  s.NoteInput(readCall, Nil)
+		  Call s.AddResponse("m", NewUsage(0, 5, 100, 1010), Nil)
+		  Call s.AddResponse("m", NewUsage(0, 5, 0, 1110), Nil)
+		  Call s.AddResponse("m", NewUsage(0, 5, 200, 0), Nil)
+		  Call s.AddResponse("m", NewUsage(0, 5, 0, 200), Nil)
+		  s.ComputeStats
+
+		  Assert.AreEqual(95, readCall.AddedTokens, "1110 - 1010 - 5 of output")
+		  Assert.AreEqual(95, readCall.CarriedTokens, "only the response before the compaction")
+		  Assert.IsTrue(s.Responses(3).StartsNewContext)
+		  Assert.AreEqual(95, readCall.AddedUsage.Total.CacheWriteTokens, "the response had no plain input")
+
+		  s.ComputeStats
+		  Assert.AreEqual(95, readCall.AddedTokens, "running it again changes nothing")
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub FormatSecondsTest()
+		  Assert.AreEqual("0.4s", WakeFormat.Seconds(0.42))
+		  Assert.AreEqual("9.9s", WakeFormat.Seconds(9.9))
+		  Assert.AreEqual("12s", WakeFormat.Seconds(12.3))
+		  Assert.AreEqual("2m", WakeFormat.Seconds(130))
+		  Assert.AreEqual(WakeFormat.kUnknown, WakeFormat.Seconds(-1))
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function NewUsage(inputTokens As Int64, outputTokens As Int64, cacheWrite As Int64, cacheRead As Int64) As WakeTokenUsage
+		  Var u As New WakeTokenUsage
+		  u.InputTokens = inputTokens
+		  u.OutputTokens = outputTokens
+		  u.CacheWriteTokens = cacheWrite
+		  u.CacheReadTokens = cacheRead
+		  Return u
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub JSONAccessorsTolerateWrongTypesTest()
 		  Var d As Dictionary = ParseJSON("{""s"": 5, ""n"": ""x"", ""a"": {}, ""o"": [], ""b"": null, ""i"": 42, ""f"": 1.5}")
 

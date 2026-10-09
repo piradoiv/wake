@@ -237,6 +237,77 @@ Inherits TestGroup
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub TokenAttributionTest()
+		  // Session 2's contexts grow by 175, 1268, 459, 439 and 485 tokens after its tool results.
+		  Var s As WakeSession = TestSupport.ParseClaudeFixture(2)
+		  Var responses As Integer = s.Responses.Count
+		  Assert.AreEqual(6, responses)
+
+		  Var bash As WakeEvent = TestSupport.FindTool(s, "toolu_bash_01")
+		  Assert.AreEqual(175, bash.AddedTokens, "growth before the second response")
+		  Assert.AreEqual(700, bash.CarriedTokens, "read again by the four responses after it")
+
+		  // The second response read 5 input and 200 one-hour cache-write tokens, so the share is split alike.
+		  Var added As WakeTokenUsage = bash.AddedUsage.Total
+		  Assert.AreEqual(4, added.InputTokens)
+		  Assert.AreEqual(171, added.CacheWriteTokens)
+		  Assert.AreEqual(171, added.CacheWrite1hTokens)
+		  Assert.AreEqual(700, bash.CarriedUsage.Total.CacheReadTokens)
+
+		  // Parallel results share the growth by the length of their text: 53 and 52 characters.
+		  Var read2 As WakeEvent = TestSupport.FindTool(s, "toolu_read_02")
+		  Var read1 As WakeEvent = TestSupport.FindTool(s, "toolu_read_01")
+		  Assert.AreEqual(640, read2.AddedTokens)
+		  Assert.AreEqual(628, read1.AddedTokens)
+		  Assert.AreEqual(1920, read2.CarriedTokens)
+
+		  Assert.AreEqual(459, TestSupport.FindTool(s, "toolu_edit_01").AddedTokens)
+		  Assert.AreEqual(439, TestSupport.FindTool(s, "toolu_write_01").CarriedTokens, "one response after it")
+		  Var last As WakeEvent = TestSupport.FindTool(s, "toolu_bash_02")
+		  Assert.AreEqual(485, last.AddedTokens)
+		  Assert.AreEqual(0, last.CarriedTokens, "no response after the last one re-reads it")
+		  Assert.IsNil(last.CarriedUsage)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub ResponseAndToolTimingTest()
+		  Var s As WakeSession = TestSupport.ParseClaudeFixture(2)
+
+		  // The first response answers the prompt at 09:00:00 and its last record is at 09:00:01.5.
+		  Assert.AreEqual(1.5, s.Responses(0).Seconds, 0.001)
+		  // The second answers the Bash result at 09:00:04 and ends at 09:00:05.1.
+		  Assert.AreEqual(1.1, s.Responses(1).Seconds, 0.001)
+
+		  Var bash As WakeEvent = TestSupport.FindTool(s, "toolu_bash_01")
+		  Assert.AreEqual(2.5, bash.ResultSeconds, 0.001)
+		  Assert.IsTrue(bash.Response Is s.Responses(0), "the call belongs to the first response")
+		  Var first As Integer = s.Responses(0).FirstSequence
+		  Assert.AreEqual(1, first, "the text block after the prompt")
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub TurnStatsTest()
+		  Var basic As WakeSession = TestSupport.ParseClaudeFixture(1)
+		  Var prompt As WakeEvent = basic.Events(0)
+		  Assert.AreEqual(3500, prompt.TurnActiveMs, "turn_duration goes to the prompt")
+		  Assert.AreEqual(1, prompt.TurnResponses)
+
+		  Var tools As WakeSession = TestSupport.ParseClaudeFixture(2)
+		  prompt = tools.Events(0)
+		  Assert.AreEqual(6, prompt.TurnResponses)
+		  Assert.AreEqual(17500, prompt.TurnUsage.Total.CacheReadTokens)
+
+		  // A turn includes the subagents it started.
+		  Var parent As WakeSession = TestSupport.ParseClaudeFixture(4)
+		  Var total As WakeTokenUsage = parent.Events(0).TurnUsage.Total
+		  Assert.AreEqual(135, total.InputTokens, "25 for the parent and 110 for the subagent")
+		  Assert.AreEqual(2, parent.Events(0).TurnUsage.ByModel.KeyCount)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub UsageCountedOncePerMessageTest()
 		  // Every record of a split response repeats the same usage; it must count once.
 		  Var basic As WakeSession = TestSupport.ParseClaudeFixture(1)

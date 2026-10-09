@@ -1,9 +1,9 @@
 #tag Class
 Protected Class WakeTimeline
 	#tag Method, Flags = &h21
-		Private Sub AddCard(out() As String, cssClass As String, label As String, timestamp As DateTime, body As String)
+		Private Sub AddCard(out() As String, cssClass As String, label As String, timestamp As DateTime, body As String, stats As String = "")
 		  out.Add("<section class=""card " + cssClass + """><div class=""head""><span class=""who"">" + EscapeHTML(label) + "</span>" + _
-		  TimeHTML(timestamp) + "</div>" + body + "</section>")
+		  "<span>" + stats + TimeHTML(timestamp) + "</span></div>" + body + "</section>")
 		End Sub
 	#tag EndMethod
 
@@ -11,7 +11,7 @@ Protected Class WakeTimeline
 		Private Sub AddEvent(out() As String, e As WakeEvent)
 		  Select Case e.Kind
 		  Case WakeEvent.Kinds.UserPrompt
-		    AddCard(out, "user", "You", e.Timestamp, Block(e.Text, False, "prose"))
+		    AddCard(out, "user", "You", e.Timestamp, Block(e.Text, False, "prose"), TurnStats(e))
 		    
 		  Case WakeEvent.Kinds.AssistantText
 		    AddCard(out, "assistant", "Assistant", e.Timestamp, Block(e.Text, False, "prose"))
@@ -46,8 +46,15 @@ Protected Class WakeTimeline
 		  
 		  // Each event gets an anchor, so a search hit can scroll to it with wakeGoTo.
 		  Var uid As String = If(session.IsSubagent And session.SubagentID <> "", session.SubagentID, session.ID)
-		  
+		  Var lastModel As String
+
 		  For Each e As WakeEvent In session.Events
+		    // A thin line opens each response, with its usage. The model is named when it changes.
+		    If e.Response <> Nil And e.Response.FirstSequence = e.Sequence Then
+		      AddResponse(out, e.Response, e.Response.Model <> lastModel)
+		      lastModel = e.Response.Model
+		    End If
+
 		    mNextAnchor = mNextAnchor + 1
 		    Var anchor As String = "e" + mNextAnchor.ToString
 		    mAnchors.Value(uid + "/" + e.Sequence.ToString) = anchor
@@ -67,6 +74,26 @@ Protected Class WakeTimeline
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Sub AddResponse(out() As String, response As WakeResponse, showModel As Boolean)
+		  // A response's context is everything the model read: new input plus cache writes and reads.
+		  Var u As WakeTokenUsage = response.Usage
+		  Var parts() As String
+		  If showModel And response.Model <> "" Then parts.Add(response.Model)
+		  If response.Seconds >= 0 Then parts.Add(WakeFormat.Seconds(response.Seconds))
+		  parts.Add(WakeFormat.Tokens(response.ContextTokens) + " in")
+		  parts.Add(WakeFormat.Tokens(u.OutputTokens) + " out")
+
+		  Var detail As String = "Input " + WakeFormat.Count(u.InputTokens) + ", cache write " + WakeFormat.Count(u.CacheWriteTokens) + _
+		  ", cache read " + WakeFormat.Count(u.CacheReadTokens) + ", output " + WakeFormat.Count(u.OutputTokens)
+		  If response.StartsNewContext Then detail = detail + ". The context shrank here, so it was probably compacted."
+
+		  Var usage As New WakeUsageGroup
+		  usage.Add(response.Model, u)
+		  out.Add("<div class=""resp"">" + Stats(parts, usage, detail) + "</div>")
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Sub AddSubagent(out() As String, child As WakeSession)
 		  Var label As String = "Subagent"
 		  If child.SubagentType <> "" Then label = label + " · " + child.SubagentType
@@ -75,8 +102,9 @@ Protected Class WakeTimeline
 		  Var facts As String = WakeFormat.Tokens(child.TotalUsage.Total) + " tokens, " + _
 		  If(child.Events.Count = 1, "1 event", WakeFormat.Count(child.Events.Count) + " events")
 		  
-		  out.Add("<details class=""subagent""><summary>" + EscapeHTML(label) + " <span class=""muted"">" + EscapeHTML(facts) + _
-		  "</span></summary><div class=""body"">")
+		  Var noParts() As String
+		  out.Add("<details class=""subagent""><summary>" + Stats(noParts, child.TotalUsageByModel, "") + EscapeHTML(label) + _
+		  " <span class=""muted"">" + EscapeHTML(facts) + "</span></summary><div class=""body"">")
 		  AddParseNote(out, child)
 		  AddEvents(out, child)
 		  out.Add("</div></details>")
@@ -134,6 +162,7 @@ Protected Class WakeTimeline
 		  If e.HasResult And e.ResultIsError Then summary = summary + "<span class=""badge error"">error</span>"
 		  If e.Interrupted Then summary = summary + "<span class=""badge"">interrupted</span>"
 		  If e.IsToolCall And Not e.HasResult Then summary = summary + "<span class=""badge"">no result</span>"
+		  summary = ToolStats(e) + summary
 		  
 		  If e.Subagent <> Nil Then AddSubagent(body, e.Subagent)
 		  
@@ -216,9 +245,30 @@ Protected Class WakeTimeline
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function CostsJSON(prices As WakePriceTable) As String
+		  // The cost of every stat on the page, as a JSON object of element id to text, for the page's
+		  // wakeSetCosts. The page never depends on prices, so a price change doesn't reload it.
+		  Call HTML
+
+		  Var result As New Dictionary
+		  For Each key As Variant In mCosts.Keys
+		    Var text As String
+		    If prices <> Nil Then
+		      Var estimate As WakeCostEstimate = prices.Estimate(WakeUsageGroup(mCosts.Value(key).ObjectValue).ByModel)
+		      If estimate.PricedTokens > 0 Then text = WakeFormat.Cost(estimate)
+		    End If
+		    result.Value(key.StringValue) = text
+		  Next
+
+		  Return GenerateJSON(result)
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub Constructor(session As WakeSession)
 		  mSession = session
 		  mAnchors = WakeCore.NewCaseSensitiveDictionary
+		  mCosts = WakeCore.NewCaseSensitiveDictionary
 		  mBlocks = WakeCore.NewCaseSensitiveDictionary
 		  mPersisted = WakeCore.NewCaseSensitiveDictionary
 		End Sub
@@ -457,6 +507,9 @@ Protected Class WakeTimeline
 		  js.Add("  target.innerHTML = html;")
 		  js.Add("  if (button && button.parentNode) button.parentNode.removeChild(button);")
 		  js.Add("}")
+		  js.Add("function wakeSetCosts(costs) {")
+		  js.Add("  document.querySelectorAll('.cost').forEach(function (c) { c.textContent = costs[c.id] || ''; });")
+		  js.Add("}")
 		  js.Add("function wakeGoTo(id) {")
 		  js.Add("  var target = document.getElementById(id);")
 		  js.Add("  if (!target) return;")
@@ -490,6 +543,24 @@ Protected Class WakeTimeline
 		    lines.RemoveAt(lines.LastIndex)
 		  Wend
 		  Return lines
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function Stats(parts() As String, usage As WakeUsageGroup, detail As String) As String
+		  // Right-aligned figures. The cost is left empty and filled in by wakeSetCosts.
+		  Var html As String = EscapeHTML(String.FromArray(parts, " · "))
+
+		  If usage <> Nil And Not usage.Total.IsEmpty Then
+		    mNextCost = mNextCost + 1
+		    Var id As String = "c" + mNextCost.ToString
+		    mCosts.Value(id) = usage
+		    html = html + "<span class=""cost" + If(parts.Count = 0, " alone", "") + """ id=""" + id + """></span>"
+		  End If
+
+		  If html = "" Then Return ""
+		  Var title As String = If(detail <> "", " title=""" + EscapeHTML(detail) + """", "")
+		  Return "<span class=""stats""" + title + ">" + html + "</span>"
 		End Function
 	#tag EndMethod
 
@@ -574,6 +645,13 @@ Protected Class WakeTimeline
 		  css.Add(".system, .thinking { color: var(--muted); font-size: 12px; }")
 		  css.Add(".subagent { border: 1px dashed var(--line); border-radius: 8px; padding: 4px 8px; margin: 6px 0; }")
 		  css.Add(".persisted { margin: 4px 0; }")
+		  css.Add(".stats { float: right; margin-left: 12px; color: var(--muted); font-size: 11px; font-weight: normal;")
+		  css.Add("  font-variant-numeric: tabular-nums; text-transform: none; letter-spacing: 0; }")
+		  css.Add(".head .stats { float: none; margin: 0 8px 0 0; }")
+		  css.Add(".cost { color: var(--fg); }")
+		  css.Add(".cost:not(:empty):not(.alone)::before { content: "" · ""; color: var(--muted); }")
+		  css.Add(".resp { clear: both; margin: 10px 0 0; border-top: 1px solid var(--line); }")
+		  css.Add(".resp::after { content: """"; display: block; clear: both; }")
 		  css.Add(".ev.hit > * { outline: 2px solid var(--hit); outline-offset: 2px; border-radius: 6px; }")
 		  Return String.FromArray(css, &u0A)
 		End Function
@@ -589,6 +667,49 @@ Protected Class WakeTimeline
 		End Function
 	#tag EndMethod
 
+	#tag Method, Flags = &h21
+		Private Function ToolStats(e As WakeEvent) As String
+		  // The tokens a result added are an estimate from the growth of the next response's context.
+		  // Every later response reads them again from the cache, until the context is compacted.
+		  Var parts() As String
+		  If e.ResultSeconds >= 0 Then parts.Add(WakeFormat.Seconds(e.ResultSeconds))
+		  If e.AddedTokens > 0 Then parts.Add("≈" + WakeFormat.Tokens(e.AddedTokens) + " added")
+		  If e.CarriedTokens > 0 Then parts.Add("≈" + WakeFormat.Tokens(e.CarriedTokens) + " re-read")
+
+		  Var usage As New WakeUsageGroup
+		  For Each group As WakeUsageGroup In Array(e.AddedUsage, e.CarriedUsage)
+		    If group Is Nil Then Continue
+		    For Each key As Variant In group.ByModel.Keys
+		      usage.Add(key.StringValue, WakeTokenUsage(group.ByModel.Value(key).ObjectValue))
+		    Next
+		  Next
+
+		  Var detail As String
+		  If e.AddedTokens > 0 Then
+		    Var times As Int64 = e.CarriedTokens \ e.AddedTokens
+		    detail = "About " + WakeFormat.Count(e.AddedTokens) + " tokens added to the context, read again by " + _
+		    If(times = 1, "1 later response", WakeFormat.Count(times) + " later responses") + ". Estimated from the growth of the context."
+		  End If
+
+		  Return Stats(parts, usage, detail)
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function TurnStats(e As WakeEvent) As String
+		  // Everything the prompt led to, up to the next prompt, subagents included.
+		  If e.TurnUsage Is Nil Then Return ""
+
+		  Var parts() As String
+		  If e.TurnActiveMs > 0 Then parts.Add(WakeFormat.Seconds(e.TurnActiveMs / 1000) + " active")
+		  If e.TurnResponses > 0 Then parts.Add(If(e.TurnResponses = 1, "1 response", WakeFormat.Count(e.TurnResponses) + " responses"))
+		  Var total As WakeTokenUsage = e.TurnUsage.Total
+		  If Not total.IsEmpty Then parts.Add(WakeFormat.Tokens(total.Total) + " tokens")
+
+		  Return Stats(parts, e.TurnUsage, "This turn, up to the next prompt")
+		End Function
+	#tag EndMethod
+
 
 	#tag Property, Flags = &h21
 		Private mAnchors As Dictionary
@@ -599,11 +720,19 @@ Protected Class WakeTimeline
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
+		Private mCosts As Dictionary
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
 		Private mHTML As String
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
 		Private mNextAnchor As Integer
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mNextCost As Integer
 	#tag EndProperty
 
 	#tag Property, Flags = &h21

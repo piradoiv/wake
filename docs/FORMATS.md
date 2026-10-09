@@ -217,7 +217,20 @@ agree.
 
 Session start and end are the minimum and maximum timestamps in the file.
 Duration is end minus start. It includes idle time. The `turn_duration` system
-records hold active time.
+records hold active time. Each one comes at the end of a turn, so Wake
+credits it to the latest prompt.
+
+### Tokens per tool result (estimated)
+
+Usage is only recorded per response, never per tool result. But each
+response's context (`input_tokens` + `cache_creation_input_tokens` +
+`cache_read_input_tokens`) minus the previous response's context and
+`output_tokens` is roughly what was sent in between: tool results, prompts
+and commands, plus attachments and reminders that Wake can't see. Wake splits
+that growth among the inputs by the length of their text. Every later
+response reads those tokens again from the cache. When a context shrinks to
+less than half of the previous one, it was compacted, and nothing before it
+is counted as re-read.
 
 ### Ambiguities and open questions
 

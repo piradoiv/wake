@@ -49,6 +49,7 @@ Class=WakeSearchQuery;Core/Index/WakeSearchQuery.xojo_code;&h000000003C5E81A7;&h
 Class=WakeSearchHit;Core/Index/WakeSearchHit.xojo_code;&h000000005A0D93F1;&h000000004A6D21B5;false
 Class=WakeSearchTests;Tests/WakeSearchTests.xojo_code;&h000000001B7F4C62;&h000000001662E964;false
 Class=WakeUsageEntry;Core/WakeUsageEntry.xojo_code;&h000000006AC5DC13;&h00000000344C984D;false
+Class=WakeResponse;Core/WakeResponse.xojo_code;&h000000005D1E7A43;&h00000000344C984D;false
 Class=WakeUsageGroup;Core/Index/WakeUsageGroup.xojo_code;&h00000000774EFBD9;&h000000004A6D21B5;false
 Class=WakeModelPrice;Core/WakeModelPrice.xojo_code;&h000000002B6BD222;&h00000000344C984D;false
 Class=WakeCostEstimate;Core/WakeCostEstimate.xojo_code;&h0000000020037D51;&h00000000344C984D;false

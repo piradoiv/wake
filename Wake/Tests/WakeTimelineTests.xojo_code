@@ -28,6 +28,31 @@ Inherits TestGroup
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub CostsFilledByScriptTest()
+		  // The page holds empty cost slots, so it never depends on prices. CostsJSON fills them.
+		  Var timeline As New WakeTimeline(TestSupport.ParseClaudeFixture(2))
+		  Var html As String = timeline.HTML
+		  Assert.AreEqual(-1, html.IndexOf("$0."), "no amounts in the page")
+		  Assert.IsTrue(html.IndexOf("function wakeSetCosts(") >= 0)
+		  
+		  Var empty As Dictionary = ParseJSON(timeline.CostsJSON(New WakePriceTable))
+		  Assert.AreEqual("", empty.Value("c1").StringValue, "no price set: no cost shown")
+		  
+		  Var price As New WakeModelPrice("claude-opus-5-5")
+		  price.InputPerMillion = 5
+		  price.OutputPerMillion = 25
+		  price.CacheWritePerMillion = 6.25
+		  price.CacheReadPerMillion = 0.5
+		  Var table As New WakePriceTable
+		  table.SetPrice(price)
+		  
+		  Var costs As Dictionary = ParseJSON(timeline.CostsJSON(table))
+		  Assert.AreEqual(CountOf(html, "class=""cost"), costs.KeyCount, "one cost per slot")
+		  Assert.IsTrue(costs.Value("c1").StringValue.BeginsWith("$") Or costs.Value("c1").StringValue.BeginsWith("<$"))
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub EditDiffTest()
 		  Var html As String = FixturePage(2)
 		  
@@ -162,6 +187,23 @@ Inherits TestGroup
 		  Assert.IsTrue(html.IndexOf("&lt;command-name&gt;/clear&lt;/command-name&gt;") >= 0, "full text in the body")
 		  Assert.IsTrue(html.IndexOf("Context limit nearly reached</div>") >= 0, "one-line system message")
 		  Assert.IsTrue(html.IndexOf("<section class=""card error"">") >= 0, "synthetic API error")
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub StatsTest()
+		  Var html As String = FixturePage(2)
+		  
+		  Assert.AreEqual(6, CountOf(html, "<div class=""resp"">"), "a line per response, not per record")
+		  Assert.AreEqual(1, CountOf(html, "claude-opus-5-5 · "), "the model is named once")
+		  Assert.IsTrue(html.IndexOf("1.5s · 1.5K in · 20 out") >= 0, "first response")
+		  Assert.IsTrue(html.IndexOf("2.5s · ≈175 added · ≈700 re-read") >= 0, "the failing Bash call")
+		  Assert.IsTrue(html.IndexOf("≈485 added</span>") < 0 And html.IndexOf("≈485 added<span class=""cost") >= 0, _
+		  "the last result is never re-read")
+		  Assert.IsTrue(html.IndexOf("6 responses · 18.4K tokens") >= 0, "turn totals on the prompt")
+		  
+		  Var basic As String = FixturePage(1)
+		  Assert.IsTrue(basic.IndexOf("3.5s active · 1 response") >= 0, "turn_duration")
 		End Sub
 	#tag EndMethod
 

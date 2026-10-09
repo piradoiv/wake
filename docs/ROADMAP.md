@@ -80,6 +80,21 @@ Each milestone ends with the tests passing and a commit.
   prices, so a price change only redraws the tiles. An earlier HTML copy of
   the tiles drifted from the native ones. `WakeSession.TotalUsageByModel`
   rolls up subagents for both the timeline and the export. 84 tests.
+- [x] **11. Stats per event.** The parser records each model response as a
+  `WakeResponse` (usage, time from the input it answered, the inputs it
+  answered). `WakeSession.ComputeStats` estimates the tokens each input
+  added to the context and how often later responses re-read them, and
+  totals each turn on its prompt (subagents included, active time from
+  `turn_duration`). The timeline shows a thin line per response (time,
+  context in, output), and duration, ≈ added and ≈ re-read per tool call, and
+  turn totals on prompts. Costs are empty slots filled by `wakeSetCosts` with
+  `WakeTimeline.CostsJSON`, so the page still doesn't depend on prices.
+  91 tests. On real data (12 sessions) the estimates match a Python reference
+  exactly, and the slowest page takes 0.16 s.
+- [ ] **12. Where the tokens went.** Store each tool call's estimate in the
+  index and show it grouped by tool, file type and shell command, across
+  sessions and periods, with cost. The goal is to show which reads are
+  worth replacing with a narrower tool.
 
 After v0.1: Codex CLI and Gemini CLI parsers, once real sessions exist on a
 machine to inspect, and the console companion.
@@ -104,6 +119,8 @@ machine to inspect, and the console companion.
 | A session with no `cwd` (empty, or only a slash command) joins the project of **the other sessions in its folder**, if there are any. | Otherwise it shows up as a second project named after the encoded folder. |
 | The timeline **opens in its own window** (`SessionWindow`), one per session. | It needs the full width for diffs and output, and two sessions can be compared side by side. |
 | The timeline page has a **CSP of `default-src 'none'`** with inline style and script, and the viewer **cancels every navigation** after the page loads. | Transcripts are untrusted text. Nothing in them may load a remote resource or move the viewer off the page. |
+| The timeline page holds **no amounts**. Its cost slots are filled by `wakeSetCosts` after load and after every price change. | Reloading the page would lose the scroll position and the open blocks. |
+| Token figures per tool call are **estimates, marked ≈**, from context growth between responses, split among the inputs by text length. | Transcripts record usage only per response, so this is the only per-result signal. Attachments and reminders Wake can't see inflate it a little. |
 | Search words match as **prefixes**, `"quoted text"` as a phrase, and every term must match. Every term is quoted, so FTS5 operators are plain words. | Search as you type needs partial words, and no input may raise an FTS5 syntax error. |
 | Search lives **in the main window**, scoped by the source-list selection, not in its own window. | Agent and project filters come for free, and the detail pane shows the hit's session. |
 | Search runs **on the main thread**, 250 ms after the last keystroke. | Queries take milliseconds on real data. |
