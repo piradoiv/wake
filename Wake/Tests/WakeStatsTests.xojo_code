@@ -250,6 +250,46 @@ Inherits TestGroup
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub ToolCallsTest()
+		  // Session 2's two Reads, the larger first, with their events' summaries.
+		  Var reads() As WakeToolCallInfo = mCatalog.ToolCalls(WakeCatalog.ToolGroupings.Tool, "Read")
+		  Var count As Integer = reads.Count
+		  Assert.AreEqual(2, count)
+		  If count <> 2 Then Return
+		  Assert.AreEqual(640, reads(0).AddedTokens, "most tokens first")
+		  Assert.AreEqual(628, reads(1).AddedTokens)
+		  Assert.AreEqual(1920, reads(0).CarriedTokens)
+		  Assert.AreEqual("Read", reads(0).Summary)
+		  Assert.AreEqual("Read /Users/dev/demo/test.c", reads(0).Description)
+		  Assert.AreEqual("/Users/dev/demo/main.c", reads(1).TargetPath)
+		  Assert.AreEqual(TestSupport.ClaudeFixtureID(2), reads(0).Session.UID)
+		  Assert.AreEqual(TestSupport.ClaudeFixtureID(2), reads(0).EventSessionUID)
+		  Assert.AreEqual("Fix failing CSV quoting test", reads(0).Session.DisplayTitle)
+		  Assert.AreEqual(640, reads(0).Usage.Total.InputTokens, "usage by model for the cost")
+		  Assert.IsTrue(reads(0).Usage.ByModel.HasKey("claude-opus-5-5"))
+		  
+		  // A subagent's call opens in its parent's timeline, at the subagent's event.
+		  Var greps() As WakeToolCallInfo = mCatalog.ToolCalls(WakeCatalog.ToolGroupings.Tool, "Grep")
+		  count = greps.Count
+		  Assert.AreEqual(1, count)
+		  If count <> 1 Then Return
+		  Assert.AreEqual(TestSupport.ClaudeFixtureID(4), greps(0).Session.UID)
+		  Assert.AreNotEqual(greps(0).Session.UID, greps(0).EventSessionUID)
+		  Assert.AreEqual("a0fixture000001", greps(0).EventSessionUID)
+		  
+		  Var make() As WakeToolCallInfo = mCatalog.ToolCalls(WakeCatalog.ToolGroupings.Command, "make", Nil, 1)
+		  count = make.Count
+		  Assert.AreEqual(1, count, "limit")
+		  If count = 1 Then Assert.AreEqual("$ make test", make(0).Description.Left(11))
+		  
+		  Var later As DateTime = DateTime.Now.AddInterval(0, 0, 1)
+		  Var none() As WakeToolCallInfo = mCatalog.ToolCalls(WakeCatalog.ToolGroupings.Tool, "Read", later)
+		  count = none.Count
+		  Assert.AreEqual(0, count, "nothing in the future")
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub ToolUsageTest()
 		  // Session 2's Reads added 640 and 628 tokens, each read again by three later responses.
 		  Var byTool() As WakeToolUsageGroup = mCatalog.ToolUsage(WakeCatalog.ToolGroupings.Tool)

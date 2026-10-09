@@ -286,26 +286,121 @@ Protected Class WakeCatalog
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function ToolCalls(grouping As ToolGroupings, key As String, fromTime As DateTime = Nil, limit As Integer = 500) As WakeToolCallInfo()
+		  // The tool calls in one group of ToolUsage, with the most tokens (added plus re-read) first,
+		  // at most limit of them. Each call carries its top-level session, also when a subagent made
+		  // it. Raises DatabaseException.
+		  Var clauses() As String
+		  Var values() As Variant
+		  clauses.Add(ToolGroupKey(grouping, clauses) + " = ?")
+		  values.Add(key)
+		  
+		  If fromTime <> Nil Then
+		    clauses.Add("coalesce(t.timestamp, us.start_time) >= ?")
+		    values.Add(fromTime.SecondsFrom1970)
+		  End If
+		  
+		  Var source As String = " FROM tool_usage t JOIN sessions us ON us.id = t.session_id " + _
+		  "JOIN sessions ts ON ts.id = coalesce(us.parent_id, us.id) WHERE " + String.FromArray(clauses, " AND ")
+		  
+		  Var callValues() As Variant
+		  For Each v As Variant In values
+		    callValues.Add(v)
+		  Next
+		  callValues.Add(Max(limit, 1))
+		  
+		  // A call has a row per model, so its rows are summed up. Its summary comes from its event.
+		  Var rs As RowSet = mIndex.Database.SelectSQL("SELECT t.session_id, t.seq, max(t.timestamp) AS timestamp, " + _
+		  "max(t.tool) AS tool, max(t.target) AS target, sum(t.added_tokens) AS added, sum(t.carried_tokens) AS carried, " + _
+		  "max(us.uid) AS event_uid, max(ts.id) AS top_id, " + _
+		  "(SELECT e.summary FROM events e WHERE e.session_id = t.session_id AND e.seq = t.seq LIMIT 1) AS summary" + _
+		  source + " GROUP BY t.session_id, t.seq ORDER BY sum(t.added_tokens + t.carried_tokens) DESC, " + _
+		  "max(t.timestamp) DESC, t.session_id, t.seq LIMIT ?", callValues)
+		  
+		  Var result() As WakeToolCallInfo
+		  Var byCall As Dictionary = WakeCore.NewCaseSensitiveDictionary
+		  Var topIDs() As Integer
+		  Var topIDMarks() As String
+		  Var sessionValues() As Variant
+		  
+		  For Each row As DatabaseRow In rs
+		    Var c As New WakeToolCallInfo
+		    c.Sequence = row.Column("seq").IntegerValue
+		    c.Timestamp = TimeFrom(row.Column("timestamp"))
+		    c.ToolName = row.Column("tool").StringValue
+		    c.TargetPath = row.Column("target").StringValue
+		    c.Summary = row.Column("summary").StringValue
+		    c.AddedTokens = row.Column("added").Int64Value
+		    c.CarriedTokens = row.Column("carried").Int64Value
+		    c.EventSessionUID = row.Column("event_uid").StringValue
+		    
+		    // Session is filled in below, once per session. Until then it holds only the id.
+		    Var topID As Integer = row.Column("top_id").IntegerValue
+		    c.Session = New WakeSessionInfo
+		    c.Session.ID = topID
+		    If topIDs.IndexOf(topID) < 0 Then
+		      topIDs.Add(topID)
+		      topIDMarks.Add("?")
+		      sessionValues.Add(topID)
+		    End If
+		    
+		    result.Add(c)
+		    byCall.Value(row.Column("session_id").StringValue + ":" + c.Sequence.ToString) = c
+		  Next
+		  
+		  If result.Count = 0 Then Return result
+		  
+		  rs = mIndex.Database.SelectSQL("SELECT t.session_id, t.seq, t.model AS model, " + _
+		  "sum(t.input_tokens) AS input_tokens, 0 AS output_tokens, sum(t.cache_write_tokens) AS cache_write_tokens, " + _
+		  "sum(t.cache_write_1h_tokens) AS cache_write_1h_tokens, sum(t.cache_read_tokens) AS cache_read_tokens" + _
+		  source + " AND t.model <> '' GROUP BY t.session_id, t.seq, t.model", values)
+		  
+		  For Each row As DatabaseRow In rs
+		    Var callKey As String = row.Column("session_id").StringValue + ":" + row.Column("seq").StringValue
+		    Var c As WakeToolCallInfo = WakeToolCallInfo(byCall.Lookup(callKey, Nil).ObjectValue)
+		    If c <> Nil Then c.Usage.Add(row.Column("model").StringValue, UsageFrom(row))
+		  Next
+		  
+		  Var sessions As New Dictionary
+		  For Each s As WakeSessionInfo In ReadSessions("s.id IN (" + String.FromArray(topIDMarks, ", ") + ")", sessionValues, "s.id")
+		    sessions.Value(s.ID) = s
+		  Next
+		  
+		  For Each c As WakeToolCallInfo In result
+		    c.Session = WakeSessionInfo(sessions.Lookup(c.Session.ID, c.Session).ObjectValue)
+		  Next
+		  
+		  Return result
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function ToolGroupKey(grouping As ToolGroupings, clauses() As String) As String
+		  // The SQL expression that names a tool call's group, adding to clauses any condition the
+		  // grouping needs.
+		  Select Case grouping
+		  Case ToolGroupings.ToolAndFileType
+		    Return "CASE WHEN t.file_type = '' THEN t.tool ELSE t.tool || ' ' || t.file_type END"
+		  Case ToolGroupings.Command
+		    clauses.Add("t.command <> ''")
+		    Return "t.command"
+		  Case ToolGroupings.File
+		    clauses.Add("t.target <> ''")
+		    Return "t.target"
+		  Else
+		    Return "t.tool"
+		  End Select
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function ToolUsage(grouping As ToolGroupings, fromTime As DateTime = Nil) As WakeToolUsageGroup()
 		  // Estimated tokens per tool, tool and file type, shell command or file, from tool calls
 		  // made from fromTime on, with the most tokens (added plus re-read) first. Each group is
 		  // split by model so it can be priced. Raises DatabaseException.
-		  Var keyExpression As String
 		  Var clauses() As String
 		  Var values() As Variant
-		  
-		  Select Case grouping
-		  Case ToolGroupings.Tool
-		    keyExpression = "t.tool"
-		  Case ToolGroupings.ToolAndFileType
-		    keyExpression = "CASE WHEN t.file_type = '' THEN t.tool ELSE t.tool || ' ' || t.file_type END"
-		  Case ToolGroupings.Command
-		    keyExpression = "t.command"
-		    clauses.Add("t.command <> ''")
-		  Case ToolGroupings.File
-		    keyExpression = "t.target"
-		    clauses.Add("t.target <> ''")
-		  End Select
+		  Var keyExpression As String = ToolGroupKey(grouping, clauses)
 		  clauses.Add("1 = 1")
 		  
 		  If fromTime <> Nil Then

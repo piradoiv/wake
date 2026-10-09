@@ -52,6 +52,7 @@ Class=WakeUsageEntry;Core/WakeUsageEntry.xojo_code;&h000000006AC5DC13;&h00000000
 Class=WakeResponse;Core/WakeResponse.xojo_code;&h000000005D1E7A43;&h00000000344C984D;false
 Class=WakeUsageGroup;Core/Index/WakeUsageGroup.xojo_code;&h00000000774EFBD9;&h000000004A6D21B5;false
 Class=WakeToolUsageGroup;Core/Index/WakeToolUsageGroup.xojo_code;&h000000003F8A6C25;&h000000004A6D21B5;false
+Class=WakeToolCallInfo;Core/Index/WakeToolCallInfo.xojo_code;&h000000006B3D2E91;&h000000004A6D21B5;false
 Class=WakeModelPrice;Core/WakeModelPrice.xojo_code;&h000000002B6BD222;&h00000000344C984D;false
 Class=WakeCostEstimate;Core/WakeCostEstimate.xojo_code;&h0000000020037D51;&h00000000344C984D;false
 Class=WakePriceTable;Core/WakePriceTable.xojo_code;&h000000002530B62C;&h00000000344C984D;false

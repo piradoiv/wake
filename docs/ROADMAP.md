@@ -109,22 +109,16 @@ Goal: a developer sees that, say, `sed` is expensive and can tell *why* and
 patterns come from the shape of a call, never from a language or project.
 Each milestone below is one session's work, ending with tests and a commit.
 
-- [ ] **13. Drill down to the calls.** In the Usage window, selecting a row
-  of a tool grouping lists that group's calls below it, most tokens first.
-  - Core: `WakeCatalog.ToolCalls(grouping, key, fromTime, limit)` returns
-    `WakeToolCallInfo`s (new class in `Core/Index`): session id and uid,
-    session title, seq, timestamp, tool, the event's `summary` (join
-    `events` on `session_id` and `seq`), target, ≈ added, ≈ re-read and
-    usage by model for the cost. Default limit 500.
-  - UI: a second list box under `UsageList` (columns: time, session,
-    call, ≈ added, ≈ re-read, cost), shown only for tool groupings, with the
-    same `RowComparison` sorting by cell tag. Double-clicking a call opens
-    its timeline at that event, the way search hits do (`SessionWindow.
-    ShowEvent(uid, seq)`). Copy the list's property list from `UsageList`.
-    This edits the window by hand, so ask the maintainer to save afterwards.
-  - Tests: on the fixtures, the `Read` group lists 2 calls, the larger
-    first, with their summaries; a subagent's call (`Grep`) points to the
-    subagent's uid.
+- [x] **13. Drill down to the calls.** `WakeCatalog.ToolCalls(grouping,
+  key, fromTime, limit)` returns the calls of one tool group as
+  `WakeToolCallInfo`s, most tokens first (default limit 500): top-level
+  session, the event's own session uid and seq, time, tool, the event's
+  summary, target, ≈ added, ≈ re-read and usage by model. `Description`
+  adds the target when the summary is only the tool's name. In the Usage
+  window, selecting a row of a tool grouping lists its calls in `CallsList`
+  below it; double-clicking one opens its timeline at that event. The two
+  lists share the space below the chart (`LayOutLists`, also on resize).
+  94 tests.
 
 - [ ] **14. Group calls by intent.** Classify every tool call by what it
   was trying to get, so the fix is obvious from the group.

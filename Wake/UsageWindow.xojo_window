@@ -189,6 +189,55 @@ Begin DesktopWindow UsageWindow
       _ScrollOffset   =   0
       _ScrollWidth    =   -1
    End
+   Begin DesktopListBox CallsList
+      AllowAutoDeactivate=   True
+      AllowAutoHideScrollbars=   True
+      AllowExpandableRows=   False
+      AllowFocusRing  =   False
+      AllowResizableColumns=   True
+      AllowRowDragging=   False
+      AllowRowReordering=   False
+      Bold            =   False
+      ColumnCount     =   6
+      ColumnWidths    =   "140,220,*,90,90,110"
+      DefaultRowHeight=   22
+      DropIndicatorVisible=   False
+      Enabled         =   True
+      FontName        =   "System"
+      FontSize        =   0.0
+      FontUnit        =   0
+      GridLineStyle   =   0
+      HasBorder       =   True
+      HasHeader       =   True
+      HasHorizontalScrollbar=   False
+      HasVerticalScrollbar=   True
+      HeadingIndex    =   -1
+      Height          =   201
+      Index           =   -2147483648
+      InitialParent   =   ""
+      InitialValue    =   ""
+      Italic          =   False
+      Left            =   -1
+      LockBottom      =   True
+      LockedInPosition=   False
+      LockLeft        =   True
+      LockRight       =   True
+      LockTop         =   True
+      RequiresSelection=   False
+      RowSelectionType=   0
+      Scope           =   2
+      TabIndex        =   6
+      TabPanelIndex   =   0
+      TabStop         =   True
+      Tooltip         =   "The calls in the selected group, most tokens first. Double-click one to open it in its timeline."
+      Top             =   464
+      Transparent     =   False
+      Underline       =   False
+      Visible         =   False
+      Width           =   962
+      _ScrollOffset   =   0
+      _ScrollWidth    =   -1
+   End
    Begin DesktopLabel StatusLabel
       AllowAutoDeactivate=   True
       Bold            =   False
@@ -235,6 +284,7 @@ End
 	#tag Event
 		Sub Opening()
 		  SetUp
+		  LayOutLists
 		  
 		  // Like the main window, open the index only once an indexing run has finished.
 		  If App.IsIndexing Then
@@ -242,6 +292,18 @@ End
 		  Else
 		    Reload
 		  End If
+		End Sub
+	#tag EndEvent
+
+	#tag Event
+		Sub Resized()
+		  LayOutLists
+		End Sub
+	#tag EndEvent
+
+	#tag Event
+		Sub Resizing()
+		  LayOutLists
 		End Sub
 	#tag EndEvent
 
@@ -301,6 +363,19 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Function CompareCells(list As DesktopListBox, row1 As Integer, row2 As Integer, column As Integer, asText As Boolean) As Integer
+		  // Compares two rows by the cell tags of a column: as text, or by value.
+		  If asText Then Return list.CellTagAt(row1, column).StringValue.Compare(list.CellTagAt(row2, column).StringValue)
+		  
+		  Var a As Double = list.CellTagAt(row1, column).DoubleValue
+		  Var b As Double = list.CellTagAt(row2, column).DoubleValue
+		  If a < b Then Return -1
+		  If a > b Then Return 1
+		  Return 0
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function DayLabel(key As String) As String
 		  // "Thursday, 8 October 2026" in the user's format, from the index's "2026-10-08".
 		  If key = "" Then Return "Unknown date"
@@ -322,6 +397,46 @@ End
 		End Sub
 	#tag EndMethod
 
+	#tag Method, Flags = &h21
+		Private Sub LayOutLists()
+		  // The groups fill the space below the chart. For a tool grouping, the calls of the selected
+		  // group share it, and the two lists overlap by a pixel so their borders draw as one line.
+		  Var bottom As Integer = StatusLabel.Top - 7
+		  Var available As Integer = Max(bottom - UsageList.Top, 80)
+		  
+		  If CallsList.Visible Then
+		    UsageList.Height = available * 45 \ 100
+		    CallsList.Top = UsageList.Top + UsageList.Height - 1
+		    CallsList.Height = Max(bottom - CallsList.Top, 40)
+		  Else
+		    UsageList.Height = available
+		  End If
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub OpenSelectedCall()
+		  // Opens the selected call's timeline at its event, or brings its window to the front if it
+		  // is open, the way search hits do.
+		  If CallsList.SelectedRowIndex < 0 Then Return
+		  Var c As WakeToolCallInfo = WakeToolCallInfo(CallsList.RowTagAt(CallsList.SelectedRowIndex).ObjectValue)
+		  If c Is Nil Or c.Session Is Nil Or c.Session.FilePath = "" Then Return
+		  
+		  For i As Integer = 0 To App.WindowCount - 1
+		    Var existing As DesktopWindow = App.WindowAt(i)
+		    If existing IsA SessionWindow And SessionWindow(existing).SessionID = c.Session.ID Then
+		      existing.Show
+		      SessionWindow(existing).ShowEvent(c.EventSessionUID, c.Sequence)
+		      Return
+		    End If
+		  Next
+		  
+		  Var timelineWindow As New SessionWindow
+		  timelineWindow.ShowSession(c.Session)
+		  timelineWindow.ShowEvent(c.EventSessionUID, c.Sequence)
+		End Sub
+	#tag EndMethod
+
 	#tag Method, Flags = &h0
 		Sub PricesChanged()
 		  If mCatalog <> Nil Then Reload
@@ -333,6 +448,7 @@ End
 		  // Fills the list with usage per day, project or model in the chosen period, and sums it
 		  // up in the tiles above the list and below it.
 		  UsageList.RemoveAllRows
+		  CallsList.RemoveAllRows
 		  GlanceTiles.RemoveAllTiles
 		  GlanceTiles.Refresh(False)
 		  DayChart.RemoveAllBars
@@ -362,9 +478,13 @@ End
 		  End If
 		  
 		  Var tag As Integer = GroupPopup.RowTagAt(GroupPopup.SelectedRowIndex).IntegerValue
-		  If tag >= kToolGroupingBase Then
-		    Var toolGrouping As Integer = tag - kToolGroupingBase
-		    ShowToolUsage(WakeCatalog.ToolGroupings(toolGrouping), periodStart)
+		  mPeriodStart = periodStart
+		  mToolGrouping = If(tag >= kToolGroupingBase, tag - kToolGroupingBase, -1)
+		  CallsList.Visible = mToolGrouping >= 0
+		  LayOutLists
+		  
+		  If mToolGrouping >= 0 Then
+		    ShowToolUsage(WakeCatalog.ToolGroupings(mToolGrouping), periodStart)
 		    ShowGlance(periodStart)
 		    Return
 		  End If
@@ -470,8 +590,62 @@ End
 		  For column As Integer = kColumnSessions To kColumnCost
 		    UsageList.ColumnAlignmentAt(column) = DesktopListBox.Alignments.Right
 		  Next
+		  For column As Integer = kCallColumnAdded To kCallColumnCost
+		    CallsList.ColumnAlignmentAt(column) = DesktopListBox.Alignments.Right
+		  Next
+		  CallsList.HeaderAt(kCallColumnTime) = "Time"
+		  CallsList.HeaderAt(kCallColumnSession) = "Session"
+		  CallsList.HeaderAt(kCallColumnCall) = "Call"
+		  CallsList.HeaderAt(kCallColumnAdded) = "≈ Added"
+		  CallsList.HeaderAt(kCallColumnCarried) = "≈ Re-read"
+		  CallsList.HeaderAt(kCallColumnCost) = "Est. cost"
+		  mToolGrouping = -1
 		  
 		  mLoading = False
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub ShowCalls()
+		  // Lists the calls of the selected tool group, most tokens first.
+		  CallsList.RemoveAllRows
+		  If mToolGrouping < 0 Or mCatalog Is Nil Or UsageList.SelectedRowIndex < 0 Then Return
+		  
+		  Var key As String = UsageList.RowTagAt(UsageList.SelectedRowIndex).StringValue
+		  Var calls() As WakeToolCallInfo
+		  Try
+		    calls = mCatalog.ToolCalls(WakeCatalog.ToolGroupings(mToolGrouping), key, mPeriodStart)
+		  Catch err As DatabaseException
+		    StatusLabel.Text = "Could not read the index: " + err.Message
+		    Return
+		  End Try
+		  
+		  For Each c As WakeToolCallInfo In calls
+		    Var estimate As WakeCostEstimate = App.Prices.Estimate(c.Usage.ByModel)
+		    Var title As String = If(c.Session Is Nil, WakeFormat.kUnknown, c.Session.DisplayTitle)
+		    Var description As String = WakeFormat.OneLine(c.Description, 200)
+		    Var shownTime As String = WakeFormat.kUnknown
+		    If c.Timestamp <> Nil Then shownTime = c.Timestamp.ToString(DateTime.FormatStyles.Medium, DateTime.FormatStyles.Short)
+		    
+		    CallsList.AddRow(shownTime, title, description, WakeFormat.Tokens(c.AddedTokens), _
+		    WakeFormat.Tokens(c.CarriedTokens), If(estimate.HasTokens, WakeFormat.Cost(estimate), WakeFormat.kUnknown))
+		    
+		    Var row As Integer = CallsList.LastAddedRowIndex
+		    CallsList.RowTagAt(row) = c
+		    CallsList.CellTagAt(row, kCallColumnTime) = If(c.Timestamp Is Nil, 0.0, c.Timestamp.SecondsFrom1970)
+		    CallsList.CellTagAt(row, kCallColumnSession) = title
+		    CallsList.CellTagAt(row, kCallColumnCall) = description
+		    CallsList.CellTagAt(row, kCallColumnAdded) = c.AddedTokens
+		    CallsList.CellTagAt(row, kCallColumnCarried) = c.CarriedTokens
+		    CallsList.CellTagAt(row, kCallColumnCost) = If(estimate.PricedTokens > 0, estimate.AmountUSD, -1.0)
+		    CallsList.CellTooltipAt(row, kCallColumnCall) = c.Description
+		    If c.Session <> Nil Then CallsList.CellTooltipAt(row, kCallColumnSession) = c.Session.ProjectPath
+		    If estimate.UnpricedModels.Count > 0 Then
+		      CallsList.CellTooltipAt(row, kCallColumnCost) = "No price set for " + String.FromArray(estimate.UnpricedModels, ", ")
+		    End If
+		  Next
+		  
+		  If CallsList.SortingColumn >= 0 Then CallsList.Sort
 		End Sub
 	#tag EndMethod
 
@@ -637,6 +811,7 @@ End
 		    If(estimate.HasTokens, WakeFormat.Cost(estimate), WakeFormat.kUnknown))
 		    
 		    Var row As Integer = UsageList.LastAddedRowIndex
+		    UsageList.RowTagAt(row) = g.Key
 		    UsageList.CellTagAt(row, kColumnLabel) = shown
 		    UsageList.CellTagAt(row, kColumnSessions) = g.Calls
 		    UsageList.CellTagAt(row, kColumnInput) = g.SessionCount
@@ -687,6 +862,32 @@ End
 		Private mLoading As Boolean
 	#tag EndProperty
 
+	#tag Property, Flags = &h21
+		Private mPeriodStart As DateTime
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mToolGrouping As Integer = -1
+	#tag EndProperty
+
+
+	#tag Constant, Name = kCallColumnAdded, Type = Double, Dynamic = False, Default = \"3", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kCallColumnCall, Type = Double, Dynamic = False, Default = \"2", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kCallColumnCarried, Type = Double, Dynamic = False, Default = \"4", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kCallColumnCost, Type = Double, Dynamic = False, Default = \"5", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kCallColumnSession, Type = Double, Dynamic = False, Default = \"1", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kCallColumnTime, Type = Double, Dynamic = False, Default = \"0", Scope = Private
+	#tag EndConstant
 
 	#tag Constant, Name = kColumnCacheRead, Type = Double, Dynamic = False, Default = \"5", Scope = Private
 	#tag EndConstant
@@ -745,20 +946,26 @@ End
 		Function RowComparison(row1 as Integer, row2 as Integer, column as Integer, ByRef result as Integer) As Boolean
 		  // Days sort by date and numbers by value, not by their text. A row with no price sorts
 		  // below every priced one.
-		  If column = kColumnLabel Then
-		    result = Me.CellTagAt(row1, column).StringValue.Compare(Me.CellTagAt(row2, column).StringValue)
-		    Return True
-		  End If
-		  
-		  Var a As Double = Me.CellTagAt(row1, column).DoubleValue
-		  Var b As Double = Me.CellTagAt(row2, column).DoubleValue
-		  If a < b Then
-		    result = -1
-		  ElseIf a > b Then
-		    result = 1
-		  Else
-		    result = 0
-		  End If
+		  result = CompareCells(Me, row1, row2, column, column = kColumnLabel)
+		  Return True
+		End Function
+	#tag EndEvent
+	#tag Event
+		Sub SelectionChanged()
+		  ShowCalls
+		End Sub
+	#tag EndEvent
+#tag EndEvents
+#tag Events CallsList
+	#tag Event
+		Sub DoublePressed()
+		  OpenSelectedCall
+		End Sub
+	#tag EndEvent
+	#tag Event
+		Function RowComparison(row1 as Integer, row2 as Integer, column as Integer, ByRef result as Integer) As Boolean
+		  // Times and numbers sort by value. A call with no price sorts below every priced one.
+		  result = CompareCells(Me, row1, row2, column, column = kCallColumnSession Or column = kCallColumnCall)
 		  Return True
 		End Function
 	#tag EndEvent
