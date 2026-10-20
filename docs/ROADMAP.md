@@ -231,6 +231,9 @@ machine to inspect, and the console companion.
 - **Adding project items:** create the file first, then add its line to
   `Wake/Wake.xojo_project` with a fresh unique `&h…` id and the parent folder's
   id. Never change existing ids.
+- **The app icon** is drawn in `Artwork/` (SVG sources and the rendered PNGs).
+  The maintainer adds the PNGs in the IDE, which stores them in the binary
+  `Wake/Wake.xojo_resources`. `Artwork/README.md` has the render commands.
 - **`Assert.AreEqual(n, someArray.Count)` is ambiguous.** Assign the count to
   an `Integer` variable first.
 - **`(expression).ToString` doesn't parse.** Assign to a variable first.

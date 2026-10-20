@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1F64A8"/>
+      <stop offset="1" stop-color="#0A1A36"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="240" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8FE9FF" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#8FE9FF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="720" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F2FCFF"/>
+      <stop offset="0.55" stop-color="#9FECFF" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#9FECFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="tile"><rect x="100" y="100" width="824" height="824" rx="185"/></clipPath>
+  </defs>
+
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#sea)"/>
+  <g clip-path="url(#tile)">
+    <!-- local frame: the point at the origin, travelling up; the wake opens behind it -->
+    <g transform="translate(660 364) rotate(45)">
+      <circle r="240" fill="url(#glow)"/>
+      <g fill="none" stroke="url(#fade)" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M-310 720 Q-120 300 0 40 Q120 300 310 720" stroke-width="34"/>
+        <path d="M-290 800 Q-110 470 0 230 Q110 470 290 800" stroke-width="26" opacity="0.65"/>
+        <path d="M-270 880 Q-100 640 0 420 Q100 640 270 880" stroke-width="20" opacity="0.4"/>
+      </g>
+      <circle r="44" fill="#FFFFFF"/>
+    </g>
+  </g>
+</svg>
