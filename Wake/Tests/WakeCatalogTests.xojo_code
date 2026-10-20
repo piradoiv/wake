@@ -7,14 +7,14 @@ Inherits TestGroup
 		  // the way the window does.
 		  mScratch = TestSupport.NewScratchFolder
 		  TestSupport.CopyFolder(TestSupport.FixturesFolder("claude-code").Child("projects"), mScratch.Child("projects"))
-
+		  
 		  Var writer As New WakeIndex(mScratch.Child("index.sqlite"))
 		  writer.Open
 		  Var indexer As New WakeIndexer(writer)
 		  indexer.AddRoot(New WakeIndexRoot("claude-code", mScratch.Child("projects")))
 		  Call indexer.Run
 		  writer.Close
-
+		  
 		  mIndex = New WakeIndex(mScratch.Child("index.sqlite"))
 		  mIndex.Open
 		  mCatalog = New WakeCatalog(mIndex)
@@ -46,12 +46,12 @@ Inherits TestGroup
 		  Var hidden As WakeHiddenProjects = WakeHiddenProjects.Load(f)
 		  Var count As Integer = hidden.Count
 		  Assert.AreEqual(0, count, "a missing file hides nothing")
-
+		  
 		  hidden.Hide("claude-code", "/Users/dev/demo")
 		  hidden.Hide("claude-code", "/Users/dev/other")
 		  hidden.Unhide("claude-code", "/Users/dev/other")
 		  hidden.Save(f)
-
+		  
 		  Var loaded As WakeHiddenProjects = WakeHiddenProjects.Load(f)
 		  count = loaded.Count
 		  Assert.AreEqual(1, count)
@@ -68,28 +68,28 @@ Inherits TestGroup
 		  Var listed() As WakeProjectInfo = mCatalog.Projects
 		  Var demo As WakeProjectInfo = listed(1)
 		  Assert.AreEqual("demo", demo.Name)
-
+		  
 		  Var hidden As New WakeHiddenProjects
 		  hidden.Hide(demo.AgentID, demo.Path)
 		  mCatalog.HiddenProjects = hidden
-
+		  
 		  Var projects() As WakeProjectInfo = mCatalog.Projects
 		  Var count As Integer = projects.Count
 		  Assert.AreEqual(1, count, "hidden project left out")
 		  Assert.AreEqual("demo.app", projects(0).Name)
-
+		  
 		  count = mCatalog.Sessions("", 0).Count
 		  Assert.AreEqual(allCount - demo.SessionCount, count, "its sessions left out of every project")
 		  count = mCatalog.Sessions(demo.AgentID, demo.ID).Count
 		  Assert.AreEqual(demo.SessionCount, count, "still listed when asked for by id")
-
+		  
 		  For Each g As WakeUsageGroup In mCatalog.Usage(WakeCatalog.UsageGroupings.Project)
 		    Assert.AreNotEqual(demo.ID.ToString, g.Key, "its usage left out")
 		  Next
 		  For Each hit As WakeSearchHit In mCatalog.Search(New WakeSearchQuery("TODO"))
 		    Assert.AreNotEqual(demo.ID, hit.Session.ProjectID, "its events left out of search")
 		  Next
-
+		  
 		  mCatalog.IncludeHidden = True
 		  projects = mCatalog.Projects
 		  count = projects.Count
@@ -114,17 +114,17 @@ Inherits TestGroup
 		  Var projects() As WakeProjectInfo = mCatalog.Projects
 		  Var count As Integer = projects.Count
 		  Assert.AreEqual(2, count)
-
+		  
 		  // Most recently active first.
 		  Assert.AreEqual("demo.app", projects(0).Name)
 		  Assert.AreEqual("/Users/dev/Open Source/demo.app", projects(0).Path)
 		  Assert.AreEqual(1, projects(0).SessionCount)
 		  Assert.IsNotNil(projects(0).LastActivity)
-
+		  
 		  Assert.AreEqual("demo", projects(1).Name)
 		  Assert.AreEqual("claude-code", projects(1).AgentID)
 		  Assert.AreEqual(4, projects(1).SessionCount, "command-only session hidden")
-
+		  
 		  projects = mCatalog.Projects(True)
 		  Assert.AreEqual(5, projects(1).SessionCount, "command-only session included")
 		End Sub
@@ -134,7 +134,7 @@ Inherits TestGroup
 		Sub SessionDetailTest()
 		  Var listed As WakeSessionInfo = FindSession(mCatalog.Sessions("", 0), 4)
 		  Var s As WakeSessionInfo = mCatalog.Session(listed.ID)
-
+		  
 		  Assert.AreEqual(TestSupport.ClaudeFixtureID(4), s.UID)
 		  Assert.AreEqual(1, s.SubagentCount)
 		  Assert.AreEqual(25, s.OwnUsage.InputTokens)
@@ -143,14 +143,14 @@ Inherits TestGroup
 		  Assert.IsTrue(s.FilePath.EndsWith(TestSupport.ClaudeFixtureID(4) + ".jsonl"), s.FilePath)
 		  Var modelCount As Integer = s.Models.Count
 		  Assert.IsTrue(modelCount > 0, "per-model usage")
-
+		  
 		  Var subagents() As WakeSessionInfo = mCatalog.Subagents(s.ID)
 		  Var subagentCount As Integer = subagents.Count
 		  Assert.AreEqual(1, subagentCount)
 		  Assert.AreEqual("a0fixture000001", subagents(0).UID)
 		  Assert.AreEqual(s.ID, subagents(0).ParentID)
 		  Assert.AreEqual(110, subagents(0).OwnUsage.InputTokens)
-
+		  
 		  Var subagent As WakeSessionInfo = mCatalog.Session(subagents(0).ID)
 		  Assert.AreEqual("claude-haiku-4-5-20251001", subagent.Models(0).Left.StringValue)
 		  Assert.AreEqual(110, WakeTokenUsage(subagent.Models(0).Right.ObjectValue).InputTokens)
@@ -160,16 +160,16 @@ Inherits TestGroup
 	#tag Method, Flags = &h0
 		Sub SessionFlagsTest()
 		  Var all() As WakeSessionInfo = mCatalog.Sessions("", 0, True)
-
+		  
 		  Var s2 As WakeSessionInfo = FindSession(all, 2)
 		  Assert.AreEqual("Fix failing CSV quoting test", s2.DisplayTitle)
 		  Assert.AreEqual("feature/csv", s2.GitBranch)
 		  Assert.IsTrue(s2.HasAgentCost, "cost reported by agent")
 		  Assert.IsFalse(s2.IsPartial)
-
+		  
 		  Assert.IsTrue(FindSession(all, 3).IsPartial, "partially parsed")
 		  Assert.AreNotEqual("", FindSession(all, 3).ParseNote)
-
+		  
 		  Var s5 As WakeSessionInfo = FindSession(all, 5)
 		  Assert.IsTrue(s5.IsCommandOnly)
 		  Assert.IsNil(s5.StartTime)
@@ -182,20 +182,20 @@ Inherits TestGroup
 		  Var visible() As WakeSessionInfo = mCatalog.Sessions("", 0)
 		  Var count As Integer = visible.Count
 		  Assert.AreEqual(5, count, "command-only session hidden, subagents not listed")
-
+		  
 		  // Newest first.
 		  Var order() As String
 		  For Each s As WakeSessionInfo In visible
 		    order.Add(s.UID.Right(1))
 		  Next
 		  Assert.AreEqual("6,4,3,2,1", String.FromArray(order, ","))
-
+		  
 		  count = mCatalog.Sessions("", 0, True).Count
 		  Assert.AreEqual(6, count, "command-only session included")
-
+		  
 		  count = mCatalog.Sessions("other-agent", 0, True).Count
 		  Assert.AreEqual(0, count, "other agent")
-
+		  
 		  Var projects() As WakeProjectInfo = mCatalog.Projects
 		  Var demo As WakeProjectInfo = projects(1)
 		  Var inProject() As WakeSessionInfo = mCatalog.Sessions("claude-code", demo.ID)

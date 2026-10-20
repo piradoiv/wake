@@ -55,6 +55,29 @@ Inherits DesktopApplication
 		End Sub
 	#tag EndMethod
 
+	#tag Method, Flags = &h0
+		Function HiddenProjects() As WakeHiddenProjects
+		  // The projects the user hid from the browser, read from the app data folder the first time.
+		  If mHiddenProjects Is Nil Then mHiddenProjects = WakeHiddenProjects.Load(WakeFolders.HiddenProjectsFile)
+		  Return mHiddenProjects
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub HiddenProjectsChanged()
+		  // Saves the hidden projects and rebuilds every browser's source list.
+		  Try
+		    HiddenProjects.Save(WakeFolders.HiddenProjectsFile)
+		  Catch err As IOException
+		    MessageBox("Could not save the hidden projects: " + err.Message)
+		  End Try
+		  
+		  For Each w As MainWindow In MainWindows
+		    w.HiddenProjectsChanged
+		  Next
+		End Sub
+	#tag EndMethod
+
 	#tag Method, Flags = &h21
 		Private Sub IndexThread_Failed(sender As WakeIndexThread, message As String)
 		  #Pragma Unused sender
@@ -93,29 +116,6 @@ Inherits DesktopApplication
 		  
 		  For Each w As MainWindow In MainWindows
 		    w.IndexingProgress(done, total)
-		  Next
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h0
-		Function HiddenProjects() As WakeHiddenProjects
-		  // The projects the user hid from the browser, read from the app data folder the first time.
-		  If mHiddenProjects Is Nil Then mHiddenProjects = WakeHiddenProjects.Load(WakeFolders.HiddenProjectsFile)
-		  Return mHiddenProjects
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h0
-		Sub HiddenProjectsChanged()
-		  // Saves the hidden projects and rebuilds every browser's source list.
-		  Try
-		    HiddenProjects.Save(WakeFolders.HiddenProjectsFile)
-		  Catch err As IOException
-		    MessageBox("Could not save the hidden projects: " + err.Message)
-		  End Try
-		  
-		  For Each w As MainWindow In MainWindows
-		    w.HiddenProjectsChanged
 		  Next
 		End Sub
 	#tag EndMethod
