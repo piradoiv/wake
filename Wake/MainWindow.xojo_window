@@ -456,6 +456,12 @@ End
 		Sub MenuBarSelected()
 		  FileOpenTimeline.Enabled = SelectedSession <> Nil
 		  FileExportMarkdown.Enabled = SelectedSession <> Nil
+		  
+		  Var project As WakeProjectInfo = SelectedProject
+		  ViewHideProject.Enabled = project <> Nil
+		  ViewHideProject.Text = If(project <> Nil And project.IsHidden, "Un&hide Project", "&Hide Project")
+		  ViewShowHiddenProjects.Enabled = mShowHidden Or App.HiddenProjects.Count > 0
+		  ViewShowHiddenProjects.HasCheckMark = mShowHidden
 		End Sub
 	#tag EndEvent
 
@@ -514,6 +520,22 @@ End
 	#tag EndMenuHandler
 
 	#tag MenuHandler
+		Function ViewHideProject() As Boolean Handles ViewHideProject.Action
+		  ToggleHidden(SelectedProject)
+		  Return True
+		End Function
+	#tag EndMenuHandler
+
+	#tag MenuHandler
+		Function ViewShowHiddenProjects() As Boolean Handles ViewShowHiddenProjects.Action
+		  mShowHidden = Not mShowHidden
+		  If mCatalog <> Nil Then mCatalog.IncludeHidden = mShowHidden
+		  Reload
+		  Return True
+		End Function
+	#tag EndMenuHandler
+
+	#tag MenuHandler
 		Function WindowPrices() As Boolean Handles WindowPrices.Action
 		  PricesWindow.Show
 		  Return True
@@ -564,6 +586,12 @@ End
 		  If d Is Nil Then Return WakeFormat.kUnknown
 		  Return d.ToString(DateTime.FormatStyles.Medium, DateTime.FormatStyles.Short)
 		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub HiddenProjectsChanged()
+		  Reload
+		End Sub
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
@@ -799,6 +827,8 @@ End
 		  
 		  mIndex = index
 		  mCatalog = New WakeCatalog(index)
+		  mCatalog.HiddenProjects = App.HiddenProjects
+		  mCatalog.IncludeHidden = mShowHidden
 		  Return True
 		End Function
 	#tag EndMethod
@@ -897,12 +927,15 @@ End
 		    SourceList.RowExpandedAt(row) = True
 		  Next
 		  
+		  // A project that is gone, or was just hidden, leaves its agent selected.
 		  Var selectRow As Integer = If(SourceList.RowCount > 0, 0, -1)
 		  For row As Integer = 0 To SourceList.LastRowIndex
 		    Var p As WakeProjectInfo = WakeProjectInfo(SourceList.RowTagAt(row).ObjectValue)
 		    If p.AgentID + "/" + p.ID.ToString = previousKey Then
 		      selectRow = row
 		      Exit
+		    ElseIf previous <> Nil And p.ID = 0 And p.AgentID = previous.AgentID Then
+		      selectRow = row
 		    End If
 		  Next
 		  SourceList.SelectedRowIndex = selectRow
@@ -923,6 +956,15 @@ End
 		Private Function SelectedHit() As WakeSearchHit
 		  If Not HitsList.Visible Or HitsList.SelectedRowIndex < 0 Then Return Nil
 		  Return WakeSearchHit(HitsList.RowTagAt(HitsList.SelectedRowIndex).ObjectValue)
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function SelectedProject() As WakeProjectInfo
+		  // The selected project, or Nil when an agent row or nothing is selected.
+		  Var source As WakeProjectInfo = SelectedSource
+		  If source Is Nil Or source.ID = 0 Then Return Nil
+		  Return source
 		End Function
 	#tag EndMethod
 
@@ -1189,6 +1231,18 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Sub ToggleHidden(project As WakeProjectInfo)
+		  If project Is Nil Then Return
+		  If project.IsHidden Then
+		    App.HiddenProjects.Unhide(project.AgentID, project.Path)
+		  Else
+		    App.HiddenProjects.Hide(project.AgentID, project.Path)
+		  End If
+		  App.HiddenProjectsChanged
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Sub UpdateStatus()
 		  Var parts() As String
 		  If mCatalog <> Nil And HitsList.Visible Then
@@ -1234,6 +1288,10 @@ End
 
 	#tag Property, Flags = &h21
 		Private mProjects() As WakeProjectInfo
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mShowHidden As Boolean
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
@@ -1306,7 +1364,7 @@ End
 		    Me.AddRow(ProjectLabel(p), p.SessionCount.ToString)
 		    Var child As Integer = Me.LastAddedRowIndex
 		    Me.RowTagAt(child) = p
-		    Me.CellTooltipAt(child, 0) = p.Path
+		    Me.CellTooltipAt(child, 0) = p.Path + If(p.IsHidden, " (hidden)", "")
 		  Next
 		End Sub
 	#tag EndEvent
@@ -1314,6 +1372,39 @@ End
 		Sub SelectionChanged()
 		  If Not mLoading Then ShowResults
 		End Sub
+	#tag EndEvent
+	#tag Event
+		Function PaintCellText(g as Graphics, row as Integer, column as Integer, x as Integer, y as Integer) As Boolean
+		  // Hidden projects, listed while View → Show Hidden Projects is on, are drawn dimmed.
+		  #Pragma Unused column
+		  #Pragma Unused x
+		  #Pragma Unused y
+		  If row > Me.LastRowIndex Or Me.RowSelectedAt(row) Then Return False
+		  
+		  Var p As WakeProjectInfo = WakeProjectInfo(Me.RowTagAt(row).ObjectValue)
+		  If p <> Nil And p.IsHidden Then g.DrawingColor = WakeGlanceTiles.SecondaryTextColor
+		  Return False
+		End Function
+	#tag EndEvent
+	#tag Event
+		Function ConstructContextualMenu(base As DesktopMenuItem, x As Integer, y As Integer) As Boolean
+		  // Right-clicking a project offers to hide it, or to bring it back when it is hidden.
+		  Var row As Integer = Me.RowFromXY(x, y)
+		  If row < 0 Or row > Me.LastRowIndex Then Return False
+		  
+		  Var p As WakeProjectInfo = WakeProjectInfo(Me.RowTagAt(row).ObjectValue)
+		  If p Is Nil Or p.ID = 0 Then Return False
+		  
+		  base.AddMenu(New DesktopMenuItem(If(p.IsHidden, "Unhide Project", "Hide Project"), p))
+		  Return True
+		End Function
+	#tag EndEvent
+	#tag Event
+		Function ContextualMenuItemSelected(selectedItem As DesktopMenuItem) As Boolean
+		  If selectedItem Is Nil Or Not (selectedItem.Tag.ObjectValue IsA WakeProjectInfo) Then Return False
+		  ToggleHidden(WakeProjectInfo(selectedItem.Tag.ObjectValue))
+		  Return True
+		End Function
 	#tag EndEvent
 #tag EndEvents
 #tag Events SessionsList

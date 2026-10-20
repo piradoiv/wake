@@ -194,6 +194,42 @@ Begin Menu MainMenuBar
          Visible = True
       End
    End
+   Begin DesktopMenuItem ViewMenu
+      SpecialMenu = 0
+      Index = -2147483648
+      Text = "&View"
+      Symbol = ""
+      AutoEnabled = True
+      AutoEnable = True
+      Visible = True
+      Begin DesktopMenuItem ViewHideProject
+         SpecialMenu = 0
+         Index = -2147483648
+         Text = "&Hide Project"
+         Symbol = ""
+         AutoEnabled = True
+         AutoEnable = True
+         Visible = True
+      End
+      Begin DesktopMenuItem ViewSeparator1
+         SpecialMenu = 0
+         Index = -2147483648
+         Text = "-"
+         Symbol = ""
+         AutoEnabled = True
+         AutoEnable = True
+         Visible = True
+      End
+      Begin DesktopMenuItem ViewShowHiddenProjects
+         SpecialMenu = 0
+         Index = -2147483648
+         Text = "Show Hidden &Projects"
+         Symbol = ""
+         AutoEnabled = True
+         AutoEnable = True
+         Visible = True
+      End
+   End
    Begin DesktopMenuItem WindowMenu
       SpecialMenu = 0
       Index = -2147483648

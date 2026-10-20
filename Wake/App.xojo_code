@@ -98,6 +98,29 @@ Inherits DesktopApplication
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function HiddenProjects() As WakeHiddenProjects
+		  // The projects the user hid from the browser, read from the app data folder the first time.
+		  If mHiddenProjects Is Nil Then mHiddenProjects = WakeHiddenProjects.Load(WakeFolders.HiddenProjectsFile)
+		  Return mHiddenProjects
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub HiddenProjectsChanged()
+		  // Saves the hidden projects and rebuilds every browser's source list.
+		  Try
+		    HiddenProjects.Save(WakeFolders.HiddenProjectsFile)
+		  Catch err As IOException
+		    MessageBox("Could not save the hidden projects: " + err.Message)
+		  End Try
+		  
+		  For Each w As MainWindow In MainWindows
+		    w.HiddenProjectsChanged
+		  Next
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function IsIndexing() As Boolean
 		  Return IndexThread <> Nil And IndexThread.ThreadState <> Thread.ThreadStates.NotRunning
 		End Function
@@ -216,6 +239,10 @@ Inherits DesktopApplication
 
 	#tag Property, Flags = &h0
 		IndexThread As WakeIndexThread
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mHiddenProjects As WakeHiddenProjects
 	#tag EndProperty
 
 	#tag Property, Flags = &h21

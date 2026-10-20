@@ -7,6 +7,26 @@ Protected Class WakeCatalog
 		End Sub
 	#tag EndMethod
 
+	#tag Method, Flags = &h21
+		Private Function HiddenProjectsClause(column As String) As String
+		  // A condition that leaves out the projects in HiddenProjects, or "" when none is hidden or
+		  // IncludeHidden is set. Raises DatabaseException.
+		  If IncludeHidden Or HiddenProjects Is Nil Then Return ""
+		  If HiddenProjects.Count = 0 Then Return ""
+		  
+		  Var ids() As String
+		  Var rs As RowSet = mIndex.Database.SelectSQL("SELECT id, agent, path FROM projects")
+		  For Each row As DatabaseRow In rs
+		    If HiddenProjects.Contains(row.Column("agent").StringValue, row.Column("path").StringValue) Then
+		      ids.Add(row.Column("id").IntegerValue.ToString)
+		    End If
+		  Next
+		  
+		  If ids.Count = 0 Then Return ""
+		  Return column + " NOT IN (" + String.FromArray(ids, ", ") + ")"
+		End Function
+	#tag EndMethod
+
 	#tag Method, Flags = &h0
 		Function Models() As String()
 		  // Every model that has used tokens in any session, by name. Raises DatabaseException.
@@ -22,7 +42,8 @@ Protected Class WakeCatalog
 
 	#tag Method, Flags = &h0
 		Function Projects(includeCommandOnly As Boolean = False) As WakeProjectInfo()
-		  // Every project with at least one session to show, most recently active first.
+		  // Every project with at least one session to show, most recently active first. Projects in
+		  // HiddenProjects are left out unless IncludeHidden is set, and marked IsHidden then.
 		  // Raises DatabaseException.
 		  Var result() As WakeProjectInfo
 		  
@@ -40,6 +61,8 @@ Protected Class WakeCatalog
 		    p.Path = row.Column("path").StringValue
 		    p.SessionCount = row.Column("session_count").IntegerValue
 		    p.LastActivity = TimeFrom(row.Column("last_time"))
+		    p.IsHidden = HiddenProjects <> Nil And HiddenProjects.Contains(p.AgentID, p.Path)
+		    If p.IsHidden And Not IncludeHidden Then Continue
 		    result.Add(p)
 		  Next
 		  
@@ -98,8 +121,8 @@ Protected Class WakeCatalog
 	#tag Method, Flags = &h0
 		Function Search(query As WakeSearchQuery) As WakeSearchHit()
 		  // Events that match query.Text, best matches first, at most query.Limit of them. Each hit
-		  // carries its top-level session, also when the event belongs to a subagent.
-		  // Raises DatabaseException.
+		  // carries its top-level session, also when the event belongs to a subagent. Without a
+		  // ProjectID, hidden projects are left out. Raises DatabaseException.
 		  Var result() As WakeSearchHit
 		  Var match As String = query.MatchExpression
 		  If match = "" Then Return result
@@ -120,6 +143,9 @@ Protected Class WakeCatalog
 		  If query.ProjectID <> 0 Then
 		    clauses.Add("ts.project_id = ?")
 		    values.Add(query.ProjectID)
+		  Else
+		    Var hidden As String = HiddenProjectsClause("ts.project_id")
+		    If hidden <> "" Then clauses.Add(hidden)
 		  End If
 		  
 		  If Not query.IncludeCommandOnly Then clauses.Add("ts.command_only = 0")
@@ -226,7 +252,7 @@ Protected Class WakeCatalog
 	#tag Method, Flags = &h0
 		Function Sessions(agentID As String, projectID As Integer, includeCommandOnly As Boolean = False) As WakeSessionInfo()
 		  // Top-level sessions, newest first. An empty agentID means every agent, and projectID 0
-		  // means every project. Raises DatabaseException.
+		  // means every project but the hidden ones. Raises DatabaseException.
 		  Var clauses() As String
 		  Var values() As Variant
 		  clauses.Add("s.parent_id IS NULL")
@@ -239,6 +265,9 @@ Protected Class WakeCatalog
 		  If projectID <> 0 Then
 		    clauses.Add("s.project_id = ?")
 		    values.Add(projectID)
+		  Else
+		    Var hidden As String = HiddenProjectsClause("s.project_id")
+		    If hidden <> "" Then clauses.Add(hidden)
 		  End If
 		  
 		  If Not includeCommandOnly Then clauses.Add("s.command_only = 0")
@@ -473,7 +502,7 @@ Protected Class WakeCatalog
 		  // Token usage per day, project, model or top-level session, split by model so it can be
 		  // priced. Subagent usage counts toward the session that started it. fromTime limits it to
 		  // responses from then on. An empty agentID means every agent, and projectID 0 every
-		  // project. Days are calendar days in the local time zone, newest first; other groups come
+		  // project but the hidden ones. Days are calendar days in the local time zone, newest first; other groups come
 		  // with the most tokens first. Raises DatabaseException.
 		  Var keyExpression, labelExpression, order As String
 		  Select Case grouping
@@ -505,6 +534,9 @@ Protected Class WakeCatalog
 		  If projectID <> 0 Then
 		    clauses.Add("ts.project_id = ?")
 		    values.Add(projectID)
+		  Else
+		    Var hidden As String = HiddenProjectsClause("ts.project_id")
+		    If hidden <> "" Then clauses.Add(hidden)
 		  End If
 		  
 		  If fromTime <> Nil Then
@@ -563,6 +595,14 @@ Protected Class WakeCatalog
 		End Function
 	#tag EndMethod
 
+
+	#tag Property, Flags = &h0
+		HiddenProjects As WakeHiddenProjects
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		IncludeHidden As Boolean
+	#tag EndProperty
 
 	#tag Property, Flags = &h21
 		Private mIndex As WakeIndex

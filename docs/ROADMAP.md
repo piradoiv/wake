@@ -151,6 +151,14 @@ Each milestone below is one session's work, ending with tests and a commit.
   (6,035 calls) indexing takes 13.7 s (7.9 s at schema 6, on less data),
   and the report 0.23 s.
 
+- [x] **17. Hide projects.** `WakeHiddenProjects` (Core) keeps hidden
+  projects by agent and path in `hidden-projects.json`. `WakeCatalog`
+  takes them (`HiddenProjects`, `IncludeHidden`): `Projects` leaves them out
+  or marks `IsHidden`, and `Sessions`, `Search` and `Usage` across every
+  project leave out their sessions. The main window hides or unhides the
+  selected project from View → Hide Project or a right-click on its row,
+  and View → Show Hidden Projects lists them again, dimmed. 104 tests.
+
 After v0.1: Codex CLI and Gemini CLI parsers, once real sessions exist on a
 machine to inspect, and the console companion.
 
@@ -189,6 +197,7 @@ machine to inspect, and the console companion.
 | A **dated model name** (`claude-haiku-4-5-20251001`) uses the price of its undated name when it has none of its own. Other prefixes never match. | `claude-opus-5` must not price `claude-opus-5-5`. |
 | Usage **per day** groups responses by their own timestamp in the **local time zone**, at query time. Subagent usage counts toward the session that started it. | A session can span midnight, and the time zone can change between runs. |
 | The Usage window covers **every agent and project**, not the main window's selection. | It's a summary across everything. Per project is one of its groupings. |
+| **Hidden projects** are hidden from the main window only (sidebar, agent totals, sessions, search). The Usage window still counts them. They are keyed by agent and path, not index id. | Hiding is about clutter, and the spending totals must stay complete. Index ids change on every rebuild. |
 | A Markdown export lists **prompts, commands and file changes**, not the answers or tool output. | It's a record of what was asked and what changed. The timeline has the rest. |
 | Code blocks and inline code in exports use a **fence longer than any backtick run** in their text. | Transcripts often contain Markdown, and a stray fence would break the report. |
 | The daily chart covers **at least 14 days**, with days outside the chosen period drawn lighter, and at most five years. | One bar for "Today" says nothing, and a bad timestamp mustn't draw thousands of bars. |

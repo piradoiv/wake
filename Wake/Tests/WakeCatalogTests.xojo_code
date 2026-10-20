@@ -41,6 +41,69 @@ Inherits TestGroup
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub HiddenProjectsFileTest()
+		  Var f As FolderItem = mScratch.Child("hidden-projects.json")
+		  Var hidden As WakeHiddenProjects = WakeHiddenProjects.Load(f)
+		  Var count As Integer = hidden.Count
+		  Assert.AreEqual(0, count, "a missing file hides nothing")
+
+		  hidden.Hide("claude-code", "/Users/dev/demo")
+		  hidden.Hide("claude-code", "/Users/dev/other")
+		  hidden.Unhide("claude-code", "/Users/dev/other")
+		  hidden.Save(f)
+
+		  Var loaded As WakeHiddenProjects = WakeHiddenProjects.Load(f)
+		  count = loaded.Count
+		  Assert.AreEqual(1, count)
+		  Assert.IsTrue(loaded.Contains("claude-code", "/Users/dev/demo"))
+		  Assert.IsFalse(loaded.Contains("claude-code", "/Users/dev/Demo"), "paths compare case-sensitively")
+		  Assert.IsFalse(loaded.Contains("other-agent", "/Users/dev/demo"), "each agent has its own projects")
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub HiddenProjectsTest()
+		  Var allCount As Integer = mCatalog.Sessions("", 0).Count
+		  Var allHits As Integer = mCatalog.Search(New WakeSearchQuery("TODO")).Count
+		  Var listed() As WakeProjectInfo = mCatalog.Projects
+		  Var demo As WakeProjectInfo = listed(1)
+		  Assert.AreEqual("demo", demo.Name)
+
+		  Var hidden As New WakeHiddenProjects
+		  hidden.Hide(demo.AgentID, demo.Path)
+		  mCatalog.HiddenProjects = hidden
+
+		  Var projects() As WakeProjectInfo = mCatalog.Projects
+		  Var count As Integer = projects.Count
+		  Assert.AreEqual(1, count, "hidden project left out")
+		  Assert.AreEqual("demo.app", projects(0).Name)
+
+		  count = mCatalog.Sessions("", 0).Count
+		  Assert.AreEqual(allCount - demo.SessionCount, count, "its sessions left out of every project")
+		  count = mCatalog.Sessions(demo.AgentID, demo.ID).Count
+		  Assert.AreEqual(demo.SessionCount, count, "still listed when asked for by id")
+
+		  For Each g As WakeUsageGroup In mCatalog.Usage(WakeCatalog.UsageGroupings.Project)
+		    Assert.AreNotEqual(demo.ID.ToString, g.Key, "its usage left out")
+		  Next
+		  For Each hit As WakeSearchHit In mCatalog.Search(New WakeSearchQuery("TODO"))
+		    Assert.AreNotEqual(demo.ID, hit.Session.ProjectID, "its events left out of search")
+		  Next
+
+		  mCatalog.IncludeHidden = True
+		  projects = mCatalog.Projects
+		  count = projects.Count
+		  Assert.AreEqual(2, count, "listed again when hidden projects are shown")
+		  Assert.IsTrue(projects(1).IsHidden)
+		  Assert.IsFalse(projects(0).IsHidden)
+		  count = mCatalog.Sessions("", 0).Count
+		  Assert.AreEqual(allCount, count)
+		  count = mCatalog.Search(New WakeSearchQuery("TODO")).Count
+		  Assert.AreEqual(allHits, count)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub MissingSessionIsNilTest()
 		  Assert.IsNil(mCatalog.Session(999999))
 		End Sub

@@ -35,6 +35,7 @@ Class=WakeIndexedFile;Core/Index/WakeIndexedFile.xojo_code;&h00000000619F0A2D;&h
 Class=WakeIndex;Core/Index/WakeIndex.xojo_code;&h0000000013E85C79;&h000000004A6D21B5;false
 Class=WakeIndexer;Core/Index/WakeIndexer.xojo_code;&h000000006D2A7F43;&h000000004A6D21B5;false
 Module=WakeFolders;Core/Index/WakeFolders.xojo_code;&h0000000035B7E1C9;&h000000004A6D21B5;false
+Class=WakeHiddenProjects;Core/Index/WakeHiddenProjects.xojo_code;&h000000003F6B2A1D;&h000000004A6D21B5;false
 Class=WakeIndexThread;WakeIndexThread.xojo_code;&h0000000047F1B26B;&h0000000000000000;false
 Class=WakeIndexTests;Tests/WakeIndexTests.xojo_code;&h000000002E5A9D17;&h000000001662E964;false
 Module=WakeFormat;Core/WakeFormat.xojo_code;&h000000005C3E91A7;&h00000000344C984D;false

@@ -16,6 +16,10 @@ Protected Class WakeProjectInfo
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
+		IsHidden As Boolean
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
 		LastActivity As DateTime
 	#tag EndProperty
 

@@ -56,6 +56,13 @@ Protected Module WakeFolders
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function HiddenProjectsFile() As FolderItem
+		  // The projects the user hid from the browser. It only exists once one is hidden.
+		  Return AppDataFolder.Child("hidden-projects.json")
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function LoadCustomRoots(f As FolderItem) As WakeIndexRoot()
 		  // Reads [{"agent": "...", "path": "..."}]. A missing or unreadable file means no custom
 		  // folders; entries that don't make sense are skipped.
