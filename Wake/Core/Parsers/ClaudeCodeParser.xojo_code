@@ -206,7 +206,8 @@ Implements IAgentParser
 		    End If
 
 		  Case "attachment", "last-prompt", "mode", "permission-mode", "agent-name", _
-		    "file-history-snapshot", "file-history-delta", "queue-operation", "bridge-session", "atis-latch"
+		    "file-history-snapshot", "file-history-delta", "queue-operation", "bridge-session", "atis-latch", _
+		    "api-request", "api-request-blob", "api-request-shape", "artifact-autoreact-ledger", "artifact-comment-monitor"
 		    // Known, but not part of the timeline.
 		    session.Report.IgnoredRecords = session.Report.IgnoredRecords + 1
 
@@ -540,6 +541,13 @@ Implements IAgentParser
 
 		      If line.Trim = "" Then
 		        session.Report.BlankLines = session.Report.BlankLines + 1
+		        Continue
+		      End If
+
+		      // Logs of the raw API requests average about 22 KB a line and Wake ignores them, so they
+		      // are counted without parsing. Other spellings still reach the ignore list in HandleRecord.
+		      If line.BeginsWith("{""type"":""api-request") Then
+		        session.Report.IgnoredRecords = session.Report.IgnoredRecords + 1
 		        Continue
 		      End If
 

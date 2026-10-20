@@ -50,12 +50,22 @@ DEMO_DIR = os.path.join(OUT, "-Users-dev-demo")
 s = Session(1, DEMO)
 s.meta(type="permission-mode", permissionMode="default")
 s.user("2026-09-01T10:00:00.000Z", "Explain what the parse function in main.c does.", promptId="p-1")
+# Logs of the raw API request (2.1.300+), written compact like the CLI does and once with spaces.
+s.raw(json.dumps({"type": "api-request-shape", "sessionId": s.id, "shapeHash": "a" * 64, "timestamp": "2026-09-01T10:00:00.500Z",
+                  "version": VER, "shape": {"system": [{"type": "text", "text": "System prompt."}], "tools": []}}, separators=(",", ":")))
+s.raw(json.dumps({"type": "api-request-blob", "sessionId": s.id, "hash": "b" * 64,
+                  "message": {"role": "user", "content": [{"type": "text", "text": "Explain what the parse function in main.c does."}]}},
+                 separators=(",", ":")))
+s.meta(type="api-request", id="00000000-2222-4000-8000-000000000001", timestamp="2026-09-01T10:00:00.500Z", version=VER,
+       querySource="repl_main_thread", shapeHash="a" * 64, params={"model": "claude-opus-5-5", "max_tokens": 1000})
 u1 = usage(100, 50, 1000, 2000)
 s.assistant("2026-09-01T10:00:02.000Z", "msg_basic_01", {"type": "thinking", "thinking": "", "signature": "c2lnbmF0dXJl"}, u1)
 s.assistant("2026-09-01T10:00:03.000Z", "msg_basic_01", {"type": "text", "text": "It reads one line at a time and splits it on commas."}, u1, stop="end_turn")
 s.env("system", "2026-09-01T10:00:03.500Z", subtype="turn_duration", durationMs=3500, messageCount=3, isMeta=False)
 s.meta(type="ai-title", aiTitle="Explain parse function")
 s.meta(type="last-prompt", lastPrompt="Explain what the parse function in main.c does.", leafUuid=s.last)
+s.meta(type="artifact-comment-monitor", v=1, artifacts={})
+s.meta(type="artifact-autoreact-ledger", v=1, artifacts={})
 s.write(DEMO_DIR)
 
 # 2. Tools: Bash, Edit, Write (create), parallel Reads, an error result, persisted output.

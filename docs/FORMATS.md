@@ -11,7 +11,7 @@ When a parser learns something new, update this file.
 
 ## Claude Code
 
-**Checked against:** Claude Code CLI 2.1.119 – 2.1.292 (macOS, October 2026).
+**Checked against:** Claude Code CLI 2.1.119 – 2.1.304 (macOS, October 2026).
 That sample was 77 sessions in 23 projects, about 124 MB, with the largest
 file around 10 MB.
 
@@ -80,7 +80,7 @@ Every record has a `type`. There are two families.
 | `user`       | A user prompt, or the tool results being sent back to the model. |
 | `assistant`  | Part of a model response (see "Assistant messages" below).      |
 | `attachment` | Context injected by the CLI. `attachment.type` has about 40 values, such as `file`, `edited_text_file`, `todo_reminder`, `plan_mode`, `date_change` or `hook_system_message`. Mostly noise for Wake. |
-| `system`     | CLI events. The `subtype` values seen are `turn_duration` (`durationMs`), `local_command`, `away_summary`, `stop_hook_summary` and `informational`. |
+| `system`     | CLI events. The `subtype` values seen are `turn_duration` (`durationMs`), `local_command`, `away_summary`, `stop_hook_summary`, `informational`, `compact_boundary` and `model_refusal_fallback`. |
 
 **Metadata records** have no `uuid` or `timestamp`:
 
@@ -92,6 +92,8 @@ Every record has a `type`. There are two families.
 | `mode`, `permission-mode`, `agent-name` | Session settings.                     |
 | `file-history-snapshot`, `file-history-delta` | Undo backups of edited files. Ignored. |
 | `queue-operation`, `bridge-session`, `atis-latch` | Internal. Ignored.        |
+| `artifact-comment-monitor`, `artifact-autoreact-ledger` | Artifact state (2.1.300+). Ignored. |
+| `api-request`, `api-request-blob`, `api-request-shape` | A log of each raw API request (2.1.300+): params, system prompt and tool shapes keyed by hash, message blobs. About 22 KB a line, and in the sample about 15% of all bytes. They carry `timestamp` and `version`. Wake skips lines starting with `{"type":"api-request` before parsing them. |
 
 Any other `type` must be counted as unknown and skipped.
 

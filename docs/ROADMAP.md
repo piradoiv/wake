@@ -200,6 +200,9 @@ machine to inspect, and the console companion.
   1 px so their borders draw as one line: the left lists' right border and
   `DetailList`'s left border both sit at x 880. `GlanceTiles` draws no border,
   so it starts at 881 and the left list's border shows beside it.
+- **A parser change that alters what the index stores** (such as which
+  sessions are partial) needs a `kSchemaVersion` bump, because unchanged
+  files are never re-indexed. Schema 8 is only that.
 - **Running tests:** create `Wake/WakeRunTests`, then `Wake/XojoRunProject.txt`.
   Wait for the trigger file to disappear, then for `tests/results.xml` or
   `Wake/XojoCompileErrors.txt` to appear.
