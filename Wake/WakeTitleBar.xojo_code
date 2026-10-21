@@ -179,6 +179,9 @@ Protected Module WakeTitleBar
 		    Declare Function View Lib "AppKit" Selector "view" (item As Ptr) As Ptr
 		    Declare Function ClassOf Lib "Foundation" Selector "class" (obj As Ptr) As Ptr
 		    Declare Function NSStringFromClass Lib "Foundation" (cls As Ptr) As CFStringRef
+		    Declare Function WidthAnchor Lib "AppKit" Selector "widthAnchor" (view As Ptr) As Ptr
+		    Declare Function ConstraintEqualToConstant Lib "AppKit" Selector "constraintEqualToConstant:" (anchor As Ptr, value As CGFloat) As Ptr
+		    Declare Sub SetActive Lib "AppKit" Selector "setActive:" (constraint As Ptr, value As Boolean)
 
 		    Var bar As Ptr = Toolbar(w.Handle)
 		    If bar = Nil Then Return
@@ -196,12 +199,20 @@ Protected Module WakeTitleBar
 		      // Bordered items get a capsule, drawn in Liquid Glass on macOS 26, as in Apple's apps.
 		      If RespondsToSelector(item, NSSelectorFromString("setBordered:")) Then SetBordered(item, True)
 		      
-		      // Spike only: what kind of item Xojo made.
+		      // Xojo puts a popup button in the item. AppKit draws the hover around its frame, which is wider
+		      // than tall, so the highlight came out stretched. A square frame gives the round one of a
+		      // native icon button.
 		      Var itemView As Ptr = View(item)
-		      Var viewClass As String = "none"
-		      If itemView <> Nil Then viewClass = NSStringFromClass(ClassOf(itemView))
-		      System.DebugLog("WakeTitleBar: item " + index.ToString + " is " + NSStringFromClass(ClassOf(item)) + ", view " + viewClass _
-		      + ", image " + If(image = Nil, "nil", "set"))
+		      If itemView <> Nil Then
+		        Var frame As MemoryBlock = RectOf(itemView, "frame")
+		        If frame Is Nil Then Continue
+		        // Spike only: what kind of view Xojo made, and its size.
+		        System.DebugLog("WakeTitleBar: item " + index.ToString + " view " + NSStringFromClass(ClassOf(itemView)) _
+		        + ", " + frame.DoubleValue(16).ToString + " x " + frame.DoubleValue(24).ToString)
+		        If frame.DoubleValue(16) > frame.DoubleValue(24) + 0.5 Then
+		          SetActive(ConstraintEqualToConstant(WidthAnchor(itemView), frame.DoubleValue(24)), True)
+		        End If
+		      End If
 		    Next
 		  #Else
 		    #Pragma Unused w
