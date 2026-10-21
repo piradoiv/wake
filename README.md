@@ -4,6 +4,8 @@ Wake is a free, open-source desktop app for exploring the sessions you've had
 with AI coding agents. It runs natively on macOS (Windows and Linux are planned) and is
 built with [Xojo](https://www.xojo.com).
 
+<img width="128" height="128" alt="wake-128" src="https://github.com/user-attachments/assets/9df06c02-c129-4bc4-8a52-9eb041ecb032" />
+
 Coding agents such as Claude Code keep a full transcript of every session on
 your machine, but those files are rarely read. Wake turns them into something
 you can navigate: what the agent was asked, what it read, which commands it
