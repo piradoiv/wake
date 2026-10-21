@@ -238,6 +238,13 @@ machine to inspect, and the console companion.
   `Wake.app/Contents/Resources/App.icns` and compare each slot with
   `Artwork/IconSet`. The 128 and 32 @2x slots once came out blurry (cause
   unknown) until the PNGs were dropped into them again.
+- **Releases** are built for Direct Distribution: signed with the Developer
+  ID Application certificate (not Apple Distribution), hardened runtime on,
+  notarized by the IDE, no entitlements, no sandbox. Check a build with
+  `spctl -a -vv -t exec Wake.app` (expect "Notarized Developer ID") and zip
+  it with `ditto -c -k --keepParent`. A Mac App Store build would need the
+  sandbox, which hides `~/.claude`: the user would have to pick the folder,
+  and Wake would keep a security-scoped bookmark to it.
 - **`Assert.AreEqual(n, someArray.Count)` is ambiguous.** Assign the count to
   an `Integer` variable first.
 - **`(expression).ToString` doesn't parse.** Assign to a variable first.
