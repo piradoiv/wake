@@ -735,11 +735,6 @@ End
 		  mPeriodItem = DesktopToolbarButton(UsageBar.ButtonAt(1))
 		  
 		  #If TargetMacOS
-		    // The space puts each menu in a capsule of its own, as Mail does with its menus.
-		    Var gap As New DesktopToolbarButton
-		    gap.ButtonStyle = DesktopToolbarButton.ButtonStyles.Space
-		    UsageBar.AddButtonAt(1, gap)
-		    
 		    UsageBar.Style = DesktopToolbar.Styles.IconOnly
 		    mGroupItem.Symbol = "tablecells"
 		    mPeriodItem.Symbol = "calendar"
@@ -1079,7 +1074,7 @@ End
 		  // and tooltip. On macOS the bar shows icons only, so the caption is what VoiceOver reads.
 		  SyncToolbarItem(mGroupItem, GroupPopup)
 		  SyncToolbarItem(mPeriodItem, PeriodPopup)
-		  WakeTitleBar.SetToolbarSymbols(Self, Array("tablecells", "", "calendar"))
+		  WakeTitleBar.SetToolbarSymbols(Self, Array("tablecells", "calendar"))
 		End Sub
 	#tag EndMethod
 
