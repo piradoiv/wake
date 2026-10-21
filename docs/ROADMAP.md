@@ -242,20 +242,16 @@ Each milestone below is one session's work, ending with tests and a commit.
   21%. Before the two exceptions it was 356: screenshots were nearly always
   flagged, as were saved outputs. Checked by eye.
 
-- [ ] **23. Translucent sidebar (macOS).** The main window's source list sits
-  on the sidebar material, as Finder and Mail do. Declares (in a module
-  beside `WakeTitleBar`) put an `NSVisualEffectView` (sidebar material,
-  behind-window blending, following the active state) under `SourceList`
-  and turn off the backgrounds that `SourceList`'s own views draw, so the
-  blur shows through, with its border turned off. Start with a test run that
-  logs the class names of `SourceList.Handle`'s view and its subviews:
-  nothing documents what `DesktopTable` is made of on macOS, and if it paints
-  its own background through declares can't switch off, that's a roadblock
-  to raise, not to work around. Only the translucent background is in scope:
-  `SourceList` stays a regular `DesktopTable` (same selection, text and
-  layout), so it carries over to Windows and Linux, which keep today's look.
-  It doesn't have to match Mail exactly. Checked by eye in light, dark, and
-  with the window inactive.
+- [x] **23. Translucent sidebar (macOS).** The main window's source list sits
+  on the sidebar material, as Finder and Mail do. `WakeSidebar.MakeTranslucent`
+  puts an `NSVisualEffectView` (sidebar material, behind-window blending,
+  following the active state) inside `SourceList`'s view, under its scroll
+  view and pinned to it with constraints, and turns the border off. The probe
+  run found nothing to switch off: Xojo leaves unselected rows and the empty
+  area transparent (see the `DesktopTable` gotcha). `SourceList` stays a
+  regular `DesktopTable` (same selection, text and layout); Windows and Linux
+  keep today's look. The sidebar starts under the bar, not under the window
+  buttons as in Mail. 116 tests.
 
 After v0.1: Codex CLI and Gemini CLI parsers, once real sessions exist on a
 machine to inspect, and the console companion.
@@ -414,6 +410,13 @@ machine to inspect, and the console companion.
   one glass capsule; a space between them gives capsules of different sizes.
   Divided capsules (Mail's) need an `NSToolbarItemGroup`, which only the
   delegate can make.
+- **`DesktopTable` on macOS** is a `XOJCanvasView` holding an `NSScrollView`
+  (`DLB2PassThruScrollView`) whose document view (`DLB2FlippedDocView`) Xojo
+  draws itself; it isn't an `NSTableView`. The scroll and clip views don't
+  draw backgrounds, and only selected rows are painted opaque, so a view
+  added under the scroll view shows through. Returning True from
+  `PaintCellBackground` also drops the selection highlight. On macOS 26 the
+  scroll view also holds `NSScrollPocket` views (the scroll edge effect).
 - **Declares that read an `NSRect`** go through key-value coding
   (`valueForKey:` and `getValue:size:` into a `MemoryBlock`), so no declare
   returns a structure (the docs don't show how a `Structure` is written in a
