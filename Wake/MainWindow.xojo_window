@@ -466,8 +466,19 @@ End
 	#tag EndEvent
 
 	#tag Event
+		Function MouseDown(x As Integer, y As Integer) As Boolean
+		  #Pragma Unused x
+		  
+		  Return WakeTitleBar.HandleMouseDown(Self, y)
+		End Function
+	#tag EndEvent
+
+	#tag Event
 		Sub Opening()
 		  SetUpLists
+		  SetUpToolbar
+		  UnifyTitleBar
+		  Timer.CallLater(0, AddressOf UnifyTitleBar)
 		  
 		  // The window opens its own connection only once an indexing run has finished, so it never
 		  // races the indexer thread while that creates or rebuilds the schema.
@@ -676,6 +687,28 @@ End
 		Private Function IsSearching() As Boolean
 		  Return SearchField.Text.Trim <> ""
 		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub LayOutTitleBar()
+		  // On macOS the search field and the kind and date menus are in the unified bar, and the lists
+		  // and tiles start right under it. The lists keep their bottoms, and neighbouring borders still
+		  // overlap by a pixel. Elsewhere the window keeps its editor layout.
+		  Var bar As Integer = WakeTitleBar.Height(Self)
+		  If bar = 0 Then Return
+		  
+		  Var lists() As DesktopTable = Array(SourceList, SessionsList, HitsList)
+		  For Each list As DesktopTable In lists
+		    Var bottom As Integer = list.Top + list.Height
+		    list.Top = bar - 1
+		    list.Height = bottom - list.Top
+		  Next
+		  
+		  Var detailBottom As Integer = DetailList.Top + DetailList.Height
+		  GlanceTiles.Top = bar
+		  DetailList.Top = GlanceTiles.Top + GlanceTiles.Height
+		  DetailList.Height = detailBottom - DetailList.Top
+		End Sub
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
@@ -1112,6 +1145,37 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Sub SetUpToolbar()
+		  // On macOS the kind and date filters are toolbar menus and the search field moves into the
+		  // toolbar, so all three stay in the bar in full screen. The popups stay the model and are what
+		  // Windows and Linux show, with the search field, in the editor layout.
+		  mKindItem = DesktopToolbarButton(MainToolbar.ButtonAt(0))
+		  mDateItem = DesktopToolbarButton(MainToolbar.ButtonAt(1))
+		  
+		  #If TargetMacOS
+		    // The flexible space keeps the filters and search at the right, as in Mail. The search item
+		    // holds the search field once the window is up.
+		    Var flexible As New DesktopToolbarButton
+		    flexible.ButtonStyle = DesktopToolbarButton.ButtonStyles.FlexibleSpace
+		    MainToolbar.AddButtonAt(0, flexible)
+		    Var searchItem As New DesktopToolbarButton
+		    searchItem.ButtonStyle = DesktopToolbarButton.ButtonStyles.PushButton
+		    searchItem.Caption = "Search"
+		    MainToolbar.AddButton(searchItem)
+		    
+		    MainToolbar.Style = DesktopToolbar.Styles.IconOnly
+		    mKindItem.Symbol = "line.3.horizontal.decrease"
+		    mDateItem.Symbol = "calendar"
+		    KindPopup.Visible = False
+		    DatePopup.Visible = False
+		    SyncToolbar
+		  #Else
+		    MainToolbar.Visible = False
+		  #EndIf
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Sub ShowDetail(info As WakeSessionInfo, hit As WakeSearchHit = Nil)
 		  // A summary of one session, after the match when it comes from a search hit.
 		  // Double-clicking the session or hit opens the full timeline.
@@ -1288,6 +1352,15 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Sub SyncToolbar()
+		  // Mirrors the kind and date popups in their toolbar menus.
+		  WakeTitleBar.MirrorPopup(mKindItem, KindPopup)
+		  WakeTitleBar.MirrorPopup(mDateItem, DatePopup)
+		  WakeTitleBar.SetToolbarSymbols(Self, Array("", "line.3.horizontal.decrease", "calendar", ""))
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Sub ToggleHidden(project As WakeProjectInfo)
 		  If project Is Nil Then Return
 		  If project.IsHidden Then
@@ -1296,6 +1369,17 @@ End
 		    App.HiddenProjects.Hide(project.AgentID, project.Path)
 		  End If
 		  App.HiddenProjectsChanged
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub UnifyTitleBar()
+		  // Xojo sets its own toolbar style when the window first shows, so Opening runs this twice:
+		  // at once, and again right after the window is up, when the toolbar can take the search field.
+		  WakeTitleBar.Unify(Self, False)
+		  WakeTitleBar.HostControl(Self, 3, SearchField, 240)
+		  SyncToolbar
+		  LayOutTitleBar
 		End Sub
 	#tag EndMethod
 
@@ -1324,6 +1408,10 @@ End
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
+		Private mDateItem As DesktopToolbarButton
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
 		Private mHitSessionCount As Integer
 	#tag EndProperty
 
@@ -1333,6 +1421,10 @@ End
 
 	#tag Property, Flags = &h21
 		Private mIndexNote As String
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mKindItem As DesktopToolbarButton
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
@@ -1712,6 +1804,19 @@ End
 		  End If
 		  Return False
 		End Function
+	#tag EndEvent
+#tag EndEvents
+#tag Events MainToolbar
+	#tag Event
+		Sub MenuItemSelected(item As DesktopToolbarItem, selectedItem As DesktopMenuItem)
+		  // Choosing from a toolbar menu selects that row in its popup, which runs the search again.
+		  If item Is mKindItem Then
+		    KindPopup.SelectedRowIndex = selectedItem.Tag
+		  ElseIf item Is mDateItem Then
+		    DatePopup.SelectedRowIndex = selectedItem.Tag
+		  End If
+		  SyncToolbar
+		End Sub
 	#tag EndEvent
 #tag EndEvents
 #tag ViewBehavior

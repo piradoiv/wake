@@ -1072,29 +1072,9 @@ End
 		Private Sub SyncToolbar()
 		  // Gives each toolbar menu the rows of its popup, with the selected one checked and as the caption
 		  // and tooltip. On macOS the bar shows icons only, so the caption is what VoiceOver reads.
-		  SyncToolbarItem(mGroupItem, GroupPopup)
-		  SyncToolbarItem(mPeriodItem, PeriodPopup)
+		  WakeTitleBar.MirrorPopup(mGroupItem, GroupPopup)
+		  WakeTitleBar.MirrorPopup(mPeriodItem, PeriodPopup)
 		  WakeTitleBar.SetToolbarSymbols(Self, Array("tablecells", "calendar"))
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Sub SyncToolbarItem(item As DesktopToolbarButton, popup As DesktopPopupMenu)
-		  // Each menu item's tag is its row in the popup. Separator rows have no tag.
-		  Var menu As New DesktopMenuItem
-		  For row As Integer = 0 To popup.LastRowIndex
-		    If popup.RowTagAt(row).IsNull Then
-		      menu.AddMenu(New DesktopMenuItem(DesktopMenuItem.TextSeparator))
-		    Else
-		      Var choice As New DesktopMenuItem(popup.RowTextAt(row), row)
-		      choice.HasCheckMark = (row = popup.SelectedRowIndex)
-		      menu.AddMenu(choice)
-		    End If
-		  Next
-		  
-		  item.Menu = menu
-		  item.Caption = popup.RowTextAt(popup.SelectedRowIndex)
-		  item.Tooltip = item.Caption
 		End Sub
 	#tag EndMethod
 

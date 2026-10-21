@@ -61,6 +61,52 @@ Protected Module WakeTitleBar
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub HostControl(w As DesktopWindow, index As Integer, c As DesktopUIControl, width As Integer)
+		  // Moves the control's own view into the window's toolbar item at this index, so the control
+		  // sits in the unified bar, and in its overlay in full screen, like the toolbar's own items.
+		  // The control keeps its events, but the window must no longer move or resize it.
+		  #If TargetMacOS
+		    Declare Function Toolbar Lib "AppKit" Selector "toolbar" (window As Ptr) As Ptr
+		    Declare Function Items Lib "AppKit" Selector "items" (toolbar As Ptr) As Ptr
+		    Declare Function ItemCount Lib "Foundation" Selector "count" (nsArray As Ptr) As UInteger
+		    Declare Function ObjectAtIndex Lib "Foundation" Selector "objectAtIndex:" (nsArray As Ptr, index As UInteger) As Ptr
+		    Declare Function View Lib "AppKit" Selector "view" (item As Ptr) As Ptr
+		    Declare Sub SetView Lib "AppKit" Selector "setView:" (item As Ptr, view As Ptr)
+		    Declare Function WidthAnchor Lib "AppKit" Selector "widthAnchor" (view As Ptr) As Ptr
+		    Declare Function ConstraintEqualToConstant Lib "AppKit" Selector "constraintEqualToConstant:" (anchor As Ptr, value As CGFloat) As Ptr
+		    Declare Sub SetActive Lib "AppKit" Selector "setActive:" (constraint As Ptr, value As Boolean)
+		    Declare Function ClassOf Lib "Foundation" Selector "class" (obj As Ptr) As Ptr
+		    Declare Function NSStringFromClass Lib "Foundation" (cls As Ptr) As CFStringRef
+
+		    Var bar As Ptr = Toolbar(w.Handle)
+		    If bar = Nil Then Return
+		    Var list As Ptr = Items(bar)
+		    Var available As Integer = ItemCount(list)
+		    If index < 0 Or index >= available Then Return
+
+		    Var item As Ptr = ObjectAtIndex(list, index)
+		    Var controlView As Ptr = c.Handle
+		    If controlView = Nil Or View(item) = controlView Then Return
+
+		    c.LockLeft = False
+		    c.LockTop = False
+		    c.LockRight = False
+		    c.LockBottom = False
+		    SetView(item, controlView)
+		    SetActive(ConstraintEqualToConstant(WidthAnchor(controlView), width), True)
+
+		    // Spike only: what Xojo's control view is.
+		    System.DebugLog("WakeTitleBar: hosting " + NSStringFromClass(ClassOf(controlView)) + " in item " + index.ToString)
+		  #Else
+		    #Pragma Unused w
+		    #Pragma Unused index
+		    #Pragma Unused c
+		    #Pragma Unused width
+		  #EndIf
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function IsUnified(w As DesktopWindow) As Boolean
 		  // True once Unify has merged the window's title bar with its content.
 		  #If TargetMacOS
@@ -97,6 +143,29 @@ Protected Module WakeTitleBar
 		    Return kMargin
 		  #EndIf
 		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub MirrorPopup(item As DesktopToolbarButton, popup As DesktopPopupMenu)
+		  // Gives a toolbar menu the rows of a popup, with the selected one checked and as the caption and
+		  // tooltip, so the popup can stay the model. Each menu item's tag is its row. A "-" row is a
+		  // separator.
+		  Var menu As New DesktopMenuItem
+		  For row As Integer = 0 To popup.LastRowIndex
+		    Var text As String = popup.RowTextAt(row)
+		    If text = "-" Or text = "" Then
+		      menu.AddMenu(New DesktopMenuItem(DesktopMenuItem.TextSeparator))
+		    Else
+		      Var choice As New DesktopMenuItem(text, row)
+		      choice.HasCheckMark = (row = popup.SelectedRowIndex)
+		      menu.AddMenu(choice)
+		    End If
+		  Next
+
+		  item.Menu = menu
+		  item.Caption = popup.RowTextAt(popup.SelectedRowIndex)
+		  item.Tooltip = item.Caption
+		End Sub
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
@@ -162,7 +231,8 @@ Protected Module WakeTitleBar
 		Sub SetToolbarSymbols(w As DesktopWindow, symbols() As String)
 		  // Makes the window's toolbar items look like those of Apple's apps: bordered, so macOS 26 draws
 		  // them in Liquid Glass, with a round hover, and with these SF Symbols, one per item in order.
-		  // Xojo may redraw an item when its caption changes, so call this again after changing one.
+		  // An empty name skips its item. Xojo may redraw an item when its caption changes, so call
+		  // this again after changing one.
 		  #If TargetMacOS
 		    Declare Function NSClassFromString Lib "Foundation" (name As CFStringRef) As Ptr
 		    Declare Function NSSelectorFromString Lib "Foundation" (name As CFStringRef) As Ptr
@@ -192,6 +262,7 @@ Protected Module WakeTitleBar
 		    Var available As Integer = ItemCount(list)
 		    Var last As Integer = Min(available, symbols.Count) - 1
 		    For index As Integer = 0 To last
+		      If symbols(index) = "" Then Continue
 		      Var item As Ptr = ObjectAtIndex(list, index)
 		      Var image As Ptr = ImageWithSymbol(imageClass, symbols(index), Nil)
 		      If image <> Nil Then SetImage(item, image)
