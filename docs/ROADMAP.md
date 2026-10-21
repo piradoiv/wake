@@ -227,6 +227,21 @@ Each milestone below is one session's work, ending with tests and a commit.
   session with a used read, an unused one and one mentioned only in an
   answer.
 
+- [ ] **23. Translucent sidebar (macOS).** The main window's source list sits
+  on the sidebar material, as Finder and Mail do. Declares (in a module
+  beside `WakeTitleBar`) put an `NSVisualEffectView` (sidebar material,
+  behind-window blending, following the active state) under `SourceList`
+  and turn off the backgrounds that `SourceList`'s own views draw, so the
+  blur shows through, with its border turned off. Start with a test run that
+  logs the class names of `SourceList.Handle`'s view and its subviews:
+  nothing documents what `DesktopTable` is made of on macOS, and if it paints
+  its own background through declares can't switch off, that's a roadblock
+  to raise, not to work around. Only the translucent background is in scope:
+  `SourceList` stays a regular `DesktopTable` (same selection, text and
+  layout), so it carries over to Windows and Linux, which keep today's look.
+  It doesn't have to match Mail exactly. Checked by eye in light, dark, and
+  with the window inactive.
+
 After v0.1: Codex CLI and Gemini CLI parsers, once real sessions exist on a
 machine to inspect, and the console companion.
 
