@@ -474,7 +474,7 @@ Protected Class WakeIndex
 	#tag Constant, Name = kMaxSearchTextLength, Type = Double, Dynamic = False, Default = \"65536", Scope = Public
 	#tag EndConstant
 
-	#tag Constant, Name = kSchemaVersion, Type = Double, Dynamic = False, Default = \"11", Scope = Public
+	#tag Constant, Name = kSchemaVersion, Type = Double, Dynamic = False, Default = \"12", Scope = Public
 	#tag EndConstant
 
 

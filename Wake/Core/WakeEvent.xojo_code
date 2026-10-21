@@ -362,6 +362,10 @@ Protected Class WakeEvent
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
+		ResultHasImage As Boolean
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
 		ResultIsError As Boolean
 	#tag EndProperty
 

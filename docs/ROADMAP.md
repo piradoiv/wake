@@ -226,14 +226,21 @@ Each milestone below is one session's work, ending with tests and a commit.
   included) when nothing later in the same context names its file: an
   answer, or a later tool call's input (edits, commands, subagent prompts).
   Reading the same file again doesn't count, and a name must stand alone
-  (`util.h` isn't in `util.hpp`). `tool_usage.led_nowhere` (schema 11).
+  (`util.h` isn't in `util.hpp`). Never flagged: a read whose result is an
+  image (`WakeEvent.ResultHasImage`), and a read of a file outside the
+  project folder that no prompt, answer or call named before it, such as a
+  tool's saved output (`IsHandedFile`). `tool_usage.led_nowhere` (schema 12;
+  11 had neither exception).
   `WakeToolUsageGroup` gains `NowhereReads` and `NowhereTokens`,
   `WakeToolCallInfo` gains `LedNowhere`. "By intent" and "By file" have a
   ninth column, "≈ Led nowhere" with its share of the group's tokens; the
   calls list a "Led nowhere" column; a file's status line counts them. The
   report has "Reads that led nowhere" with the top files
   (`WakeCallPattern.LedNowhereAdvice`). Fixture session 9 is in its own root,
-  `claude-code/nowhere/`. 116 tests. Not yet checked on real data or by eye.
+  `claude-code/nowhere/`. 116 tests. On real data (1,125 reads) 181 led
+  nowhere, ≈24M tokens, 6% of all tool tokens; whole files 13%, line ranges
+  21%. Before the two exceptions it was 356: screenshots were nearly always
+  flagged, as were saved outputs. Not yet checked by eye.
 
 - [ ] **23. Translucent sidebar (macOS).** The main window's source list sits
   on the sidebar material, as Finder and Mail do. Declares (in a module
@@ -283,7 +290,7 @@ machine to inspect, and the console companion.
 | A **re-read** is any read (line range, section, whole file) of a file already read in the same context, unless an edit or write to it came in between. Compaction starts a new context. Re-reads are their own intent, not counted in their read's pattern. | The content is already in the context, so reading it again is the waste to show. After an edit or compaction, reading again is needed. |
 | Index **targets are resolved** against the session's folder (or a leading `cd`). | Otherwise `src/a.c` and `/work/src/a.c` are two files, and re-reads across shell and Read are missed. |
 | **≈ Carried** is counted per turn, against the context from before the turn and beyond the session's starting context, and only for the session's own responses. | The starting context (system prompt, tools) is paid in any session, so only what earlier turns left behind is the cost of a long session. Subagents start contexts of their own. |
-| A read **led nowhere** when no later answer or tool call input in the same context names its file. It's a flag, not an intent, and thinking doesn't count. | Whether a read was used can't be seen, but a file the agent never names again, edits or hands on was most likely not needed. Names, not paths, so relative and absolute mentions both count. |
+| A read **led nowhere** when no later answer or tool call input in the same context names its file. It's a flag, not an intent, and thinking doesn't count. Image results and files the agent was handed (outside the project, named first by a tool's output) are never flagged. | Whether a read was used can't be seen, but a file the agent never names again, edits or hands on was most likely not needed. Names, not paths, so relative and absolute mentions both count. A screenshot or a generated file name is used without being named, so the rule can't judge it. |
 | Token figures per tool call are **estimates, marked ≈**, from context growth between responses, split among the inputs by text length. | Transcripts record usage only per response, so this is the only per-result signal. Attachments and reminders Wake can't see inflate it a little. |
 | Search words match as **prefixes**, `"quoted text"` as a phrase, and every term must match. Every term is quoted, so FTS5 operators are plain words. | Search as you type needs partial words, and no input may raise an FTS5 syntax error. |
 | Search lives **in the main window**, scoped by the source-list selection, not in its own window. | Agent and project filters come for free, and the detail pane shows the hit's session. |

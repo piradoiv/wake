@@ -260,6 +260,13 @@ calls = [
     ("Edit", {"file_path": NOTES + "/src/parser.c", "old_string": "return 0;", "new_string": "return 1;", "replace_all": False},
      "The file " + NOTES + "/src/parser.c has been updated successfully.", 50),
     ("Read", {"file_path": NOTES + "/src/old.c"}, "1\tint old(void) { return 0; }", 400),
+    # A screenshot: its result is an image, so whether it was used can't be told from its name.
+    ("Read", {"file_path": NOTES + "/shots/window.png"},
+     [{"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": "iVBORw0KGgo="}}], 300),
+    # Output saved by a tool under a generated name, outside the project, then read.
+    ("Bash", {"command": "make test", "description": "Run the tests"},
+     "Output too large. Full output saved to: /tmp/agent/b0fixture9.txt", 60),
+    ("Read", {"file_path": "/tmp/agent/b0fixture9.txt"}, "1\tok 1 - parse", 500),
 ]
 context, output = 0, 20
 for k, (tool, tool_input, text, growth) in enumerate(calls, 1):
@@ -269,6 +276,8 @@ for k, (tool, tool_input, text, growth) in enumerate(calls, 1):
     a = s.assistant(ts, "msg_nw_%02d" % k, {"type": "tool_use", "id": "toolu_nw_%02d" % k, "name": tool, "input": tool_input}, u)
     if tool == "Bash":
         tur = {"stdout": text, "stderr": "", "interrupted": False, "isImage": False, "noOutputExpected": False}
+    elif isinstance(text, list):
+        tur = {"type": "image", "file": {"type": "image/png"}}
     elif tool == "Agent":
         tur = {"status": "completed", "prompt": tool_input["prompt"], "content": [{"type": "text", "text": text}]}
     else:

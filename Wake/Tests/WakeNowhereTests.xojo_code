@@ -80,7 +80,7 @@ Inherits TestGroup
 		    reads = reads + g.Reads
 		    nowhere = nowhere + g.NowhereReads
 		  Next
-		  Assert.AreEqual(7, reads, "a re-read is still a read")
+		  Assert.AreEqual(9, reads, "a re-read is still a read")
 		  Assert.AreEqual(4, nowhere)
 
 		  Var reread As WakeToolUsageGroup = FindGroup(intents, WakeCallPattern.kKeyReread)
@@ -101,7 +101,8 @@ Inherits TestGroup
 	#tag Method, Flags = &h0
 		Sub FlagsTest()
 		  // Used by a later edit, by an answer and by a subagent prompt; never used, read twice and never
-		  // used, and mentioned only after a compaction.
+		  // used, and mentioned only after a compaction. A screenshot and a tool's saved output are
+		  // never flagged.
 		  Var session As WakeSession = TestSupport.ParseClaudeFixture(9, "-Users-dev-notes", "nowhere")
 		  Assert.IsNotNil(session)
 		  If session Is Nil Then Return
@@ -115,9 +116,16 @@ Inherits TestGroup
 		    flags.Add(If(e.LedNowhere, "nowhere", "used"))
 		  Next
 
-		  Assert.AreEqual("parser.c README.md util.h lexer.c lexer.c notes.md old.c", String.FromArray(names, " "))
-		  Assert.AreEqual("used used nowhere nowhere nowhere used nowhere", String.FromArray(flags, " "), _
+		  Assert.AreEqual("parser.c README.md util.h lexer.c lexer.c notes.md old.c window.png b0fixture9.txt", _
+		  String.FromArray(names, " "))
+		  Assert.AreEqual("used used nowhere nowhere nowhere used nowhere used used", String.FromArray(flags, " "), _
 		  "util.hpp isn't util.h, and old.c is mentioned only in a new context")
+		  
+		  Var images As Integer
+		  For Each e As WakeEvent In session.Events
+		    If e.ResultHasImage Then images = images + 1
+		  Next
+		  Assert.AreEqual(1, images)
 		End Sub
 	#tag EndMethod
 
@@ -127,7 +135,7 @@ Inherits TestGroup
 		  Var text As String = report.Markdown
 
 		  Assert.IsTrue(text.IndexOf("## Reads that led nowhere: ≈") >= 0)
-		  Assert.IsTrue(text.IndexOf("4 of 7 reads (57%)") >= 0)
+		  Assert.IsTrue(text.IndexOf("4 of 9 reads (44%)") >= 0)
 		  Assert.IsTrue(text.IndexOf(WakeCallPattern.LedNowhereAdvice) >= 0)
 		  Assert.IsTrue(text.IndexOf("| `/Users/dev/notes/src/lexer.c` | 2 | 2 |") >= 0)
 		  Assert.IsTrue(text.IndexOf("`/Users/dev/notes/src/parser.c` | 1 | 0") < 0, "only files with reads that led nowhere")

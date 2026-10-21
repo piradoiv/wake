@@ -255,6 +255,9 @@ Protected Class WakeSession
 		  // A read led nowhere when nothing later in the same context edits its file or mentions the
 		  // file's name: not an answer, nor a later tool call's input, which holds a subagent's prompt
 		  // too. Reading the same file again isn't using it. A compaction starts a new context.
+		  // Two kinds of read are never flagged, as a name says nothing about their use: a read whose
+		  // result is an image, and a read of a file the agent was handed rather than chose, such as
+		  // a tool's saved output (see IsHandedFile).
 		  Var pending() As WakeEvent
 		  Var targets() As String
 		  Var names() As String
@@ -291,7 +294,7 @@ Protected Class WakeSession
 
 		    Var path As String = target.ReplaceAll("\", "/")
 		    Var name As String = path.NthField("/", path.CountFields("/"))
-		    If name <> "" Then
+		    If name <> "" And Not e.ResultHasImage And Not IsHandedFile(e, path, name) Then
 		      pending.Add(e)
 		      targets.Add(target)
 		      names.Add(name)
@@ -336,6 +339,30 @@ Protected Class WakeSession
 		    End Select
 		  Next
 		  
+		  Return True
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function IsHandedFile(read As WakeEvent, path As String, name As String) As Boolean
+		  // Whether a read is of a file outside the session's folder that no prompt, answer or earlier
+		  // call named before it: a file whose path came from a tool's output or a notification,
+		  // such as saved output with a generated name.
+		  If ProjectPath = "" Then Return False
+		  Var folder As String = ProjectPath.ReplaceAll("\", "/")
+		  If Not folder.EndsWith("/") Then folder = folder + "/"
+		  If path.BeginsWith(folder) Then Return False
+		  
+		  For i As Integer = read.Sequence - 1 DownTo 0
+		    Var e As WakeEvent = Events(i)
+		    Var text As String
+		    If e.Kind = WakeEvent.Kinds.UserPrompt Or e.Kind = WakeEvent.Kinds.AssistantText Then
+		      text = e.Text
+		    ElseIf e.IsToolCall Then
+		      text = e.Command + &u0A + e.FilePath + &u0A + e.ToolInputJSON
+		    End If
+		    If text <> "" And MentionsFileName(text, name) Then Return False
+		  Next
 		  Return True
 		End Function
 	#tag EndMethod

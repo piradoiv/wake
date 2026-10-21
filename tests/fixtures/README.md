@@ -55,4 +55,4 @@ Session 9 lives in its own root too. Only `WakeNowhereTests` indexes it.
 
 | N | Project folder     | What it covers | Expected |
 |---|--------------------|----------------|----------|
-| 9 | `-Users-dev-notes` | Reads of `src/parser.c` (edited later), `README.md` (`cat`, named only in the answer), `src/util.h` (a later `grep` names only `util.hpp`), `src/lexer.c` twice, `docs/notes.md` (named in an `Agent` prompt) and `src/old.c` (named only after a compaction, in a second turn). | Led nowhere: `util.h`, both `lexer.c` reads and `old.c`, so 4 of 7 reads. |
+| 9 | `-Users-dev-notes` | Reads of `src/parser.c` (edited later), `README.md` (`cat`, named only in the answer), `src/util.h` (a later `grep` names only `util.hpp`), `src/lexer.c` twice, `docs/notes.md` (named in an `Agent` prompt) and `src/old.c` (named only after a compaction, in a second turn), a screenshot whose result is an image block, and `/tmp/agent/b0fixture9.txt`, outside the project, named only in an earlier tool result. | Led nowhere: `util.h`, both `lexer.c` reads and `old.c`, so 4 of 9 reads. The screenshot and the saved output are never flagged. |

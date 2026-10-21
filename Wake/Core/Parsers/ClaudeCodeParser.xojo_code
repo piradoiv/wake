@@ -27,6 +27,7 @@ Implements IAgentParser
 		  e.ResultTimestamp = timestamp
 		  e.ResultIsError = WakeCore.JSONBoolean(block, "is_error")
 		  e.ResultText = ToolResultText(block.Lookup("content", Nil), session.Report)
+		  e.ResultHasImage = HasImageBlock(block.Lookup("content", Nil))
 		  session.NoteInput(e, timestamp)
 
 		  // toolUseResult holds richer, tool-specific output than the text sent to the model.
@@ -290,6 +291,26 @@ Implements IAgentParser
 		    AddUserText(session, String.FromArray(textParts, &u0A), isMeta, timestamp)
 		  End If
 		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function HasImageBlock(content As Variant) As Boolean
+		  // Whether a tool result's content holds an image block, such as a screenshot.
+		  If content.IsNull Or Not content.IsArray Then Return False
+		  
+		  Var items() As Variant
+		  Try
+		    items = content
+		  Catch err As TypeMismatchException
+		    Return False
+		  End Try
+		  
+		  For Each item As Variant In items
+		    Var block As Dictionary = WakeCore.AsDictionary(item)
+		    If block <> Nil And WakeCore.JSONString(block, "type") = "image" Then Return True
+		  Next
+		  Return False
+		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
