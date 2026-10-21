@@ -179,12 +179,10 @@ Protected Module WakeTitleBar
 		    Declare Function View Lib "AppKit" Selector "view" (item As Ptr) As Ptr
 		    Declare Function ClassOf Lib "Foundation" Selector "class" (obj As Ptr) As Ptr
 		    Declare Function NSStringFromClass Lib "Foundation" (cls As Ptr) As CFStringRef
-		    Declare Function Cell Lib "AppKit" Selector "cell" (control As Ptr) As Ptr
-		    Declare Sub SetArrowPosition Lib "AppKit" Selector "setArrowPosition:" (cell As Ptr, position As UInteger)
-		    Declare Function PullsDown Lib "AppKit" Selector "pullsDown" (button As Ptr) As Boolean
-		    Declare Function UsesItemFromMenu Lib "AppKit" Selector "usesItemFromMenu" (cell As Ptr) As Boolean
-		    Declare Function NumberOfItems Lib "AppKit" Selector "numberOfItems" (button As Ptr) As Integer
-		    Declare Function ImageOf Lib "AppKit" Selector "image" (obj As Ptr) As Ptr
+		    Declare Function WidthAnchor Lib "AppKit" Selector "widthAnchor" (view As Ptr) As Ptr
+		    Declare Function HeightAnchor Lib "AppKit" Selector "heightAnchor" (view As Ptr) As Ptr
+		    Declare Function ConstraintEqualToConstant Lib "AppKit" Selector "constraintEqualToConstant:" (anchor As Ptr, value As CGFloat) As Ptr
+		    Declare Sub SetActive Lib "AppKit" Selector "setActive:" (constraint As Ptr, value As Boolean)
 
 		    Var bar As Ptr = Toolbar(w.Handle)
 		    If bar = Nil Then Return
@@ -202,27 +200,21 @@ Protected Module WakeTitleBar
 		      // Bordered items get a capsule, drawn in Liquid Glass on macOS 26, as in Apple's apps.
 		      If RespondsToSelector(item, NSSelectorFromString("setBordered:")) Then SetBordered(item, True)
 		      
-		      // Xojo puts a popup button in the item, which keeps room for a menu arrow it doesn't draw.
-		      // That made the button wider than tall, so the hover highlight came out stretched.
-		      Const kNoArrow As UInteger = 0
+		      // Xojo puts its own button in the item. With icons only it comes out 36 by 24 points, so the
+		      // hover highlight is a short, wide pill inside the capsule. Xojo's own size before that, 32
+		      // by 32, gives the round highlight of a native icon button. Constraints are added only once.
+		      Const kButtonSize = 32
 		      Var itemView As Ptr = View(item)
-		      If itemView <> Nil And RespondsToSelector(itemView, NSSelectorFromString("cell")) Then
-		        Var buttonCell As Ptr = Cell(itemView)
-		        If RespondsToSelector(buttonCell, NSSelectorFromString("setArrowPosition:")) Then SetArrowPosition(buttonCell, kNoArrow)
-		        
-		        // Spike only: how Xojo's button gets its image, and its size.
-		        Var frame As MemoryBlock = RectOf(itemView, "frame")
-		        If frame Is Nil Then Continue
-		        Var note As String = "item " + index.ToString + " " + frame.DoubleValue(16).ToString + " x " + frame.DoubleValue(24).ToString
-		        If RespondsToSelector(itemView, NSSelectorFromString("pullsDown")) Then
-		          note = note + ", pulls down " + If(PullsDown(itemView), "yes", "no") _
-		          + ", uses item from menu " + If(UsesItemFromMenu(buttonCell), "yes", "no") _
-		          + ", items " + NumberOfItems(itemView).ToString _
-		          + ", button image " + If(ImageOf(itemView) = Nil, "nil", "set") _
-		          + ", cell image " + If(ImageOf(buttonCell) = Nil, "nil", "set")
-		        End If
-		        System.DebugLog("WakeTitleBar: " + note)
+		      If itemView = Nil Then Continue
+		      Var frame As MemoryBlock = RectOf(itemView, "frame")
+		      If frame Is Nil Then Continue
+		      If frame.DoubleValue(24) < kButtonSize - 0.5 Then
+		        SetActive(ConstraintEqualToConstant(WidthAnchor(itemView), kButtonSize), True)
+		        SetActive(ConstraintEqualToConstant(HeightAnchor(itemView), kButtonSize), True)
 		      End If
+		      
+		      // Spike only: the button's size before this call's constraints.
+		      System.DebugLog("WakeTitleBar: item " + index.ToString + " " + frame.DoubleValue(16).ToString + " x " + frame.DoubleValue(24).ToString)
 		    Next
 		  #Else
 		    #Pragma Unused w
