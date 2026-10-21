@@ -159,6 +159,45 @@ Protected Module WakeTitleBar
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub SetToolbarSymbols(w As DesktopWindow, symbols() As String)
+		  // Gives the window's toolbar items, in order, these SF Symbols as AppKit's own images, which the
+		  // toolbar sizes as in Apple's apps (Xojo's own symbol images come out smaller), and shows the
+		  // arrow on items with a menu. Xojo may redraw an item when its caption changes, so call this
+		  // again after changing one.
+		  #If TargetMacOS
+		    Declare Function NSClassFromString Lib "Foundation" (name As CFStringRef) As Ptr
+		    Declare Function NSSelectorFromString Lib "Foundation" (name As CFStringRef) As Ptr
+		    Declare Function RespondsToSelector Lib "Foundation" Selector "respondsToSelector:" (obj As Ptr, sel As Ptr) As Boolean
+		    Declare Function Toolbar Lib "AppKit" Selector "toolbar" (window As Ptr) As Ptr
+		    Declare Function Items Lib "AppKit" Selector "items" (toolbar As Ptr) As Ptr
+		    Declare Function ItemCount Lib "Foundation" Selector "count" (nsArray As Ptr) As UInteger
+		    Declare Function ObjectAtIndex Lib "Foundation" Selector "objectAtIndex:" (nsArray As Ptr, index As UInteger) As Ptr
+		    Declare Function ImageWithSymbol Lib "AppKit" Selector "imageWithSystemSymbolName:accessibilityDescription:" (cls As Ptr, name As CFStringRef, description As Ptr) As Ptr
+		    Declare Sub SetImage Lib "AppKit" Selector "setImage:" (item As Ptr, image As Ptr)
+		    Declare Sub SetShowsIndicator Lib "AppKit" Selector "setShowsIndicator:" (item As Ptr, value As Boolean)
+
+		    Var bar As Ptr = Toolbar(w.Handle)
+		    If bar = Nil Then Return
+		    Var imageClass As Ptr = NSClassFromString("NSImage")
+		    If Not RespondsToSelector(imageClass, NSSelectorFromString("imageWithSystemSymbolName:accessibilityDescription:")) Then Return
+
+		    Var list As Ptr = Items(bar)
+		    Var available As Integer = ItemCount(list)
+		    Var last As Integer = Min(available, symbols.Count) - 1
+		    For index As Integer = 0 To last
+		      Var item As Ptr = ObjectAtIndex(list, index)
+		      Var image As Ptr = ImageWithSymbol(imageClass, symbols(index), Nil)
+		      If image <> Nil Then SetImage(item, image)
+		      If RespondsToSelector(item, NSSelectorFromString("setShowsIndicator:")) Then SetShowsIndicator(item, True)
+		    Next
+		  #Else
+		    #Pragma Unused w
+		    #Pragma Unused symbols
+		  #EndIf
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub Unify(w As DesktopWindow, compact As Boolean)
 		  // On macOS 11 and later, merges the window's title bar and its top row of controls into one
 		  // unified bar, as Finder and Mail do. The content view then runs under the bar, the title is

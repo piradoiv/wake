@@ -732,6 +732,7 @@ End
 		  // look like the bar's own items. They mirror the popups, which stay the model and are what
 		  // Windows and Linux show.
 		  #If TargetMacOS
+		    UsageBar.Style = DesktopToolbar.Styles.IconOnly
 		    DesktopToolbarButton(UsageBar.ButtonAt(0)).Symbol = "tablecells"
 		    DesktopToolbarButton(UsageBar.ButtonAt(1)).Symbol = "calendar"
 		    GroupPopup.Visible = False
@@ -1066,9 +1067,11 @@ End
 
 	#tag Method, Flags = &h21
 		Private Sub SyncToolbar()
-		  // Gives each toolbar menu the rows of its popup, with the selected one checked and as the caption.
+		  // Gives each toolbar menu the rows of its popup, with the selected one checked and as the caption
+		  // and tooltip. On macOS the bar shows icons only, so the caption is what VoiceOver reads.
 		  SyncToolbarItem(DesktopToolbarButton(UsageBar.ButtonAt(0)), GroupPopup)
 		  SyncToolbarItem(DesktopToolbarButton(UsageBar.ButtonAt(1)), PeriodPopup)
+		  WakeTitleBar.SetToolbarSymbols(Self, Array("tablecells", "calendar"))
 		End Sub
 	#tag EndMethod
 
@@ -1097,6 +1100,7 @@ End
 		  // Xojo sets its own toolbar style when the window first shows, so Opening runs this twice:
 		  // at once, and again right after the window is up.
 		  WakeTitleBar.Unify(Self, False)
+		  SyncToolbar
 		  LayOutTitleBar
 		  LayOutLists
 		End Sub
