@@ -11,7 +11,7 @@ When a parser learns something new, update this file.
 
 ## Claude Code
 
-**Checked against:** Claude Code CLI 2.1.119 – 2.1.304 (macOS, October 2026).
+**Checked against:** Claude Code CLI 2.1.119 – 2.1.306 (macOS, October 2026).
 That sample was 77 sessions in 23 projects, about 124 MB, with the largest
 file around 10 MB.
 
@@ -93,6 +93,7 @@ Every record has a `type`. There are two families.
 | `file-history-snapshot`, `file-history-delta` | Undo backups of edited files. Ignored. |
 | `queue-operation`, `bridge-session`, `atis-latch` | Internal. Ignored.        |
 | `artifact-comment-monitor`, `artifact-autoreact-ledger` | Artifact state (2.1.300+). Ignored. |
+| `relocated`, `worktree-state` | Written after the session moves into a git worktree (2.1.306+), repeated through the file. `relocated` has `relocatedCwd`; `worktree-state` has a `worktreeSession` object (`originalCwd`, `preEnterOriginalCwd`, `worktreePath`, `worktreeName`, `worktreeBranch`, `sessionId`, `enteredExisting`). Ignored. |
 | `api-request`, `api-request-blob`, `api-request-shape` | A log of each raw API request (2.1.300+): params, system prompt and tool shapes keyed by hash, message blobs. About 22 KB a line, and in the sample about 15% of all bytes. They carry `timestamp` and `version`. Wake skips lines starting with `{"type":"api-request` before parsing them. |
 
 Any other `type` must be counted as unknown and skipped.
