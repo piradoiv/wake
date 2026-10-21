@@ -439,6 +439,35 @@ Begin DesktopWindow MainWindow
       TabPanelIndex   =   0
       Visible         =   True
    End
+   Begin DesktopSearchField SearchField1
+      AllowAutoDeactivate=   True
+      AllowFocusRing  =   True
+      AllowRecentItems=   False
+      AllowTabStop    =   True
+      ClearMenuItemValue=   "Clear"
+      Enabled         =   True
+      Height          =   26
+      Hint            =   ""
+      Index           =   -2147483648
+      InitialParent   =   ""
+      Left            =   1329
+      LockBottom      =   False
+      LockedInPosition=   False
+      LockLeft        =   True
+      LockRight       =   False
+      LockTop         =   True
+      MaximumRecentItems=   -1
+      RecentItemsValue=   "Recent Searches"
+      Scope           =   2
+      TabIndex        =   11
+      TabPanelIndex   =   0
+      Text            =   ""
+      Tooltip         =   ""
+      Top             =   320
+      Transparent     =   False
+      Visible         =   True
+      Width           =   110
+   End
 End
 #tag EndDesktopWindow
 
