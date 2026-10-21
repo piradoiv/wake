@@ -141,6 +141,13 @@ End
 	#tag EndMenuHandler
 
 	#tag MenuHandler
+		Function ViewWatchForChanges() As Boolean Handles ViewWatchForChanges.Action
+		  App.ToggleWatching
+		  Return True
+		End Function
+	#tag EndMenuHandler
+
+	#tag MenuHandler
 		Function WindowPrices() As Boolean Handles WindowPrices.Action
 		  PricesWindow.Show
 		  Return True

@@ -19,6 +19,16 @@ Protected Class WakeSessionInfo
 		End Function
 	#tag EndMethod
 
+	#tag Method, Flags = &h0
+		Function IsLive(now As DateTime) As Boolean
+		  // True while the agent is probably still writing the session: its transcript changed in the
+		  // last kLiveSeconds. A clock a little ahead of the file's still counts.
+		  If FileModified Is Nil Or now Is Nil Then Return False
+		  Var age As Double = now.SecondsFrom1970 - FileModified.SecondsFrom1970
+		  Return age > -kLiveSeconds And age < kLiveSeconds
+		End Function
+	#tag EndMethod
+
 
 	#tag Property, Flags = &h0
 		ActiveMs As Int64
@@ -42,6 +52,10 @@ Protected Class WakeSessionInfo
 
 	#tag Property, Flags = &h0
 		EventCount As Integer
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		FileModified As DateTime
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
@@ -128,6 +142,9 @@ Protected Class WakeSessionInfo
 		UID As String
 	#tag EndProperty
 
+
+	#tag Constant, Name = kLiveSeconds, Type = Double, Dynamic = False, Default = \"120", Scope = Public
+	#tag EndConstant
 
 	#tag Constant, Name = kMaxTitleLength, Type = Double, Dynamic = False, Default = \"200", Scope = Public
 	#tag EndConstant

@@ -159,18 +159,20 @@ Each milestone below is one session's work, ending with tests and a commit.
   selected project from View → Hide Project or a right-click on its row,
   and View → Show Hidden Projects lists them again, dimmed. 104 tests.
 
-- [ ] **18. Live watch.** A `Timer` in `App` starts an index run every few
-  seconds (10 s by default) when none is running, so new and growing
-  sessions show up without File → Refresh. A run with nothing changed takes
-  about 10 ms, so polling is cheap. Windows reload only when a run indexed
-  or removed files (`WakeIndexRunResult.FilesIndexed`, `FilesRemoved`), and
-  keep their selection and scroll. View → Watch for Changes turns it on and
-  off (on by default; Wake has no settings file yet, so this adds one in the
-  app data folder). Sessions whose file
-  changed in the last couple of minutes get a "Live" badge in the sessions
-  list. An open timeline whose session changed shows a native "Session
-  updated: Reload" bar instead of reloading by itself, so it never loses the
-  reader's place.
+- [x] **18. Live watch.** A `Timer` in `App` starts a quiet index run
+  every 10 s when none is running (`StartIndexing(True)`). A quiet run shows
+  no progress and updates the windows only when it indexed or removed files,
+  or when the last run failed. A normal run asked for during a quiet one
+  makes it report. Reloads keep the selection (by file, since ids change on
+  re-index), the scroll of every list and which agents are collapsed; the
+  Usage window keeps its selected group and call. View → Watch for Changes
+  (on by default) is stored by `WakeSettings` in `settings.json`, which keeps
+  keys it doesn't know. `WakeSessionInfo.FileModified` and `IsLive` (changed
+  in the last 2 minutes) draw a "Live" badge, checked at paint time and
+  repainted on every tick. An open timeline compares `WakeCore.FileSignature`
+  after each run that changed files and shows "Session updated" with a
+  Reload button; Reload fetches fresh info with `WakeCatalog.SessionForFile`
+  and scrolls back to where the page was. 108 tests.
 
 - [ ] **19. Context growth.** Every response re-sends the whole context, so a
   long session pays for its early turns again on every later one. Per
@@ -218,6 +220,9 @@ machine to inspect, and the console companion.
 | The `events` table holds a one-line **summary** per event, and search text goes into `events_fts`, cut to 64K characters per event. The timeline re-parses the transcript. Persisted tool output isn't indexed. | Keeps the index at about a sixth of the transcripts' size. |
 | A session is re-indexed when the size or modification time of its file **or of its subagent files** changes. | Subagent transcripts are parsed with the parent. |
 | Files that disappear, including ones under a custom folder that's no longer available, are **removed** from the index. | The index mirrors what's on disk. |
+| **Live watch polls**: a quiet index run every 10 s, not file-system events. | A run with nothing changed takes about 10 ms, it reuses the indexer as is, and it works the same on every platform. |
+| An open timeline **never reloads by itself**. It shows "Session updated" and a Reload button. | Reloading would lose the reader's place and open blocks while they read. |
+| A session is **live** while its main transcript changed in the last 2 minutes. Subagent files don't count. | The index stores only the main file's time, and the badge is a hint, not a promise. |
 | The window opens its index connection **only after an indexing run finishes**, and reloads after each run. | Opening it while the thread creates or rebuilds the schema would race it. A run with nothing changed takes about 10 ms, so the wait is invisible. |
 | A session with no `cwd` (empty, or only a slash command) joins the project of **the other sessions in its folder**, if there are any. | Otherwise it shows up as a second project named after the encoded folder. |
 | The timeline **opens in its own window** (`SessionWindow`), one per session. | It needs the full width for diffs and output, and two sessions can be compared side by side. |
@@ -249,6 +254,10 @@ machine to inspect, and the console companion.
   1 px so their borders draw as one line: the left lists' right border and
   `DetailList`'s left border both sit at x 880. `GlanceTiles` draws no border,
   so it starts at 881 and the left list's border shows beside it.
+- **Ids change when a file is indexed again**: `StoreSession` deletes and
+  re-inserts its rows. Anything that outlives an indexing run (selections,
+  open timelines) must find its session by file path, and events by
+  session uid and sequence.
 - **A parser change that alters what the index stores** (such as which
   sessions are partial) needs a `kSchemaVersion` bump, because unchanged
   files are never re-indexed. Schema 8 is only that.
@@ -335,7 +344,7 @@ machine to inspect, and the console companion.
   `AllowAutoQuit = True` in `App.Opening` covers the last-window case.
 - **`call` is a reserved word** in Xojo. Don't use it as a variable name.
 - **Xojo identifiers are case-insensitive.** A parameter named `usage` shadows
-  a property named `Usage`.
+  a property named `Usage`, and a local `callKey` a method `CallKey`.
 - **A plain `New Dictionary` compares string keys case-insensitively.** Use
   `WakeCore.NewCaseSensitiveDictionary` for ids.
 - **Avoid string constants with escapes** such as `"\n"`. Use `&u0A` in code.

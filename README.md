@@ -45,11 +45,15 @@ ran, which files it changed and how many tokens it used.
   prices, because they change: enter them per million tokens from your
   provider's price list. The cost the agent itself reports is shown next to
   Wake's estimate, labelled "reported by agent".
+- **Watch sessions as they happen.** Wake checks for new and growing
+  sessions every few seconds, and marks the ones an agent is writing to with
+  a "Live" badge. An open timeline offers to reload when its session changes,
+  so it never moves under you. Turn it off with View → Watch for Changes.
 - **Export a session as Markdown** (File → Export as Markdown, Cmd+E): a
   summary, token totals, the prompts, every shell command and every file
   change as a fenced diff.
 
-Wake keeps a search index and your prices in its own folder (the app data
+Wake keeps a search index, your prices and its settings in its own folder (the app data
 folder, under `Wake`). The index is a cache: deleting it only makes the next
 launch rebuild it.
 

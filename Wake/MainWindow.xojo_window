@@ -84,7 +84,7 @@ Begin DesktopWindow MainWindow
       AllowRowReordering=   False
       Bold            =   False
       ColumnCount     =   7
-      ColumnWidths    =   "124,60,*,90,60,70,64"
+      ColumnWidths    =   "124,60,*,90,60,70,96"
       DefaultRowHeight=   22
       DropIndicatorVisible=   False
       Enabled         =   True
@@ -536,6 +536,13 @@ End
 	#tag EndMenuHandler
 
 	#tag MenuHandler
+		Function ViewWatchForChanges() As Boolean Handles ViewWatchForChanges.Action
+		  App.ToggleWatching
+		  Return True
+		End Function
+	#tag EndMenuHandler
+
+	#tag MenuHandler
 		Function WindowPrices() As Boolean Handles WindowPrices.Action
 		  PricesWindow.Show
 		  Return True
@@ -582,6 +589,23 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Function DrawBadge(g As Graphics, label As String, x As Double, fill As Color) As Double
+		  // Draws a small rounded badge with white text, centred vertically, and returns its width.
+		  g.FontSize = 10
+		  g.Bold = True
+		  Var badgeWidth As Double = g.TextWidth(label) + 10
+		  Var badgeHeight As Double = 16
+		  Var top As Double = (g.Height - badgeHeight) / 2
+		  
+		  g.DrawingColor = fill
+		  g.FillRoundRectangle(x, top, badgeWidth, badgeHeight, 8, 8)
+		  g.DrawingColor = Color.White
+		  g.DrawText(label, x + 5, top + (badgeHeight - g.TextHeight) / 2 + g.FontAscent)
+		  Return badgeWidth
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function FormatTime(d As DateTime) As String
 		  If d Is Nil Then Return WakeFormat.kUnknown
 		  Return d.ToString(DateTime.FormatStyles.Medium, DateTime.FormatStyles.Short)
@@ -592,6 +616,12 @@ End
 		Sub HiddenProjectsChanged()
 		  Reload
 		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function HitKey(hit As WakeSearchHit) As String
+		  Return hit.Session.FilePath + &u0A + hit.EventSessionUID + &u0A + hit.Sequence.ToString
+		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
@@ -652,8 +682,10 @@ End
 		Private Sub LoadHits()
 		  // Fills the hits list with the events that match the search, within the agent or project
 		  // selected in the source list and the kind and period chosen above the list.
+		  // Event ids change when a session is indexed again, so the selection is kept by the event's
+		  // file, session and place in it.
 		  Var previous As WakeSearchHit = SelectedHit
-		  Var previousEventID As Integer = If(previous Is Nil, 0, previous.EventID)
+		  Var previousKey As String = If(previous Is Nil, "", HitKey(previous))
 		  
 		  mLoading = True
 		  HitsList.RemoveAllRows
@@ -707,7 +739,7 @@ End
 		  If HitsList.SortingColumn >= 0 Then HitsList.Sort
 		  
 		  For row As Integer = 0 To HitsList.LastRowIndex
-		    If WakeSearchHit(HitsList.RowTagAt(row).ObjectValue).EventID = previousEventID Then
+		    If previousKey <> "" And HitKey(WakeSearchHit(HitsList.RowTagAt(row).ObjectValue)) = previousKey Then
 		      HitsList.SelectedRowIndex = row
 		      Exit
 		    End If
@@ -722,7 +754,9 @@ End
 	#tag Method, Flags = &h21
 		Private Sub LoadSessions()
 		  // Fills the sessions list for the selected agent or project, keeping the selected session.
-		  Var previousID As Integer = SelectedSessionID
+		  // Session ids change when a file is indexed again, so it's kept by its file.
+		  Var previousPath As String = SelectedSessionPath
+		  Var now As DateTime = DateTime.Now
 		  
 		  mLoading = True
 		  SessionsList.RemoveAllRows
@@ -763,13 +797,17 @@ End
 		      SessionsList.CellTooltipAt(row, kColumnCost) = "No price set for " + String.FromArray(estimate.UnpricedModels, ", ")
 		    End If
 		    SessionsList.CellTooltipAt(row, kColumnTitle) = WakeFormat.OneLine(If(s.FirstPrompt <> "", s.FirstPrompt, s.DisplayTitle), 500)
-		    If s.IsPartial Then SessionsList.CellTooltipAt(row, kColumnStatus) = s.ParseNote
+		    
+		    Var notes() As String
+		    If s.IsLive(now) Then notes.Add("Live: the agent wrote to this session in the last few minutes")
+		    If s.IsPartial Then notes.Add(s.ParseNote)
+		    SessionsList.CellTooltipAt(row, kColumnStatus) = String.FromArray(notes, &u0A)
 		  Next
 		  
 		  If SessionsList.SortingColumn >= 0 Then SessionsList.Sort
 		  
 		  For row As Integer = 0 To SessionsList.LastRowIndex
-		    If WakeSessionInfo(SessionsList.RowTagAt(row).ObjectValue).ID = previousID Then
+		    If previousPath <> "" And WakeSessionInfo(SessionsList.RowTagAt(row).ObjectValue).FilePath = previousPath Then
 		      SessionsList.SelectedRowIndex = row
 		      Exit
 		    End If
@@ -843,7 +881,7 @@ End
 		  
 		  For i As Integer = 0 To App.WindowCount - 1
 		    Var existing As DesktopWindow = App.WindowAt(i)
-		    If existing IsA SessionWindow And SessionWindow(existing).SessionID = info.ID Then
+		    If existing IsA SessionWindow And SessionWindow(existing).FilePath = info.FilePath Then
 		      existing.Show
 		      If hit <> Nil Then SessionWindow(existing).ShowEvent(hit.EventSessionUID, hit.Sequence)
 		      Return
@@ -882,10 +920,24 @@ End
 		End Function
 	#tag EndMethod
 
+	#tag Method, Flags = &h0
+		Sub RefreshLiveBadges()
+		  // Called by the watch timer: a "Live" badge goes away once its session has been quiet for
+		  // a while, even when no indexing run changed anything.
+		  If SessionsList.Visible Then SessionsList.Refresh(False)
+		End Sub
+	#tag EndMethod
+
 	#tag Method, Flags = &h21
 		Private Sub Reload()
-		  // Rebuilds the source list from the index and keeps the current selection when it still exists.
+		  // Rebuilds the source list from the index and keeps the current selection when it still
+		  // exists, which agents are collapsed, and where each list is scrolled to, so a run started
+		  // by the watch timer doesn't move anything under the reader.
 		  IndexWheel.Visible = False
+		  Var sourceScroll As Integer = SourceList.ScrollPosition
+		  Var sessionsScroll As Integer = SessionsList.ScrollPosition
+		  Var hitsScroll As Integer = HitsList.ScrollPosition
+		  Var detailScroll As Integer = DetailList.ScrollPosition
 		  
 		  If Not OpenCatalog Then
 		    UpdateStatus
@@ -924,7 +976,7 @@ End
 		    SourceList.CellTextAt(row, 1) = all.SessionCount.ToString
 		    SourceList.CellBoldAt(row, 0) = True
 		    SourceList.RowTagAt(row) = all
-		    SourceList.RowExpandedAt(row) = True
+		    SourceList.RowExpandedAt(row) = mCollapsedAgents.IndexOf(agentID) < 0
 		  Next
 		  
 		  // A project that is gone, or was just hidden, leaves its agent selected.
@@ -942,6 +994,11 @@ End
 		  mLoading = False
 		  
 		  ShowResults
+		  
+		  SourceList.ScrollPosition = sourceScroll
+		  SessionsList.ScrollPosition = sessionsScroll
+		  HitsList.ScrollPosition = hitsScroll
+		  DetailList.ScrollPosition = detailScroll
 		End Sub
 	#tag EndMethod
 
@@ -983,9 +1040,9 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
-		Private Function SelectedSessionID() As Integer
-		  If SessionsList.SelectedRowIndex < 0 Then Return 0
-		  Return WakeSessionInfo(SessionsList.RowTagAt(SessionsList.SelectedRowIndex).ObjectValue).ID
+		Private Function SelectedSessionPath() As String
+		  If SessionsList.SelectedRowIndex < 0 Then Return ""
+		  Return WakeSessionInfo(SessionsList.RowTagAt(SessionsList.SelectedRowIndex).ObjectValue).FilePath
 		End Function
 	#tag EndMethod
 
@@ -1263,6 +1320,10 @@ End
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
+		Private mCollapsedAgents() As String
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
 		Private mHitSessionCount As Integer
 	#tag EndProperty
 
@@ -1358,6 +1419,8 @@ End
 		Sub RowExpanded(row As Integer)
 		  // Children of an agent row: its projects, most recently active first.
 		  Var agent As WakeProjectInfo = WakeProjectInfo(Me.RowTagAt(row).ObjectValue)
+		  Var collapsed As Integer = mCollapsedAgents.IndexOf(agent.AgentID)
+		  If collapsed >= 0 Then mCollapsedAgents.RemoveAt(collapsed)
 		  
 		  For Each p As WakeProjectInfo In mProjects
 		    If p.AgentID <> agent.AgentID Then Continue
@@ -1366,6 +1429,13 @@ End
 		    Me.RowTagAt(child) = p
 		    Me.CellTooltipAt(child, 0) = p.Path + If(p.IsHidden, " (hidden)", "")
 		  Next
+		End Sub
+	#tag EndEvent
+	#tag Event
+		Sub RowCollapsed(row As Integer)
+		  // Remembered so that reloading the list keeps the agent collapsed.
+		  Var agent As WakeProjectInfo = WakeProjectInfo(Me.RowTagAt(row).ObjectValue)
+		  If agent <> Nil And mCollapsedAgents.IndexOf(agent.AgentID) < 0 Then mCollapsedAgents.Add(agent.AgentID)
 		End Sub
 	#tag EndEvent
 	#tag Event
@@ -1410,8 +1480,9 @@ End
 #tag Events SessionsList
 	#tag Event
 		Function PaintCellText(g as Graphics, row as Integer, column as Integer, x as Integer, y as Integer) As Boolean
-		  // Draws a strip under the token count and cost, as long as the largest in the list, and a
-		  // "Partial" badge for sessions the parser could not read completely.
+		  // Draws a strip under the token count and cost, as long as the largest in the list, a "Live"
+		  // badge for sessions the agent is still writing, and a "Partial" badge for sessions the
+		  // parser could not read completely.
 		  #Pragma Unused y
 		  If row > Me.LastRowIndex Then Return False
 		  
@@ -1433,19 +1504,12 @@ End
 		  If column <> kColumnStatus Then Return False
 		  
 		  Var s As WakeSessionInfo = WakeSessionInfo(Me.RowTagAt(row).ObjectValue)
-		  If s Is Nil Or Not s.IsPartial Then Return True
+		  If s Is Nil Then Return True
 		  
-		  Var label As String = "Partial"
-		  g.FontSize = 10
-		  g.Bold = True
-		  Var badgeWidth As Double = g.TextWidth(label) + 10
-		  Var badgeHeight As Double = 16
-		  Var top As Double = (g.Height - badgeHeight) / 2
-		  
-		  g.DrawingColor = Color.RGB(201, 120, 0)
-		  g.FillRoundRectangle(x, top, badgeWidth, badgeHeight, 8, 8)
-		  g.DrawingColor = Color.White
-		  g.DrawText(label, x + 5, top + (badgeHeight - g.TextHeight) / 2 + g.FontAscent)
+		  // Checked at paint time, so the badge goes away by itself once the session is quiet.
+		  Var badgeX As Double = x
+		  If s.IsLive(DateTime.Now) Then badgeX = badgeX + DrawBadge(g, "Live", badgeX, Color.RGB(36, 138, 61)) + 4
+		  If s.IsPartial Then Call DrawBadge(g, "Partial", badgeX, Color.RGB(201, 120, 0))
 		  Return True
 		End Function
 	#tag EndEvent

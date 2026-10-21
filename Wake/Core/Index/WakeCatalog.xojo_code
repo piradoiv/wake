@@ -72,7 +72,7 @@ Protected Class WakeCatalog
 
 	#tag Method, Flags = &h21
 		Private Function ReadSessions(where As String, values() As Variant, order As String) As WakeSessionInfo()
-		  Var sql As String = "SELECT s.*, p.path AS project_path, f.path AS file_path, " + _
+		  Var sql As String = "SELECT s.*, p.path AS project_path, f.path AS file_path, f.mtime_ms AS file_mtime_ms, " + _
 		  "(SELECT count(*) FROM sessions c WHERE c.parent_id = s.id) AS subagent_count " + _
 		  "FROM sessions s JOIN projects p ON p.id = s.project_id JOIN files f ON f.id = s.file_id " + _
 		  "WHERE " + where + " ORDER BY " + order
@@ -87,6 +87,8 @@ Protected Class WakeCatalog
 		    s.ProjectID = row.Column("project_id").IntegerValue
 		    s.ProjectPath = row.Column("project_path").StringValue
 		    s.FilePath = row.Column("file_path").StringValue
+		    Var modifiedMs As Int64 = row.Column("file_mtime_ms").Int64Value
+		    If modifiedMs > 0 Then s.FileModified = New DateTime(modifiedMs / 1000)
 		    s.AgentID = row.Column("agent").StringValue
 		    s.UID = row.Column("uid").StringValue
 		    s.Title = row.Column("title").StringValue
@@ -246,6 +248,20 @@ Protected Class WakeCatalog
 		  Next
 		  
 		  Return s
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function SessionForFile(filePath As String) As WakeSessionInfo
+		  // The top-level session indexed from a transcript, or Nil if it isn't indexed. Ids change
+		  // when a file is indexed again, so windows that outlive an indexing run find their session
+		  // by its file. Raises DatabaseException.
+		  Var values() As Variant
+		  values.Add(filePath)
+		  
+		  Var found() As WakeSessionInfo = ReadSessions("f.path = ? AND s.parent_id IS NULL", values, "s.id")
+		  If found.Count = 0 Then Return Nil
+		  Return Session(found(0).ID)
 		End Function
 	#tag EndMethod
 

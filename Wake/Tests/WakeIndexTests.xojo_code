@@ -84,6 +84,27 @@ Inherits TestGroup
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub FileSignatureTest()
+		  // The timeline compares signatures to tell that its session changed on disk.
+		  Var path As String = ScratchSession(4).NativePath
+		  Var before As String = WakeCore.FileSignature("claude-code", path)
+		  Assert.AreNotEqual("", before)
+		  Assert.AreEqual(before, WakeCore.FileSignature("claude-code", path), "nothing changed")
+		  
+		  Var subagent As FolderItem = mScratch.Child("projects").Child("-Users-dev-demo").Child(TestSupport.ClaudeFixtureID(4)) _
+		  .Child("subagents").Child("agent-a0fixture000001.jsonl")
+		  TestSupport.AppendLine(subagent, "{""type"": ""future-record-kind""}")
+		  Var afterSubagent As String = WakeCore.FileSignature("claude-code", path)
+		  Assert.AreNotEqual(before, afterSubagent, "a subagent transcript grew")
+		  
+		  TestSupport.AppendLine(ScratchSession(4), "{""type"": ""future-record-kind""}")
+		  Assert.AreNotEqual(afterSubagent, WakeCore.FileSignature("claude-code", path), "the transcript grew")
+		  
+		  Assert.AreEqual("", WakeCore.FileSignature("claude-code", mScratch.Child("missing.jsonl").NativePath), "missing file")
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub FirstRunIndexesEverythingTest()
 		  Var result As WakeIndexRunResult = RunIndexer
 		  Var errors As String = String.FromArray(result.Errors, "; ")

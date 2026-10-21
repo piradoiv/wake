@@ -104,6 +104,27 @@ Inherits TestGroup
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub LiveSessionTest()
+		  // A session is live while its transcript changed in the last kLiveSeconds.
+		  Var s As WakeSessionInfo = FindSession(mCatalog.Sessions("", 0), 1)
+		  Assert.IsNotNil(s.FileModified, "file time read from the index")
+		  If s.FileModified Is Nil Then Return
+		  
+		  Var scratchTime As DateTime = mScratch.Child("projects").Child("-Users-dev-demo").Child(TestSupport.ClaudeFixtureID(1) + ".jsonl").ModificationDateTime
+		  Assert.AreEqual(scratchTime.SecondsFrom1970, s.FileModified.SecondsFrom1970, 0.002, "the indexed copy's time")
+		  
+		  Var modified As Double = s.FileModified.SecondsFrom1970
+		  Assert.IsTrue(s.IsLive(New DateTime(modified + 1)), "just changed")
+		  Assert.IsTrue(s.IsLive(New DateTime(modified + WakeSessionInfo.kLiveSeconds - 1)), "still live")
+		  Assert.IsFalse(s.IsLive(New DateTime(modified + WakeSessionInfo.kLiveSeconds + 1)), "quiet for too long")
+		  Assert.IsFalse(s.IsLive(Nil))
+		  
+		  Var unknown As New WakeSessionInfo
+		  Assert.IsFalse(unknown.IsLive(DateTime.Now), "no file time")
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub MissingSessionIsNilTest()
 		  Assert.IsNil(mCatalog.Session(999999))
 		End Sub
@@ -154,6 +175,50 @@ Inherits TestGroup
 		  Var subagent As WakeSessionInfo = mCatalog.Session(subagents(0).ID)
 		  Assert.AreEqual("claude-haiku-4-5-20251001", subagent.Models(0).Left.StringValue)
 		  Assert.AreEqual(110, WakeTokenUsage(subagent.Models(0).Right.ObjectValue).InputTokens)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub SessionForFileTest()
+		  // Windows find their session again by file, because ids change when a file is re-indexed.
+		  Var listed As WakeSessionInfo = FindSession(mCatalog.Sessions("", 0), 4)
+		  Var s As WakeSessionInfo = mCatalog.SessionForFile(listed.FilePath)
+		  Assert.IsNotNil(s)
+		  If s Is Nil Then Return
+		  Assert.AreEqual(listed.ID, s.ID)
+		  Assert.AreEqual(0, s.ParentID, "the top-level session, not its subagent")
+		  Var modelCount As Integer = s.Models.Count
+		  Assert.IsTrue(modelCount > 0, "with per-model usage")
+		  
+		  Assert.IsNil(mCatalog.SessionForFile(mScratch.Child("missing.jsonl").NativePath))
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub SettingsFileTest()
+		  Var f As FolderItem = mScratch.Child("settings.json")
+		  Assert.IsTrue(WakeSettings.Load(f).WatchForChanges, "watching is on by default")
+		  
+		  TestSupport.AppendLine(f, "{""watchForChanges"": false, ""laterSetting"": 3}")
+		  Var settings As WakeSettings = WakeSettings.Load(f)
+		  Assert.IsFalse(settings.WatchForChanges)
+		  
+		  settings.WatchForChanges = True
+		  settings.Save(f)
+		  Var input As TextInputStream = TextInputStream.Open(f)
+		  input.Encoding = Encodings.UTF8
+		  Var saved As Dictionary = WakeCore.AsDictionary(ParseJSON(input.ReadAll))
+		  input.Close
+		  Assert.IsTrue(saved.Lookup("watchForChanges", False).BooleanValue)
+		  Assert.AreEqual(3, saved.Lookup("laterSetting", 0).IntegerValue, "unknown keys are kept")
+		  
+		  Var wrongType As FolderItem = mScratch.Child("wrong-type.json")
+		  TestSupport.AppendLine(wrongType, "{""watchForChanges"": ""no""}")
+		  Assert.IsTrue(WakeSettings.Load(wrongType).WatchForChanges, "a value of the wrong type")
+		  
+		  Var broken As FolderItem = mScratch.Child("broken.json")
+		  TestSupport.AppendLine(broken, "{""watchForChanges"": ")
+		  Assert.IsTrue(WakeSettings.Load(broken).WatchForChanges, "malformed JSON")
 		End Sub
 	#tag EndMethod
 

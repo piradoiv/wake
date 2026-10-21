@@ -138,6 +138,71 @@ Begin DesktopWindow SessionWindow
       Visible         =   True
       Width           =   960
    End
+   Begin DesktopLabel UpdateLabel
+      AllowAutoDeactivate=   True
+      Bold            =   True
+      Enabled         =   True
+      FontName        =   "System"
+      FontSize        =   0.0
+      FontUnit        =   0
+      Height          =   20
+      Index           =   -2147483648
+      InitialParent   =   ""
+      Italic          =   False
+      Left            =   236
+      LockBottom      =   False
+      LockedInPosition=   False
+      LockLeft        =   True
+      LockRight       =   True
+      LockTop         =   True
+      Multiline       =   False
+      Scope           =   2
+      Selectable      =   False
+      TabIndex        =   4
+      TabPanelIndex   =   0
+      TabStop         =   True
+      Text            =   "Session updated"
+      TextAlignment   =   3
+      TextColor       =   &c000000
+      Tooltip         =   ""
+      Top             =   138
+      Transparent     =   False
+      Underline       =   False
+      Visible         =   False
+      Width           =   604
+   End
+   Begin DesktopButton ReloadButton
+      AllowAutoDeactivate=   True
+      Bold            =   False
+      Cancel          =   False
+      Caption         =   "Reload"
+      Default         =   False
+      Enabled         =   True
+      FontName        =   "System"
+      FontSize        =   0.0
+      FontUnit        =   0
+      Height          =   20
+      Index           =   -2147483648
+      InitialParent   =   ""
+      Italic          =   False
+      Left            =   848
+      LockBottom      =   False
+      LockedInPosition=   False
+      LockLeft        =   False
+      LockRight       =   True
+      LockTop         =   True
+      MacButtonStyle  =   0
+      Scope           =   2
+      TabIndex        =   5
+      TabPanelIndex   =   0
+      TabStop         =   True
+      Tooltip         =   "Read the transcript again to show what was added"
+      Top             =   138
+      Transparent     =   False
+      Underline       =   False
+      Visible         =   False
+      Width           =   88
+   End
 End
 #tag EndDesktopWindow
 
@@ -170,6 +235,13 @@ End
 	#tag EndMenuHandler
 
 	#tag MenuHandler
+		Function ViewWatchForChanges() As Boolean Handles ViewWatchForChanges.Action
+		  App.ToggleWatching
+		  Return True
+		End Function
+	#tag EndMenuHandler
+
+	#tag MenuHandler
 		Function WindowPrices() As Boolean Handles WindowPrices.Action
 		  PricesWindow.Show
 		  Return True
@@ -184,6 +256,53 @@ End
 	#tag EndMenuHandler
 
 
+	#tag Method, Flags = &h0
+		Function FilePath() As String
+		  // The transcript shown. Session ids change when a file is indexed again, so windows are
+		  // matched to sessions by file.
+		  If mInfo Is Nil Then Return ""
+		  Return mInfo.FilePath
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub IndexChanged()
+		  // An indexing run stored new files. If this transcript is one of them, say so and offer to
+		  // reload, rather than reloading and losing the reader's place.
+		  If mInfo Is Nil Then Return
+		  Var signature As String = WakeCore.FileSignature(mInfo.AgentID, mInfo.FilePath)
+		  If signature = mSignature Then Return
+		  
+		  If signature = "" Then
+		    UpdateLabel.Text = "The transcript is no longer on disk"
+		    ReloadButton.Visible = False
+		  Else
+		    UpdateLabel.Text = "Session updated"
+		    ReloadButton.Visible = True
+		  End If
+		  UpdateLabel.Visible = True
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function LatestInfo() As WakeSessionInfo
+		  // The session as the index has it now, for the tiles, or Nil when it can't be read.
+		  Var index As New WakeIndex(WakeFolders.DefaultIndexFile)
+		  Var found As WakeSessionInfo
+		  Try
+		    index.Open
+		    Var catalog As New WakeCatalog(index)
+		    found = catalog.SessionForFile(mInfo.FilePath)
+		  Catch err As DatabaseException
+		    found = Nil
+		  Catch err As IOException
+		    found = Nil
+		  End Try
+		  index.Close
+		  Return found
+		End Function
+	#tag EndMethod
+
 	#tag Method, Flags = &h21
 		Private Sub LayOutHeader()
 		  // The tiles take the height their rows need at this width, then the buttons, then the page.
@@ -194,6 +313,8 @@ End
 		  
 		  ExpandButton.Top = GlanceTiles.Top + GlanceTiles.Height
 		  CollapseButton.Top = ExpandButton.Top
+		  UpdateLabel.Top = ExpandButton.Top
+		  ReloadButton.Top = ExpandButton.Top
 		  
 		  TimelineViewer.Top = ExpandButton.Top + ExpandButton.Height + 10
 		  TimelineViewer.Height = Height - TimelineViewer.Top
@@ -209,10 +330,19 @@ End
 		End Sub
 	#tag EndMethod
 
-	#tag Method, Flags = &h0
-		Function SessionID() As Integer
-		  Return mSessionID
-		End Function
+	#tag Method, Flags = &h21
+		Private Sub ReloadSession()
+		  // Reads the transcript again, with the latest totals from the index, and scrolls back to
+		  // where the reader was if the page reported it in time.
+		  Timer.CancelCallLater(AddressOf ReloadSession)
+		  If mInfo Is Nil Then Return
+		  
+		  Var info As WakeSessionInfo = LatestInfo
+		  If info Is Nil Then info = mInfo
+		  Var scroll As Integer = mRestoreScroll
+		  ShowSession(info)
+		  mRestoreScroll = scroll
+		End Sub
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
@@ -241,15 +371,19 @@ End
 
 	#tag Method, Flags = &h0
 		Sub ShowSession(info As WakeSessionInfo)
-		  // The timeline re-parses the transcript, read-only. The index holds only summaries.
-		  mSessionID = info.ID
+		  // The timeline re-parses the transcript, read-only. The index holds only summaries. The
+		  // signature is taken first, so a change made while parsing still shows the update bar.
 		  mInfo = info
 		  Title = info.DisplayTitle
+		  mSignature = WakeCore.FileSignature(info.AgentID, info.FilePath)
 		  mTimeline = WakeTimeline.Load(info.AgentID, info.FilePath)
 		  ShowTiles
+		  UpdateLabel.Visible = False
+		  ReloadButton.Visible = False
 		  
 		  mLoadingPage = True
 		  mPendingAnchor = ""
+		  mRestoreScroll = 0
 		  TimelineViewer.LoadPage(mTimeline.HTML, Nil)
 		End Sub
 	#tag EndMethod
@@ -286,12 +420,23 @@ End
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
-		Private mSessionID As Integer
+		Private mRestoreScroll As Integer
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mSignature As String
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
 		Private mTimeline As WakeTimeline
 	#tag EndProperty
+
+
+	#tag Constant, Name = kReloadDelay, Type = Double, Dynamic = False, Default = \"150", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kScrollMethod, Type = String, Dynamic = False, Default = \"wakeScrollPosition", Scope = Private
+	#tag EndConstant
 
 
 #tag EndWindowCode
@@ -300,6 +445,19 @@ End
 	#tag Event
 		Sub Pressed()
 		  If Not mLoadingPage Then TimelineViewer.ExecuteJavaScript("wakeAll(true);")
+		End Sub
+	#tag EndEvent
+#tag EndEvents
+#tag Events ReloadButton
+	#tag Event
+		Sub Pressed()
+		  // The page reports how far down it is scrolled, then the session reloads. If the report
+		  // doesn't come in time, it reloads at the top.
+		  If Not mLoadingPage Then
+		    TimelineViewer.ExecuteJavaScript("if (typeof executeInXojoSync === 'function') executeInXojoSync('" + _
+		    kScrollMethod + "', String(Math.round(window.scrollY)));")
+		  End If
+		  Timer.CallLater(kReloadDelay, AddressOf ReloadSession)
 		End Sub
 	#tag EndEvent
 #tag EndEvents
@@ -324,6 +482,12 @@ End
 		  #Pragma Unused URL
 		  mLoadingPage = False
 		  ShowCosts
+		  
+		  // Back to where the reader was before Reload.
+		  If mRestoreScroll > 0 Then
+		    TimelineViewer.ExecuteJavaScript("window.scrollTo(0, " + mRestoreScroll.ToString + ");")
+		    mRestoreScroll = 0
+		  End If
 
 		  // A search hit asked for an event before the page was ready. Anchors are generated ids,
 		  // never transcript text.
@@ -335,8 +499,13 @@ End
 	#tag EndEvent
 	#tag Event
 		Function JavaScriptRequest(method As String, parameters() as Variant) As String
-		  // The page calls executeInXojoSync to expand a long block or load persisted tool output.
+		  // The page calls executeInXojoSync to expand a long block or load persisted tool output,
+		  // and to report its scroll position before Reload.
 		  If mTimeline Is Nil Or parameters.Count = 0 Then Return ""
+		  If method = kScrollMethod Then
+		    mRestoreScroll = Max(0, Round(Val(parameters(0).StringValue)))
+		    Return ""
+		  End If
 		  Return mTimeline.Request(method, parameters(0).StringValue)
 		End Function
 	#tag EndEvent

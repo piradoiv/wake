@@ -323,6 +323,13 @@ End
 	#tag EndMenuHandler
 
 	#tag MenuHandler
+		Function ViewWatchForChanges() As Boolean Handles ViewWatchForChanges.Action
+		  App.ToggleWatching
+		  Return True
+		End Function
+	#tag EndMenuHandler
+
+	#tag MenuHandler
 		Function WindowPrices() As Boolean Handles WindowPrices.Action
 		  PricesWindow.Show
 		  Return True
@@ -359,6 +366,13 @@ End
 		    UsageList.CellTooltipAt(row, kColumnCost) = "No price set for " + String.FromArray(estimate.UnpricedModels, ", ")
 		  End If
 		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function CallKey(c As WakeToolCallInfo) As String
+		  If c Is Nil Or c.Session Is Nil Then Return ""
+		  Return c.Session.FilePath + &u0A + c.EventSessionUID + &u0A + c.Sequence.ToString
+		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
@@ -432,9 +446,39 @@ End
 
 	#tag Method, Flags = &h0
 		Sub IndexingFinished()
-		  // The index changed or was rebuilt, so read it again on a fresh connection.
+		  // The index changed or was rebuilt, so read it again on a fresh connection. The selected
+		  // group and call, and where both lists are scrolled to, stay as they were. Ids change when
+		  // a file is indexed again, so they are found by their label and their event.
+		  Var groupKey As String
+		  If UsageList.SelectedRowIndex >= 0 Then groupKey = UsageList.CellTagAt(UsageList.SelectedRowIndex, kColumnLabel).StringValue
+		  Var selectedCall As String
+		  If CallsList.SelectedRowIndex >= 0 Then selectedCall = CallKey(WakeToolCallInfo(CallsList.RowTagAt(CallsList.SelectedRowIndex).ObjectValue))
+		  Var usageScroll As Integer = UsageList.ScrollPosition
+		  Var callsScroll As Integer = CallsList.ScrollPosition
+		  
 		  CloseCatalog
 		  Reload
+		  
+		  If groupKey <> "" Then
+		    For row As Integer = 0 To UsageList.LastRowIndex
+		      If UsageList.CellTagAt(row, kColumnLabel).StringValue = groupKey Then
+		        UsageList.SelectedRowIndex = row
+		        Exit
+		      End If
+		    Next
+		  End If
+		  
+		  If selectedCall <> "" Then
+		    For row As Integer = 0 To CallsList.LastRowIndex
+		      If CallKey(WakeToolCallInfo(CallsList.RowTagAt(row).ObjectValue)) = selectedCall Then
+		        CallsList.SelectedRowIndex = row
+		        Exit
+		      End If
+		    Next
+		  End If
+		  
+		  UsageList.ScrollPosition = usageScroll
+		  CallsList.ScrollPosition = callsScroll
 		End Sub
 	#tag EndMethod
 
@@ -465,7 +509,7 @@ End
 		  
 		  For i As Integer = 0 To App.WindowCount - 1
 		    Var existing As DesktopWindow = App.WindowAt(i)
-		    If existing IsA SessionWindow And SessionWindow(existing).SessionID = c.Session.ID Then
+		    If existing IsA SessionWindow And SessionWindow(existing).FilePath = c.Session.FilePath Then
 		      existing.Show
 		      SessionWindow(existing).ShowEvent(c.EventSessionUID, c.Sequence)
 		      Return

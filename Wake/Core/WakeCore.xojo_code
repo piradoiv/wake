@@ -12,6 +12,35 @@ Protected Module WakeCore
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function FileSignature(agentID As String, filePath As String) As String
+		  // The size and modification time of a transcript and of the side files parsed with it,
+		  // such as subagent transcripts. It changes whenever the session does. Empty when the
+		  // file is missing.
+		  Var f As FolderItem
+		  Try
+		    f = New FolderItem(filePath, FolderItem.PathModes.Native)
+		  Catch err As UnsupportedFormatException
+		    Return ""
+		  Catch err As IOException
+		    Return ""
+		  End Try
+		  If f Is Nil Or Not f.Exists Then Return ""
+
+		  Var entries() As String
+		  Var parser As IAgentParser = AgentRegistry.ParserFor(agentID)
+		  If parser <> Nil Then
+		    For Each related As FolderItem In parser.RelatedFiles(f)
+		      entries.Add(related.Name + ":" + related.Length.ToString + ":" + ModifiedTimeText(related))
+		    Next
+		  End If
+		  entries.Sort
+		  entries.AddAt(0, f.Length.ToString + ":" + ModifiedTimeText(f))
+
+		  Return String.FromArray(entries, ";")
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function JSONArray(d As Dictionary, key As String) As Variant()
 		  // The array stored under key, or an empty array when it is missing or not an array.
 		  Var result() As Variant
@@ -188,6 +217,16 @@ Protected Module WakeCore
 	#tag Method, Flags = &h21
 		Private Function IsDigit(character As String) As Boolean
 		  Return character >= "0" And character <= "9" And character.Length = 1
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function ModifiedTimeText(f As FolderItem) As String
+		  // Whole milliseconds, like the index stores them.
+		  Var modified As DateTime = f.ModificationDateTime
+		  If modified Is Nil Then Return "0"
+		  Var ms As Int64 = Round(modified.SecondsFrom1970 * 1000)
+		  Return ms.ToString
 		End Function
 	#tag EndMethod
 

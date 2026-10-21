@@ -229,6 +229,24 @@ Begin Menu MainMenuBar
          AutoEnable = True
          Visible = True
       End
+      Begin DesktopMenuItem ViewSeparator2
+         SpecialMenu = 0
+         Index = -2147483648
+         Text = "-"
+         Symbol = ""
+         AutoEnabled = True
+         AutoEnable = True
+         Visible = True
+      End
+      Begin DesktopMenuItem ViewWatchForChanges
+         SpecialMenu = 0
+         Index = -2147483648
+         Text = "&Watch for Changes"
+         Symbol = ""
+         AutoEnabled = True
+         AutoEnable = True
+         Visible = True
+      End
    End
    Begin DesktopMenuItem WindowMenu
       SpecialMenu = 0

@@ -5,6 +5,7 @@ Inherits DesktopApplication
 		Sub MenuBarSelected()
 		  // Auto-enable leaves this item greyed out, so it's enabled here.
 		  FileCloseWindow.Enabled = WindowCount > 0
+		  ViewWatchForChanges.HasCheckMark = Settings.WatchForChanges
 		End Sub
 	#tag EndEvent
 
@@ -15,6 +16,7 @@ Inherits DesktopApplication
 		  #EndIf
 		  
 		  StartIndexing
+		  StartWatching
 		  AllowAutoQuit = True
 		End Sub
 	#tag EndEvent
@@ -83,6 +85,11 @@ Inherits DesktopApplication
 		  #Pragma Unused sender
 		  System.DebugLog("Wake: " + message)
 		  
+		  // A run started by the watch timer that fails the same way again changes nothing on screen.
+		  Var repeated As Boolean = mQuietRun And message = mLastFailure
+		  mLastFailure = message
+		  If repeated Then Return
+		  
 		  For Each w As MainWindow In MainWindows
 		    w.IndexingFailed(message)
 		  Next
@@ -100,12 +107,24 @@ Inherits DesktopApplication
 		    System.DebugLog("Wake: " + message)
 		  Next
 		  
+		  // A run started by the watch timer that found nothing new leaves every window as it is,
+		  // unless the last run failed and the windows still show that.
+		  Var changed As Boolean = result.FilesIndexed > 0 Or result.FilesRemoved > 0
+		  If mQuietRun And Not changed And mLastFailure = "" Then Return
+		  mLastFailure = ""
+		  
 		  For Each w As MainWindow In MainWindows
 		    w.IndexingFinished(result)
 		  Next
 		  
 		  Var usage As UsageWindow = OpenUsageWindow
 		  If usage <> Nil Then usage.IndexingFinished
+		  
+		  If changed Then
+		    For i As Integer = 0 To WindowCount - 1
+		      If WindowAt(i) IsA SessionWindow Then SessionWindow(WindowAt(i)).IndexChanged
+		    Next
+		  End If
 		End Sub
 	#tag EndMethod
 
@@ -113,6 +132,7 @@ Inherits DesktopApplication
 		Private Sub IndexThread_Progress(sender As WakeIndexThread, done As Integer, total As Integer, currentPath As String)
 		  #Pragma Unused sender
 		  #Pragma Unused currentPath
+		  If mQuietRun Then Return
 		  
 		  For Each w As MainWindow In MainWindows
 		    w.IndexingProgress(done, total)
@@ -207,15 +227,40 @@ Inherits DesktopApplication
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
-		Sub StartIndexing()
-		  // Brings the index up to date in the background. Does nothing if a run is in progress.
-		  If IsIndexing Then Return
+		Function Settings() As WakeSettings
+		  // Wake's preferences, read from the app data folder the first time they are needed.
+		  If mSettings Is Nil Then mSettings = WakeSettings.Load(WakeFolders.SettingsFile)
+		  Return mSettings
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub StartIndexing(quiet As Boolean = False)
+		  // Brings the index up to date in the background. A quiet run, started by the watch timer,
+		  // shows no progress and updates the windows only if it finds a change. Asking for a normal
+		  // run while a quiet one is in progress makes that run report like a normal one.
+		  If IsIndexing Then
+		    If Not quiet Then mQuietRun = False
+		    Return
+		  End If
 		  
+		  mQuietRun = quiet
 		  IndexThread = New WakeIndexThread(WakeFolders.DefaultIndexFile, WakeFolders.AllRoots)
 		  AddHandler IndexThread.Progress, AddressOf IndexThread_Progress
 		  AddHandler IndexThread.Finished, AddressOf IndexThread_Finished
 		  AddHandler IndexThread.Failed, AddressOf IndexThread_Failed
 		  IndexThread.Start
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub StartWatching()
+		  // Every kWatchPeriod the watch timer starts a quiet run, so new and growing sessions show
+		  // up by themselves. A run with nothing to do takes milliseconds.
+		  mWatchTimer = New Timer
+		  mWatchTimer.Period = kWatchPeriod
+		  mWatchTimer.RunMode = Timer.RunModes.Multiple
+		  AddHandler mWatchTimer.Action, AddressOf WatchTimer_Action
 		End Sub
 	#tag EndMethod
 
@@ -236,9 +281,39 @@ Inherits DesktopApplication
 		End Sub
 	#tag EndMethod
 
+	#tag Method, Flags = &h0
+		Sub ToggleWatching()
+		  // View → Watch for Changes. Turning it on also catches up at once.
+		  Settings.WatchForChanges = Not Settings.WatchForChanges
+		  Try
+		    Settings.Save(WakeFolders.SettingsFile)
+		  Catch err As IOException
+		    MessageBox("Could not save the settings: " + err.Message)
+		  End Try
+		  
+		  If Settings.WatchForChanges Then StartIndexing(True)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub WatchTimer_Action(sender As Timer)
+		  #Pragma Unused sender
+		  If Settings.WatchForChanges Then StartIndexing(True)
+		  
+		  // "Live" badges fade once a session has been quiet for a while, with or without a run.
+		  For Each w As MainWindow In MainWindows
+		    w.RefreshLiveBadges
+		  Next
+		End Sub
+	#tag EndMethod
+
 
 	#tag Property, Flags = &h0
 		IndexThread As WakeIndexThread
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mLastFailure As String
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
@@ -250,7 +325,19 @@ Inherits DesktopApplication
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
+		Private mQuietRun As Boolean
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mSettings As WakeSettings
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
 		Private mTestController As WakeTestController
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mWatchTimer As Timer
 	#tag EndProperty
 
 
@@ -269,6 +356,9 @@ Inherits DesktopApplication
 	#tag EndConstant
 
 	#tag Constant, Name = kTestMarkerName, Type = String, Dynamic = False, Default = \"WakeRunTests", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kWatchPeriod, Type = Double, Dynamic = False, Default = \"10000", Scope = Private
 	#tag EndConstant
 
 

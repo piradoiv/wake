@@ -131,6 +131,13 @@ Protected Module WakeFolders
 		End Sub
 	#tag EndMethod
 
+	#tag Method, Flags = &h0
+		Function SettingsFile() As FolderItem
+		  // Wake's preferences, such as watching for changes. It only exists once one is changed.
+		  Return AppDataFolder.Child("settings.json")
+		End Function
+	#tag EndMethod
+
 
 End Module
 #tag EndModule
