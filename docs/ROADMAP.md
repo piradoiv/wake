@@ -234,6 +234,10 @@ machine to inspect, and the console companion.
 - **The app icon** is drawn in `Artwork/` (SVG sources and the rendered PNGs).
   The maintainer adds the PNGs in the IDE, which stores them in the binary
   `Wake/Wake.xojo_resources`. `Artwork/README.md` has the render commands.
+  After changing it, check the build: `iconutil -c iconset` on
+  `Wake.app/Contents/Resources/App.icns` and compare each slot with
+  `Artwork/IconSet`. The 128 and 32 @2x slots once came out blurry (cause
+  unknown) until the PNGs were dropped into them again.
 - **`Assert.AreEqual(n, someArray.Count)` is ambiguous.** Assign the count to
   an `Integer` variable first.
 - **`(expression).ToString` doesn't parse.** Assign to a variable first.
