@@ -72,6 +72,9 @@ Protected Module WakeTitleBar
 		    Declare Function ObjectAtIndex Lib "Foundation" Selector "objectAtIndex:" (nsArray As Ptr, index As UInteger) As Ptr
 		    Declare Function View Lib "AppKit" Selector "view" (item As Ptr) As Ptr
 		    Declare Sub SetView Lib "AppKit" Selector "setView:" (item As Ptr, view As Ptr)
+		    Declare Function NSSelectorFromString Lib "Foundation" (name As CFStringRef) As Ptr
+		    Declare Function RespondsToSelector Lib "Foundation" Selector "respondsToSelector:" (obj As Ptr, sel As Ptr) As Boolean
+		    Declare Sub SetBordered Lib "AppKit" Selector "setBordered:" (item As Ptr, value As Boolean)
 		    Declare Function WidthAnchor Lib "AppKit" Selector "widthAnchor" (view As Ptr) As Ptr
 		    Declare Function ConstraintEqualToConstant Lib "AppKit" Selector "constraintEqualToConstant:" (anchor As Ptr, value As CGFloat) As Ptr
 		    Declare Sub SetActive Lib "AppKit" Selector "setActive:" (constraint As Ptr, value As Boolean)
@@ -93,6 +96,8 @@ Protected Module WakeTitleBar
 		    c.LockRight = False
 		    c.LockBottom = False
 		    SetView(item, controlView)
+		    // Bordered, the item gets a capsule, drawn in Liquid Glass on macOS 26, as Mail's search has.
+		    If RespondsToSelector(item, NSSelectorFromString("setBordered:")) Then SetBordered(item, True)
 		    SetActive(ConstraintEqualToConstant(WidthAnchor(controlView), width), True)
 
 		    // Spike only: what Xojo's control view is.
