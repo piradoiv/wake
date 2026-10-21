@@ -175,23 +175,14 @@ Each milestone below is one session's work, ending with tests and a commit.
   and the page shows "Session updated" with a Reload button, which scrolls
   back to where the page was. 108 tests.
 
-- [ ] **19. DesktopTable instead of DesktopListBox.** Replace the seven list
-  boxes (`MainWindow`: SourceList, SessionsList, DetailList, HitsList;
-  `UsageWindow`: UsageList, CallsList; `PricesWindow`: PricesList) with
-  `DesktopTable`, which should look and work better. Its API mostly mirrors
-  the list box (`AddRow`, `CellTextAt`, `CellTagAt`, `RowTagAt`,
-  `PaintCellText`, `RowComparison`, `RowExpanded`/`RowCollapsed`,
-  `CellAction`, `ConstructContextualMenu`), so keep the in-memory mode
-  (`DataSource = Nil`) and port each window as it is. A `TableDataSource`
-  can come later if the sessions list grows. Everything has to keep working:
-  sorting by value, the "Partial" and "Live" badges, collapsible agents in
-  the source list, editable prices, keys and double-click, the shared 1 px
-  borders and keeping selection and scroll on reload. No window uses the
-  control yet, so first the maintainer adds one table in the IDE. Copy its
-  saved properties, and ask the maintainer about events or behaviour the
-  public docs don't cover. Then note any differences from the list box here.
-  The maintainer checks each window by eye. Status: all seven are ported in
-  memory mode and the 108 tests pass. Tick this once the eye check is done.
+- [x] **19. DesktopTable instead of DesktopListBox.** The seven list boxes
+  (`MainWindow`: SourceList, SessionsList, DetailList, HitsList;
+  `UsageWindow`: UsageList, CallsList; `PricesWindow`: PricesList) are
+  `DesktopTable`s that keep their own rows (`DataSource = Nil`). Sorting,
+  badges, collapsible agents, price editing, keys, double-click, borders and
+  keeping selection and scroll on reload work as before (checked by eye).
+  `DetailList` no longer selects rows. A `TableDataSource` can come later if
+  the sessions list grows. 108 tests.
 
 - [ ] **20. Unified title bar (macOS).** Every window opens with a row of
   controls under the title bar: search and filters in the main window,
