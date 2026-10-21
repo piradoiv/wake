@@ -159,6 +159,46 @@ Each milestone below is one session's work, ending with tests and a commit.
   selected project from View → Hide Project or a right-click on its row,
   and View → Show Hidden Projects lists them again, dimmed. 104 tests.
 
+- [ ] **18. Live watch.** A `Timer` in `App` starts an index run every few
+  seconds (10 s by default) when none is running, so new and growing
+  sessions show up without File → Refresh. A run with nothing changed takes
+  about 10 ms, so polling is cheap. Windows reload only when a run indexed
+  or removed files (`WakeIndexRunResult.FilesIndexed`, `FilesRemoved`), and
+  keep their selection and scroll. View → Watch for Changes turns it on and
+  off (on by default; Wake has no settings file yet, so this adds one in the
+  app data folder). Sessions whose file
+  changed in the last couple of minutes get a "Live" badge in the sessions
+  list. An open timeline whose session changed shows a native "Session
+  updated: Reload" bar instead of reloading by itself, so it never loses the
+  reader's place.
+
+- [ ] **19. Context growth.** Every response re-sends the whole context, so a
+  long session pays for its early turns again on every later one. Per
+  response, the context is input + cache write + cache read. Per turn (from
+  one prompt to the next), Wake records the context at its first response
+  and estimates **≈ carried**: what the turn paid to re-send context older
+  than the turn itself, beyond the session's starting context. Starting
+  context and carried tokens go into the index per turn (schema bump). The
+  timeline header gets a context curve (a drawn control, like
+  `WakeDayChart`) with compactions marked, and clicking a point scrolls to
+  its turn. The sessions list and the Usage window get a "≈ carried" column,
+  and the report gains a "Long sessions" section: the sessions that carried
+  most, the turn where carrying began to cost more than the turn's own work,
+  and generic advice (start a new session or compact at a task boundary).
+
+- [ ] **20. Reads that led nowhere.** A read (line range, section, whole
+  file) **led nowhere** when nothing later in the same context edits the
+  file or mentions its path or file name: not an answer, a later tool call's
+  input or a subagent prompt. It's a flag on the call (`tool_usage`
+  column, schema bump), not an intent, because it overlaps the intents.
+  "By intent" and "By file" show "≈ led nowhere" with its share, the calls
+  list gets a column for it, and the report a section with the files it cost
+  most on. Advice stays generic: reading to understand is normal, so the
+  point is the files read in full again and again without being used (a
+  note on what they hold, or an outline, would send less). Fixtures get a
+  session with a used read, an unused one and one mentioned only in an
+  answer.
+
 After v0.1: Codex CLI and Gemini CLI parsers, once real sessions exist on a
 machine to inspect, and the console companion.
 
