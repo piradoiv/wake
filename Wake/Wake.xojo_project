@@ -74,7 +74,6 @@ Class=WakeGlanceTiles;WakeGlanceTiles.xojo_code;&h000000004F2C8A17;&h00000000000
 Class=WakeDayChart;WakeDayChart.xojo_code;&h000000001D6B93E5;&h0000000000000000;false
 Class=WakeContextChart;WakeContextChart.xojo_code;&h0000000063A8E5C1;&h0000000000000000;false
 Module=WakeTitleBar;WakeTitleBar.xojo_code;&h000000003A71C2D9;&h0000000000000000;false
-Module=WakeSidebar;WakeSidebar.xojo_code;&h000000004E5D1B63;&h0000000000000000;false
 DesktopToolbar=UsageToolbar;UsageToolbar.xojo_toolbar;&h0000000020EFC7FF;&h0000000000000000;false
 DesktopToolbar=MainWindowToolbar;MainWindowToolbar.xojo_toolbar;&h0000000079705FFF;&h0000000000000000;false
 DefaultWindow=MainWindow

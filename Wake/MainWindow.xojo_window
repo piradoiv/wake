@@ -1369,7 +1369,6 @@ End
 		  // at once, and again right after the window is up, when the toolbar can take the search field.
 		  WakeTitleBar.Unify(Self)
 		  WakeTitleBar.AddSearchItem(Self, SearchField)
-		  WakeSidebar.MakeTranslucent(SourceList)
 		  SyncToolbar
 		  LayOutTitleBar
 		End Sub

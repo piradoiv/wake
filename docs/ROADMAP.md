@@ -242,17 +242,25 @@ Each milestone below is one session's work, ending with tests and a commit.
   21%. Before the two exceptions it was 356: screenshots were nearly always
   flagged, as were saved outputs. Checked by eye.
 
-- [x] **23. Translucent sidebar (macOS).** The main window's source list sits
-  on the sidebar material, as Finder and Mail do. `WakeSidebar.MakeTranslucent`
-  puts an `NSVisualEffectView` (sidebar material, behind-window blending,
-  following the active state) right behind `SourceList`'s view, as its
-  sibling, kept its size with constraints; gives the list a layer so it stays
-  in front; and turns the border off. Xojo leaves unselected rows and the
-  empty area transparent, so nothing had to be switched off (see the
-  `DesktopTable` gotcha). `SourceList` stays a regular `DesktopTable` (same
-  selection, text and layout); Windows and Linux keep today's look. The
-  sidebar starts under the bar, not under the window buttons as in Mail.
-  116 tests. Checked by eye in dark mode.
+- [ ] **23. Translucent sidebar (macOS).** The main window's source list sits
+  on the sidebar material, as Finder and Mail do. Declares (in a module
+  beside `WakeTitleBar`) put an `NSVisualEffectView` (sidebar material,
+  behind-window blending, following the active state) under `SourceList`
+  and turn off the backgrounds that `SourceList`'s own views draw, so the
+  blur shows through, with its border turned off. Start with a test run that
+  logs the class names of `SourceList.Handle`'s view and its subviews:
+  nothing documents what `DesktopTable` is made of on macOS, and if it paints
+  its own background through declares can't switch off, that's a roadblock
+  to raise, not to work around. Only the translucent background is in scope:
+  `SourceList` stays a regular `DesktopTable` (same selection, text and
+  layout), so it carries over to Windows and Linux, which keep today's look.
+  It doesn't have to match Mail exactly. Checked by eye in light, dark, and
+  with the window inactive.
+  **Blocked on Xojo:** tried and reverted. In light mode `DesktopTable` fills
+  its own view with opaque white, in front of anything behind it, and
+  returning True from `PaintCellBackground` doesn't remove the fill (see the
+  `DesktopTable` gotcha). Dark mode worked. Pick this up again once Xojo
+  can make the list transparent in both appearances.
 
 After v0.1: Codex CLI and Gemini CLI parsers, once real sessions exist on a
 machine to inspect, and the console companion.
@@ -414,13 +422,12 @@ machine to inspect, and the console companion.
 - **`DesktopTable` on macOS** is a `XOJCanvasView` holding an `NSScrollView`
   (`DLB2PassThruScrollView`, document view `DLB2FlippedDocView`); it isn't an
   `NSTableView`. Xojo draws the rows on the outer `XOJCanvasView` itself, so a
-  subview added inside covers them: put views meant to show behind the list
-  in its superview, below it. A layer-backed sibling (an
-  `NSVisualEffectView`) goes over a sibling without a layer whatever their
-  order, so give the list a layer too. Unselected rows and the empty area are
-  transparent. Returning True from `PaintCellBackground` also drops the
-  selection highlight. On macOS 26 the scroll view also holds `NSScrollPocket`
-  views (the scroll edge effect).
+  subview added inside covers them: a view meant to show behind the list goes
+  in its superview, below it, and the list needs a layer to stay in front of
+  a layer-backed sibling. In dark mode the empty parts are transparent; in
+  light mode Xojo fills the whole view with opaque white, and returning True
+  from `PaintCellBackground` doesn't stop that (it only drops the selection
+  highlight). The scroll and clip views draw no background in either.
 - **Declares that read an `NSRect`** go through key-value coding
   (`valueForKey:` and `getValue:size:` into a `MemoryBlock`), so no declare
   returns a structure (the docs don't show how a `Structure` is written in a
