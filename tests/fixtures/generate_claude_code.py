@@ -66,6 +66,11 @@ s.meta(type="ai-title", aiTitle="Explain parse function")
 s.meta(type="last-prompt", lastPrompt="Explain what the parse function in main.c does.", leafUuid=s.last)
 s.meta(type="artifact-comment-monitor", v=1, artifacts={})
 s.meta(type="artifact-autoreact-ledger", v=1, artifacts={})
+# Written when the session moves into a git worktree (2.1.306+).
+s.meta(type="relocated", relocatedCwd="/Users/dev/demo/.claude/worktrees/csv-fix")
+s.meta(type="worktree-state", worktreeSession={"originalCwd": DEMO, "preEnterOriginalCwd": DEMO,
+       "worktreePath": "/Users/dev/demo/.claude/worktrees/csv-fix", "worktreeName": "csv-fix",
+       "worktreeBranch": "worktree-csv-fix", "sessionId": s.id, "enteredExisting": False})
 s.write(DEMO_DIR)
 
 # 2. Tools: Bash, Edit, Write (create), parallel Reads, an error result, persisted output.

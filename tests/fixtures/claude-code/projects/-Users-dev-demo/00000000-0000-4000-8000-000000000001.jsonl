@@ -10,3 +10,5 @@
 {"type": "last-prompt", "lastPrompt": "Explain what the parse function in main.c does.", "leafUuid": "00000010-1111-4000-8000-000000000004", "sessionId": "00000000-0000-4000-8000-000000000001"}
 {"type": "artifact-comment-monitor", "v": 1, "artifacts": {}, "sessionId": "00000000-0000-4000-8000-000000000001"}
 {"type": "artifact-autoreact-ledger", "v": 1, "artifacts": {}, "sessionId": "00000000-0000-4000-8000-000000000001"}
+{"type": "relocated", "relocatedCwd": "/Users/dev/demo/.claude/worktrees/csv-fix", "sessionId": "00000000-0000-4000-8000-000000000001"}
+{"type": "worktree-state", "worktreeSession": {"originalCwd": "/Users/dev/demo", "preEnterOriginalCwd": "/Users/dev/demo", "worktreePath": "/Users/dev/demo/.claude/worktrees/csv-fix", "worktreeName": "csv-fix", "worktreeBranch": "worktree-csv-fix", "sessionId": "00000000-0000-4000-8000-000000000001", "enteredExisting": false}, "sessionId": "00000000-0000-4000-8000-000000000001"}
