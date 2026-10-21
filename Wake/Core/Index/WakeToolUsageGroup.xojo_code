@@ -14,6 +14,14 @@ Inherits WakeUsageGroup
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
+		NowhereReads As Integer
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		NowhereTokens As Int64
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
 		ReadSessionCount As Integer
 	#tag EndProperty
 

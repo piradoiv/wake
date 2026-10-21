@@ -120,6 +120,54 @@ Protected Class WakeTokenReport
 		End Sub
 	#tag EndMethod
 
+	#tag Method, Flags = &h21
+		Private Sub AddReadsLedNowhere(out() As String)
+		  // The files whose reads most often led nowhere, by what those reads cost.
+		  Var files() As WakeToolUsageGroup = mCatalog.ToolUsage(WakeCatalog.ToolGroupings.File, mFromTime)
+		  Var unused() As WakeToolUsageGroup
+		  Var order() As Int64
+		  Var reads, nowhereReads As Integer
+		  Var nowhereTokens As Int64
+		  For Each f As WakeToolUsageGroup In files
+		    reads = reads + f.Reads
+		    If f.NowhereReads = 0 Then Continue
+		    nowhereReads = nowhereReads + f.NowhereReads
+		    nowhereTokens = nowhereTokens + f.NowhereTokens
+		    unused.Add(f)
+		    order.Add(-f.NowhereTokens)
+		  Next
+		  If unused.Count = 0 Then Return
+		  order.SortWith(unused)
+		  
+		  out.Add("## Reads that led nowhere: ≈" + WakeFormat.Tokens(nowhereTokens) + " tokens")
+		  out.Add("")
+		  out.Add("A read **led nowhere** when nothing later in the same context edited the file or mentioned " + _
+		  "its name: not an answer, a later call or a subagent prompt. It overlaps the sections above.")
+		  out.Add("")
+		  Var facts() As String
+		  facts.Add(WakeFormat.Count(nowhereReads) + " of " + WakeFormat.Count(reads) + " reads (" + _
+		  WakeFormat.Percent(nowhereReads, reads) + ")")
+		  If mTotalTokens > 0 Then facts.Add(WakeFormat.Percent(nowhereTokens, mTotalTokens) + " of all tool tokens")
+		  out.Add(String.FromArray(facts, " · "))
+		  out.Add("")
+		  out.Add("**What to change:** " + WakeCallPattern.LedNowhereAdvice)
+		  out.Add("")
+		  
+		  out.Add("| File | Reads | Led nowhere | ≈ Tokens |")
+		  out.Add("|---|---:|---:|---:|")
+		  For i As Integer = 0 To Min(unused.LastIndex, kTopFileCount - 1)
+		    Var f As WakeToolUsageGroup = unused(i)
+		    out.Add("| " + WakeMarkdown.Cell(WakeMarkdown.Code(f.Key)) + " | " + WakeFormat.Count(f.Reads) + " | " + _
+		    WakeFormat.Count(f.NowhereReads) + " | " + WakeFormat.Tokens(f.NowhereTokens) + " |")
+		  Next
+		  If unused.Count > kTopFileCount Then
+		    out.Add("")
+		    out.Add("_And " + WakeFormat.Count(unused.Count - kTopFileCount) + " more files._")
+		  End If
+		  out.Add("")
+		End Sub
+	#tag EndMethod
+
 	#tag Method, Flags = &h0
 		Sub Constructor(catalog As WakeCatalog, prices As WakePriceTable, fromTime As DateTime, periodLabel As String)
 		  // A report of where the tokens went in a period, from fromTime on (Nil for all time).
@@ -148,8 +196,9 @@ Protected Class WakeTokenReport
 
 	#tag Method, Flags = &h0
 		Function Markdown() As String
-		  // Totals, then one section per pattern with the most tokens first, then the sessions that
-		  // carried most. Re-reads have their own section. Patterns with no calls have none.
+		  // Totals, then one section per pattern with the most tokens first, then the reads that led
+		  // nowhere and the sessions that carried most. Re-reads have their own section. Patterns with
+		  // no calls have none.
 		  // Raises DatabaseException.
 		  Var groups() As WakeToolUsageGroup = mCatalog.ToolUsage(WakeCatalog.ToolGroupings.Pattern, mFromTime)
 		  
@@ -191,6 +240,7 @@ Protected Class WakeTokenReport
 		    AddPattern(out, i + 1, groups(i))
 		  Next
 		  
+		  AddReadsLedNowhere(out)
 		  AddLongSessions(out)
 		  
 		  out.Add("_Exported by Wake._")

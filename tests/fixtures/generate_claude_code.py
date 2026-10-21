@@ -242,6 +242,47 @@ for t, (prompt, responses) in enumerate(turns, 1):
 # Its own root, so the other tests' counts don't change.
 s.write(os.path.join(os.path.dirname(OUT), "context", "-Users-dev-long"))
 
+# 9. Reads that led nowhere: reads used by an edit, an answer or a subagent prompt, reads never used
+# again, and one mentioned only after a compaction.
+NOTES = "/Users/dev/notes"
+s = Session(9, NOTES)
+s.user("2026-08-29T16:00:00.000Z", "Tidy up the parser.", promptId="p-9-1")
+calls = [
+    ("Read", {"file_path": NOTES + "/src/parser.c"}, "1\tint parse(void) { return 0; }", 600),
+    ("Bash", {"command": "cat README.md", "description": "Show the readme"}, "# Notes\n\nBuild with make.", 300),
+    ("Read", {"file_path": NOTES + "/src/util.h", "offset": 1, "limit": 30}, "1\tint util(void);", 200),
+    ("Read", {"file_path": NOTES + "/src/lexer.c"}, "1\tint lex(void) { return 0; }", 800),
+    ("Read", {"file_path": NOTES + "/src/lexer.c"}, "1\tint lex(void) { return 0; }", 800),
+    ("Read", {"file_path": NOTES + "/docs/notes.md"}, "# Notes\n\nThe parser is old.", 250),
+    ("Agent", {"description": "Summarise notes", "prompt": "Summarise docs/notes.md in three bullets.",
+               "subagent_type": "general-purpose"}, "- The parser is old.", 100),
+    ("Bash", {"command": "grep -n util src/util.hpp", "description": "Find util"}, "1:int util(void);", 50),
+    ("Edit", {"file_path": NOTES + "/src/parser.c", "old_string": "return 0;", "new_string": "return 1;", "replace_all": False},
+     "The file " + NOTES + "/src/parser.c has been updated successfully.", 50),
+    ("Read", {"file_path": NOTES + "/src/old.c"}, "1\tint old(void) { return 0; }", 400),
+]
+context, output = 0, 20
+for k, (tool, tool_input, text, growth) in enumerate(calls, 1):
+    ts = "2026-08-29T16:00:%02d.000Z" % (k * 2)
+    u = usage(5, output, growth if k > 1 else 1000, context + output if k > 1 else 0)
+    context = 5 + u["cache_creation_input_tokens"] + u["cache_read_input_tokens"]
+    a = s.assistant(ts, "msg_nw_%02d" % k, {"type": "tool_use", "id": "toolu_nw_%02d" % k, "name": tool, "input": tool_input}, u)
+    if tool == "Bash":
+        tur = {"stdout": text, "stderr": "", "interrupted": False, "isImage": False, "noOutputExpected": False}
+    elif tool == "Agent":
+        tur = {"status": "completed", "prompt": tool_input["prompt"], "content": [{"type": "text", "text": text}]}
+    else:
+        tur = {"filePath": tool_input["file_path"]}
+    s.result("2026-08-29T16:00:%02d.500Z" % (k * 2), "toolu_nw_%02d" % k, text, tur, a)
+s.assistant("2026-08-29T16:00:30.000Z", "msg_nw_90", {"type": "text", "text": "Done. The build steps are in README.md."},
+    usage(5, 30, 90, context + output), stop="end_turn")
+s.user("2026-08-29T16:05:00.000Z", "Anything else?", promptId="p-9-2")
+# The context shrinks to less than half: it was compacted, so this answer is in a new context.
+s.assistant("2026-08-29T16:05:05.000Z", "msg_nw_91", {"type": "text", "text": "src/old.c is no longer used."},
+    usage(5, 20, 100, 0), stop="end_turn")
+# Its own root, so the other tests' counts don't change.
+s.write(os.path.join(os.path.dirname(OUT), "nowhere", "-Users-dev-notes"))
+
 # Not a session: memory notes are ignored.
 mem = os.path.join(DEMO_DIR, "memory"); os.makedirs(mem, exist_ok=True)
 with open(os.path.join(mem, "MEMORY.md"), "w") as f: f.write("- [Example](example.md) - not a transcript\n")

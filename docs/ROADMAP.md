@@ -220,18 +220,19 @@ Each milestone below is one session's work, ending with tests and a commit.
   carried, 50–75% in the longest sessions, where carrying overtook the work
   by turns 2–5. Checked by eye.
 
-- [ ] **22. Reads that led nowhere.** A read (line range, section, whole
-  file) **led nowhere** when nothing later in the same context edits the
-  file or mentions its path or file name: not an answer, a later tool call's
-  input or a subagent prompt. It's a flag on the call (`tool_usage`
-  column, schema bump), not an intent, because it overlaps the intents.
-  "By intent" and "By file" show "≈ led nowhere" with its share, the calls
-  list gets a column for it, and the report a section with the files it cost
-  most on. Advice stays generic: reading to understand is normal, so the
-  point is the files read in full again and again without being used (a
-  note on what they hold, or an outline, would send less). Fixtures get a
-  session with a used read, an unused one and one mentioned only in an
-  answer.
+- [x] **22. Reads that led nowhere.** `WakeSession.ComputeStats` sets
+  `WakeEvent.LedNowhere` on a read (line range, section, whole file, re-reads
+  included) when nothing later in the same context names its file: an
+  answer, or a later tool call's input (edits, commands, subagent prompts).
+  Reading the same file again doesn't count, and a name must stand alone
+  (`util.h` isn't in `util.hpp`). `tool_usage.led_nowhere` (schema 11).
+  `WakeToolUsageGroup` gains `NowhereReads` and `NowhereTokens`,
+  `WakeToolCallInfo` gains `LedNowhere`. "By intent" and "By file" have a
+  ninth column, "≈ Led nowhere" with its share of the group's tokens; the
+  calls list a "Led nowhere" column; a file's status line counts them. The
+  report has "Reads that led nowhere" with the top files
+  (`WakeCallPattern.LedNowhereAdvice`). Fixture session 9 is in its own root,
+  `claude-code/nowhere/`. 116 tests. Not yet checked on real data or by eye.
 
 - [ ] **23. Translucent sidebar (macOS).** The main window's source list sits
   on the sidebar material, as Finder and Mail do. Declares (in a module
@@ -281,6 +282,7 @@ machine to inspect, and the console companion.
 | A **re-read** is any read (line range, section, whole file) of a file already read in the same context, unless an edit or write to it came in between. Compaction starts a new context. Re-reads are their own intent, not counted in their read's pattern. | The content is already in the context, so reading it again is the waste to show. After an edit or compaction, reading again is needed. |
 | Index **targets are resolved** against the session's folder (or a leading `cd`). | Otherwise `src/a.c` and `/work/src/a.c` are two files, and re-reads across shell and Read are missed. |
 | **≈ Carried** is counted per turn, against the context from before the turn and beyond the session's starting context, and only for the session's own responses. | The starting context (system prompt, tools) is paid in any session, so only what earlier turns left behind is the cost of a long session. Subagents start contexts of their own. |
+| A read **led nowhere** when no later answer or tool call input in the same context names its file. It's a flag, not an intent, and thinking doesn't count. | Whether a read was used can't be seen, but a file the agent never names again, edits or hands on was most likely not needed. Names, not paths, so relative and absolute mentions both count. |
 | Token figures per tool call are **estimates, marked ≈**, from context growth between responses, split among the inputs by text length. | Transcripts record usage only per response, so this is the only per-result signal. Attachments and reminders Wake can't see inflate it a little. |
 | Search words match as **prefixes**, `"quoted text"` as a phrase, and every term must match. Every term is quoted, so FTS5 operators are plain words. | Search as you type needs partial words, and no input may raise an FTS5 syntax error. |
 | Search lives **in the main window**, scoped by the source-list selection, not in its own window. | Agent and project filters come for free, and the detail pane shows the hit's session. |
@@ -412,6 +414,9 @@ machine to inspect, and the console companion.
 - **The window buttons aren't centred in a unified bar:** in a 66-point bar
   they sat at 25.5 points. Not needed now that the controls are
   toolbar items, but worth knowing before laying out controls in the bar.
+- **Two builds share one index.** A release build left open and a debug run
+  with a different `kSchemaVersion` rebuild the index over each other on
+  every live-watch tick. Quit the other build before checking real data.
 - **Running the project** after edits doesn't need the maintainer: create
   `Wake/XojoRunProject.txt` (Agentic Mode reloads the files), and read
   `Wake/XojoCompileErrors.txt` if it appears. `System.DebugLog` output can be

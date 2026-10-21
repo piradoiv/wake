@@ -48,3 +48,11 @@ python3 tests/fixtures/generate_claude_code.py "$PWD/tests/fixtures/claude-code/
 | N | Project folder   | What it covers | Expected |
 |---|------------------|----------------|----------|
 | 7 | `-Users-dev-lab` | One tool call per response, each growing the context: `sed -n '10,80p' src/config.py`, `cat "docs/user guide.md"`, `head -n 20 src/server.go`, a regex-range `awk`, Read of `config.py` with `offset`/`limit`, Edit of `config.py`, Read of the whole `config.py`, and ``grep -rn "```" docs``. Shell paths are relative to `cwd` `/Users/dev/lab`. | Patterns: line range, whole file, line range, section, line range (a **re-read**), edit, whole file (not a re-read: it follows the edit), search. `config.py`: 4 calls, 3 reads, 1 re-read, 2 line-range reads. |
+
+## Reads that led nowhere (`claude-code/nowhere/`)
+
+Session 9 lives in its own root too. Only `WakeNowhereTests` indexes it.
+
+| N | Project folder     | What it covers | Expected |
+|---|--------------------|----------------|----------|
+| 9 | `-Users-dev-notes` | Reads of `src/parser.c` (edited later), `README.md` (`cat`, named only in the answer), `src/util.h` (a later `grep` names only `util.hpp`), `src/lexer.c` twice, `docs/notes.md` (named in an `Agent` prompt) and `src/old.c` (named only after a compaction, in a second turn). | Led nowhere: `util.h`, both `lexer.c` reads and `old.c`, so 4 of 7 reads. |

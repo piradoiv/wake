@@ -31,6 +31,10 @@ Protected Class WakeToolCallInfo
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
+		LedNowhere As Boolean
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
 		PatternKey As String
 	#tag EndProperty
 

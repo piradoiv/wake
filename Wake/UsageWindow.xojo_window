@@ -198,8 +198,8 @@ Begin DesktopWindow UsageWindow
       AllowRowDragging=   False
       AllowRowReordering=   False
       Bold            =   False
-      ColumnCount     =   7
-      ColumnWidths    =   "140,220,100,*,90,90,110"
+      ColumnCount     =   8
+      ColumnWidths    =   "140,220,100,*,90,90,110,100"
       DefaultRowHeight=   22
       DropIndicatorVisible=   False
       Enabled         =   True
@@ -662,12 +662,12 @@ End
 
 	#tag Method, Flags = &h21
 		Private Sub SetHeaders(labels() As String)
-		  // Usage has a column more than the tool groupings: what later turns paid to re-send earlier
-		  // ones, which tool calls don't have.
+		  // Usage has a column more than most tool groupings: what later turns paid to re-send earlier
+		  // ones, which tool calls don't have. By intent and by file have one for reads that led nowhere.
 		  If UsageList.ColumnCount <> labels.Count Then
 		    If UsageList.SortingColumn > labels.LastIndex Then UsageList.SortingColumn = -1
 		    UsageList.ColumnCount = labels.Count
-		    UsageList.ColumnWidths = If(labels.Count > kColumnCarried, "*,70,90,90,100,100,90,110,90", "*,70,90,90,100,100,90,110")
+		    UsageList.ColumnWidths = If(labels.Count > kColumnCarried, "*,70,90,90,100,100,90,110,110", "*,70,90,90,100,100,90,110")
 		    UsageList.ColumnAlignmentAt(UsageList.LastColumnIndex) = DesktopTable.Alignments.Right
 		  End If
 		  
@@ -721,7 +721,7 @@ End
 		  For column As Integer = kColumnSessions To kColumnCost
 		    UsageList.ColumnAlignmentAt(column) = DesktopTable.Alignments.Right
 		  Next
-		  For column As Integer = kCallColumnAdded To kCallColumnCost
+		  For column As Integer = kCallColumnAdded To kCallColumnNowhere
 		    CallsList.ColumnAlignmentAt(column) = DesktopTable.Alignments.Right
 		  Next
 		  CallsList.ColumnHeaderAt(kCallColumnTime) = "Time"
@@ -731,6 +731,7 @@ End
 		  CallsList.ColumnHeaderAt(kCallColumnAdded) = "≈ Added"
 		  CallsList.ColumnHeaderAt(kCallColumnCarried) = "≈ Re-read"
 		  CallsList.ColumnHeaderAt(kCallColumnCost) = "Est. cost"
+		  CallsList.ColumnHeaderAt(kCallColumnNowhere) = "Led nowhere"
 		  mToolGrouping = -1
 		  
 		  mLoading = False
@@ -784,7 +785,8 @@ End
 		    
 		    Var intent As String = WakeCallPattern.Label(c.PatternKey)
 		    CallsList.AddRow(shownTime, title, intent, description, WakeFormat.Tokens(c.AddedTokens), _
-		    WakeFormat.Tokens(c.CarriedTokens), If(estimate.HasTokens, WakeFormat.Cost(estimate), WakeFormat.kUnknown))
+		    WakeFormat.Tokens(c.CarriedTokens), If(estimate.HasTokens, WakeFormat.Cost(estimate), WakeFormat.kUnknown), _
+		    If(c.LedNowhere, "Yes", ""))
 		    
 		    Var row As Integer = CallsList.LastAddedRowIndex
 		    CallsList.RowTagAt(row) = c
@@ -796,6 +798,8 @@ End
 		    CallsList.CellTagAt(row, kCallColumnAdded) = c.AddedTokens
 		    CallsList.CellTagAt(row, kCallColumnCarried) = c.CarriedTokens
 		    CallsList.CellTagAt(row, kCallColumnCost) = If(estimate.PricedTokens > 0, estimate.AmountUSD, -1.0)
+		    CallsList.CellTagAt(row, kCallColumnNowhere) = If(c.LedNowhere, 1, 0)
+		    If c.LedNowhere Then CallsList.CellTooltipAt(row, kCallColumnNowhere) = kLedNowhereHelp
 		    CallsList.CellTooltipAt(row, kCallColumnCall) = c.Description
 		    If c.Session <> Nil Then CallsList.CellTooltipAt(row, kCallColumnSession) = c.Session.ProjectPath
 		    If estimate.UnpricedModels.Count > 0 Then
@@ -951,7 +955,8 @@ End
 		    Else
 		      StatusLabel.Text = "Read " + If(g.Reads = 1, "once", WakeFormat.Count(g.Reads) + " times") + " in " + _
 		      If(g.ReadSessionCount = 1, "1 session", WakeFormat.Count(g.ReadSessionCount) + " sessions") + ", " + _
-		      WakeFormat.Count(g.Rereads) + " of them again in the same session"
+		      WakeFormat.Count(g.Rereads) + " of them again in the same session, " + _
+		      WakeFormat.Count(g.NowhereReads) + " led nowhere"
 		    End If
 		    StatusLabel.Tooltip = g.Key
 		  End Select
@@ -979,11 +984,15 @@ End
 		  // By file shows how often each file was read again, and what a read of it costs. By intent
 		  // doesn't: its re-reads are a group of their own.
 		  Var showReads As Boolean = grouping = WakeCatalog.ToolGroupings.File
+		  Var showNowhere As Boolean = showReads Or grouping = WakeCatalog.ToolGroupings.Pattern
+		  Var headers() As String
 		  If showReads Then
-		    SetHeaders(Array(label, "Calls", "Read again", "≈ Added", "≈ Per read", "≈ Re-read", "≈ Total", "Est. cost"))
+		    headers = Array(label, "Calls", "Read again", "≈ Added", "≈ Per read", "≈ Re-read", "≈ Total", "Est. cost")
 		  Else
-		    SetHeaders(Array(label, "Calls", "Sessions", "≈ Added", "≈ Per call", "≈ Re-read", "≈ Total", "Est. cost"))
+		    headers = Array(label, "Calls", "Sessions", "≈ Added", "≈ Per call", "≈ Re-read", "≈ Total", "Est. cost")
 		  End If
+		  If showNowhere Then headers.Add("≈ Led nowhere")
+		  SetHeaders(headers)
 		  
 		  Var groups() As WakeToolUsageGroup
 		  Try
@@ -995,7 +1004,7 @@ End
 		  
 		  Var all As New WakeUsageGroup
 		  Var calls As Integer
-		  Var added, carried As Int64
+		  Var added, carried, nowhere As Int64
 		  
 		  // Files with the same name show as many parent folders as it takes to tell them apart.
 		  Var fileNames() As String
@@ -1049,6 +1058,18 @@ End
 		    UsageList.CellTagAt(row, kColumnCost) = If(estimate.PricedTokens > 0, estimate.AmountUSD, -1.0)
 		    If grouping = WakeCatalog.ToolGroupings.File Then UsageList.CellTooltipAt(row, kColumnLabel) = g.Key
 		    If grouping = WakeCatalog.ToolGroupings.Pattern Then UsageList.CellTooltipAt(row, kColumnLabel) = WakeCallPattern.Advice(g.Key)
+		    
+		    // What the group's reads that led nowhere cost, and their share of the group's tokens. Groups
+		    // with no reads leave it empty and sort below the rest.
+		    If showNowhere Then
+		      UsageList.CellTagAt(row, kColumnCarried) = If(g.Reads > 0, g.NowhereTokens, -1)
+		      If g.Reads > 0 Then
+		        UsageList.CellTextAt(row, kColumnCarried) = WakeFormat.Tokens(g.NowhereTokens) + " (" + _
+		        WakeFormat.Percent(g.NowhereTokens, g.AddedTokens + g.CarriedTokens) + ")"
+		        UsageList.CellTooltipAt(row, kColumnCarried) = WakeFormat.Count(g.NowhereReads) + " of " + _
+		        WakeFormat.Count(g.Reads) + If(g.Reads = 1, " read", " reads") + " led nowhere. " + kLedNowhereHelp
+		      End If
+		    End If
 		    If estimate.UnpricedModels.Count > 0 Then
 		      UsageList.CellTooltipAt(row, kColumnCost) = "No price set for " + String.FromArray(estimate.UnpricedModels, ", ")
 		    End If
@@ -1056,6 +1077,7 @@ End
 		    calls = calls + g.Calls
 		    added = added + g.AddedTokens
 		    carried = carried + g.CarriedTokens
+		    nowhere = nowhere + g.NowhereTokens
 		    For Each model As Variant In g.ByModel.Keys
 		      all.Add(model.StringValue, WakeTokenUsage(g.ByModel.Value(model).ObjectValue))
 		    Next
@@ -1070,6 +1092,7 @@ End
 		    parts.Add(WakeFormat.Count(calls) + " tool calls")
 		    parts.Add("≈" + WakeFormat.Tokens(added) + " added")
 		    parts.Add("≈" + WakeFormat.Tokens(carried) + " re-read")
+		    If grouping = WakeCatalog.ToolGroupings.Pattern Then parts.Add("≈" + WakeFormat.Tokens(nowhere) + " on reads that led nowhere")
 		    Var estimate As WakeCostEstimate = App.Prices.Estimate(all.ByModel)
 		    If estimate.PricedTokens > 0 Then parts.Add("estimated cost " + WakeFormat.Cost(estimate))
 		  End If
@@ -1149,6 +1172,9 @@ End
 	#tag Constant, Name = kCallColumnIntent, Type = Double, Dynamic = False, Default = \"2", Scope = Private
 	#tag EndConstant
 
+	#tag Constant, Name = kCallColumnNowhere, Type = Double, Dynamic = False, Default = \"7", Scope = Private
+	#tag EndConstant
+
 	#tag Constant, Name = kCallColumnSession, Type = Double, Dynamic = False, Default = \"1", Scope = Private
 	#tag EndConstant
 
@@ -1180,6 +1206,9 @@ End
 	#tag EndConstant
 
 	#tag Constant, Name = kColumnTotal, Type = Double, Dynamic = False, Default = \"6", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kLedNowhereHelp, Type = String, Dynamic = False, Default = \"Nothing later in the same context edited the file or mentioned its name.", Scope = Private
 	#tag EndConstant
 
 	#tag Constant, Name = kMaxChartDays, Type = Double, Dynamic = False, Default = \"1830", Scope = Private

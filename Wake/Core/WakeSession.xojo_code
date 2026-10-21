@@ -204,7 +204,9 @@ Protected Class WakeSession
 		      If read.HasKey(target) Then read.Remove(target)
 		    End If
 		  Next
-		  
+
+		  FindReadsLedNowhere
+
 		  // A turn runs from a prompt to the next one, and includes the subagents it started.
 		  Var prompt As WakeEvent
 		  For Each e As WakeEvent In Events
@@ -248,6 +250,60 @@ Protected Class WakeSession
 		End Function
 	#tag EndMethod
 
+	#tag Method, Flags = &h21
+		Private Sub FindReadsLedNowhere()
+		  // A read led nowhere when nothing later in the same context edits its file or mentions the
+		  // file's name: not an answer, nor a later tool call's input, which holds a subagent's prompt
+		  // too. Reading the same file again isn't using it. A compaction starts a new context.
+		  Var pending() As WakeEvent
+		  Var targets() As String
+		  Var names() As String
+
+		  For Each e As WakeEvent In Events
+		    If e.Response <> Nil And e.Response.StartsNewContext And e.Response.FirstSequence = e.Sequence Then
+		      For Each r As WakeEvent In pending
+		        r.LedNowhere = True
+		      Next
+		      pending.RemoveAll
+		      targets.RemoveAll
+		      names.RemoveAll
+		    End If
+
+		    Var text As String
+		    Var target As String
+		    If e.Kind = WakeEvent.Kinds.AssistantText Then
+		      text = e.Text
+		    ElseIf e.IsToolCall Then
+		      text = e.Command + &u0A + e.FilePath + &u0A + e.ToolInputJSON
+		      If WakeCallPattern.IsRead(e.Pattern) Then target = e.ResolvedTargetPath(ProjectPath)
+		    End If
+
+		    If text.Trim <> "" Then
+		      For i As Integer = pending.LastIndex DownTo 0
+		        If target <> "" And targets(i) = target Then Continue
+		        If MentionsFileName(text, names(i)) Then
+		          pending.RemoveAt(i)
+		          targets.RemoveAt(i)
+		          names.RemoveAt(i)
+		        End If
+		      Next
+		    End If
+
+		    Var path As String = target.ReplaceAll("\", "/")
+		    Var name As String = path.NthField("/", path.CountFields("/"))
+		    If name <> "" Then
+		      pending.Add(e)
+		      targets.Add(target)
+		      names.Add(name)
+		    End If
+		  Next
+
+		  For Each r As WakeEvent In pending
+		    r.LedNowhere = True
+		  Next
+		End Sub
+	#tag EndMethod
+
 	#tag Method, Flags = &h0
 		Function FirstPrompt() As String
 		  For Each e As WakeEvent In Events
@@ -281,6 +337,32 @@ Protected Class WakeSession
 		  Next
 		  
 		  Return True
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Shared Function IsNameCharacter(c As String, before As Boolean) As Boolean
+		  // Whether c, just before or after a file name in some text, would make it part of a longer
+		  // name. Before the name, dots and dashes do too ("my-util.h", "a.util.h").
+		  If c = "" Then Return False
+		  Var code As Integer = c.Asc
+		  If (code >= 97 And code <= 122) Or (code >= 65 And code <= 90) Or (code >= 48 And code <= 57) Or code = 95 Or code > 127 Then Return True
+		  Return before And (code = 46 Or code = 45)
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Shared Function MentionsFileName(text As String, name As String) As Boolean
+		  // Whether text holds name as a whole file name, ignoring case: "util.h" in "src/util.h" or
+		  // "see util.h.", but not in "util.hpp" or "myutil.h".
+		  Var position As Integer = text.IndexOf(name)
+		  While position >= 0
+		    Var before As String = If(position > 0, text.Middle(position - 1, 1), "")
+		    Var after As String = text.Middle(position + name.Length, 1)
+		    If Not IsNameCharacter(before, True) And Not IsNameCharacter(after, False) Then Return True
+		    position = text.IndexOf(position + 1, name)
+		  Wend
+		  Return False
 		End Function
 	#tag EndMethod
 

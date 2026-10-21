@@ -330,6 +330,10 @@ Protected Class WakeEvent
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
+		LedNowhere As Boolean
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
 		MessageID As String
 	#tag EndProperty
 

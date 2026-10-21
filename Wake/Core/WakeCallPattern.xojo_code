@@ -176,6 +176,14 @@ Protected Module WakeCallPattern
 		End Function
 	#tag EndMethod
 
+	#tag Method, Flags = &h0
+		Function LedNowhereAdvice() As String
+		  // What reads that led nowhere suggest, worded for any project.
+		  Return "Reading to understand a task is normal, and some reads rule things out. Look at the files read " + _
+		  "in full again and again without being used: a short note on what they hold, or an outline, would send less."
+		End Function
+	#tag EndMethod
+
 	#tag Method, Flags = &h21
 		Private Function ReadAddress(script As String, ByRef position As Integer, ByRef isPattern As Boolean) As Boolean
 		  // Reads one sed or awk address at position: a /pattern/, or a line number, $ or first~step.

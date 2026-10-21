@@ -18,6 +18,7 @@ Inherits TestController
 		  group = New WakeCallPatternTests(Self, "WakeCallPattern")
 		  group = New WakeTokenReportTests(Self, "WakeTokenReport")
 		  group = New WakeContextTests(Self, "WakeContext")
+		  group = New WakeNowhereTests(Self, "WakeNowhere")
 		  
 		  #Pragma Unused group
 		End Sub

@@ -440,7 +440,7 @@ Protected Class WakeCatalog
 		  // A call has a row per model, so its rows are summed up. Its summary comes from its event.
 		  Var rs As RowSet = mIndex.Database.SelectSQL("SELECT t.session_id, t.seq, max(t.timestamp) AS timestamp, " + _
 		  "max(t.tool) AS tool, max(t.target) AS target, sum(t.added_tokens) AS added, sum(t.carried_tokens) AS carried, " + _
-		  "max(us.uid) AS event_uid, max(ts.id) AS top_id, max(t.pattern) AS pattern, max(t.is_reread) AS is_reread, " + _
+		  "max(us.uid) AS event_uid, max(ts.id) AS top_id, max(t.pattern) AS pattern, max(t.is_reread) AS is_reread, max(t.led_nowhere) AS led_nowhere, " + _
 		  "(SELECT e.summary FROM events e WHERE e.session_id = t.session_id AND e.seq = t.seq LIMIT 1) AS summary" + _
 		  source + " GROUP BY t.session_id, t.seq ORDER BY sum(t.added_tokens + t.carried_tokens) DESC, " + _
 		  "max(t.timestamp) DESC, t.session_id, t.seq LIMIT ?", callValues)
@@ -463,6 +463,7 @@ Protected Class WakeCatalog
 		    c.EventSessionUID = row.Column("event_uid").StringValue
 		    c.PatternKey = row.Column("pattern").StringValue
 		    If row.Column("is_reread").IntegerValue = 1 Then c.PatternKey = WakeCallPattern.kKeyReread
+		    c.LedNowhere = row.Column("led_nowhere").IntegerValue = 1
 		    
 		    // Session is filled in below, once per session. Until then it holds only the id.
 		    Var topID As Integer = row.Column("top_id").IntegerValue
@@ -530,7 +531,8 @@ Protected Class WakeCatalog
 		Function ToolUsage(grouping As ToolGroupings, fromTime As DateTime = Nil, withinGrouping As ToolGroupings = ToolGroupings.Tool, withinKey As String = "") As WakeToolUsageGroup()
 		  // Estimated tokens per tool, tool and file type, shell command, file or pattern, from tool
 		  // calls made from fromTime on, with the most tokens (added plus re-read) first. Each group
-		  // is split by model so it can be priced, and counts its reads and re-reads. A withinKey
+		  // is split by model so it can be priced, and counts its reads, re-reads and reads that led
+		  // nowhere, with what those cost. A withinKey
 		  // limits it to the calls in that group of withinGrouping, such as the files of one pattern.
 		  // Raises DatabaseException.
 		  Var clauses() As String
@@ -561,7 +563,8 @@ Protected Class WakeCatalog
 		  Var rs As RowSet = mIndex.Database.SelectSQL("SELECT " + keyExpression + " AS group_key, " + _
 		  "sum(t.is_first) AS calls, sum(t.added_tokens) AS added, sum(t.carried_tokens) AS carried, " + _
 		  "count(DISTINCT ts.id) AS session_count, sum(t.is_first * (" + isRead + ")) AS reads, " + _
-		  "sum(t.is_first * t.is_reread) AS rereads, " + _
+		  "sum(t.is_first * t.is_reread) AS rereads, sum(t.is_first * t.led_nowhere) AS nowhere_reads, " + _
+		  "sum(t.led_nowhere * (t.added_tokens + t.carried_tokens)) AS nowhere_tokens, " + _
 		  "sum(t.is_first * (t.pattern = '" + WakeCallPattern.kKeyLineRange + "')) AS line_range_reads, " + _
 		  "count(DISTINCT CASE WHEN " + isRead + " THEN ts.id END) AS read_session_count" + source + _
 		  " GROUP BY group_key ORDER BY sum(t.added_tokens + t.carried_tokens) DESC, calls DESC, group_key", values)
@@ -576,6 +579,8 @@ Protected Class WakeCatalog
 		    g.SessionCount = row.Column("session_count").IntegerValue
 		    g.Reads = row.Column("reads").IntegerValue
 		    g.Rereads = row.Column("rereads").IntegerValue
+		    g.NowhereReads = row.Column("nowhere_reads").IntegerValue
+		    g.NowhereTokens = row.Column("nowhere_tokens").Int64Value
 		    g.LineRangeReads = row.Column("line_range_reads").IntegerValue
 		    g.ReadSessionCount = row.Column("read_session_count").IntegerValue
 		    groups.Add(g)
