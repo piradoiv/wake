@@ -213,7 +213,8 @@ Each milestone below is one session's work, ending with tests and a commit.
   tokens outweighed its own work. "≈ Carried" in the sessions list, the
   detail pane and the Usage window's usage groupings (a ninth column the tool
   groupings drop), and on each prompt's turn line. `WakeContextChart` in the
-  timeline header draws the context per response, compactions in orange;
+  timeline header draws the context per response, compactions in orange,
+  every other turn on a faint band (none when turns are under 4 px wide);
   pressing a point scrolls to its prompt. The report ends with "Long
   sessions". Fixture session 8 is in its own root, `claude-code/context/`.
   112 tests. On real data (121 files, 403 turns) 27% of all tokens were

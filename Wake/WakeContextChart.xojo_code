@@ -63,6 +63,30 @@ Inherits DesktopCanvas
 		  g.DrawLine(kPadding, plotBottom + 0.5, g.Width - kPadding, plotBottom + 0.5)
 		  If mValues.Count < 2 Or mMax <= 0 Then Return
 		  
+		  // Every other turn is shaded faintly behind the curve, so the turns show without hovering.
+		  // A turn reaches halfway to the responses on either side. When turns are too narrow to tell
+		  // apart, none is shaded.
+		  Var turnCount As Integer = mTurnNumbers(mValues.LastIndex) - mTurnNumbers(0) + 1
+		  If (g.Width - kPadding * 2) / turnCount >= kMinimumTurnWidth Then
+		    Var turnStep As Double = PointX(1) - PointX(0)
+		    turnStep = turnStep / 2
+		    g.DrawingColor = Color.RGB(128, 128, 128, If(dark, 225, 238))
+		    Var turnFirst, turnIndex As Integer
+		    While turnFirst <= mValues.LastIndex
+		      Var turnLast As Integer = turnFirst
+		      While turnLast < mValues.LastIndex And mTurnNumbers(turnLast + 1) = mTurnNumbers(turnFirst)
+		        turnLast = turnLast + 1
+		      Wend
+		      If turnIndex Mod 2 = 1 Then
+		        Var turnLeft As Double = Max(kPadding, PointX(turnFirst) - turnStep)
+		        Var turnRight As Double = Min(g.Width - kPadding, PointX(turnLast) + turnStep)
+		        g.FillRectangle(turnLeft, plotTop, turnRight - turnLeft, plotHeight)
+		      End If
+		      turnFirst = turnLast + 1
+		      turnIndex = turnIndex + 1
+		    Wend
+		  End If
+		  
 		  // The turn under the pointer is shaded behind the curve.
 		  If mHover >= 0 Then
 		    Var first As Integer = mHover
@@ -255,6 +279,9 @@ Inherits DesktopCanvas
 		Private mValues() As Double
 	#tag EndProperty
 
+
+	#tag Constant, Name = kMinimumTurnWidth, Type = Double, Dynamic = False, Default = \"4", Scope = Private
+	#tag EndConstant
 
 	#tag Constant, Name = kPadding, Type = Double, Dynamic = False, Default = \"12", Scope = Private
 	#tag EndConstant
