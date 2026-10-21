@@ -1,5 +1,5 @@
 #tag DesktopWindow
-Begin DesktopWindow PricesWindow
+Begin DesktopWindow PricesWindow Implements TableDataSource
    Backdrop        =   0
    BackgroundColor =   &cFFFFFF
    Composite       =   False
@@ -107,6 +107,53 @@ Begin DesktopWindow PricesWindow
       _ScrollOffset   =   0
       _ScrollWidth    =   -1
    End
+   Begin DesktopTable Table1
+      AllowAutoDeactivate=   True
+      AllowAutoHideScrollbars=   True
+      AllowColumnReordering=   False
+      AllowExpandableRows=   True
+      AllowFocusRing  =   True
+      AllowResizableColumns=   False
+      AllowResizableRows=   False
+      AllowRowDragging=   False
+      AllowRowReordering=   False
+      Bold            =   False
+      ColumnCount     =   3
+      ColumnWidths    =   ""
+      DefaultRowHeight=   -1
+      DropIndicatorVisible=   False
+      Enabled         =   True
+      FontName        =   "System"
+      FontSize        =   0.0
+      FontUnit        =   0
+      GridLineStyle   =   1
+      HasBorder       =   True
+      HasColumnHeader =   True
+      HasHorizontalScrollbar=   False
+      HasVerticalScrollbar=   True
+      Height          =   200
+      Index           =   -2147483648
+      InitialValue    =   ""
+      Italic          =   False
+      Left            =   802
+      LockBottom      =   False
+      LockedInPosition=   False
+      LockLeft        =   True
+      LockRight       =   False
+      LockTop         =   True
+      RequiresSelection=   False
+      RowSelectionType=   0
+      Scope           =   2
+      TabIndex        =   2
+      TabPanelIndex   =   0
+      TabStop         =   True
+      Tooltip         =   ""
+      Top             =   40
+      Transparent     =   False
+      Underline       =   False
+      Visible         =   True
+      Width           =   300
+   End
 End
 #tag EndDesktopWindow
 
@@ -161,6 +208,14 @@ End
 		End Function
 	#tag EndMenuHandler
 
+
+	#tag Method, Flags = &h21
+		Private Function CellTextAt(row As Integer, column As Integer) As String
+		  // Part of the TableDataSource interface.
+		  
+		  
+		End Function
+	#tag EndMethod
 
 	#tag Method, Flags = &h21
 		Private Sub CommitRow(row As Integer)
@@ -267,6 +322,14 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Function RowCount() As Integer
+		  // Part of the TableDataSource interface.
+		  
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function SamePrice(a As WakeModelPrice, b As WakeModelPrice) As Boolean
 		  If a Is Nil Or b Is Nil Then Return a Is b
 		  Return a.InputPerMillion = b.InputPerMillion And a.OutputPerMillion = b.OutputPerMillion And _
@@ -367,6 +430,33 @@ End
 		  mNextColumn = nextColumn
 		  Timer.CallLater(0, AddressOf EditNextCell)
 		  Return True
+		End Function
+	#tag EndEvent
+#tag EndEvents
+#tag Events Table1
+	#tag Event
+		Sub Opening()
+		  Me.DataSource = Self
+		End Sub
+	#tag EndEvent
+	#tag Event
+		Sub CellAction(row As Integer, column As Integer)
+		  
+		End Sub
+	#tag EndEvent
+	#tag Event
+		Sub DoublePressed(row As Integer, column As Integer)
+		  
+		End Sub
+	#tag EndEvent
+	#tag Event
+		Function PaintCellText(g As Graphics, row As Integer, column As Integer, x As Integer, y As Integer) As Boolean
+		  
+		End Function
+	#tag EndEvent
+	#tag Event
+		Function RowComparison(row1 As Integer, row2 As Integer, column As Integer, ByRef result As Integer) As Boolean
+		  
 		End Function
 	#tag EndEvent
 #tag EndEvents
