@@ -1141,18 +1141,10 @@ End
 		  
 		  #If TargetMacOS
 		    // The flexible space keeps the filters and search at the right, as in Mail. The search item
-		    // holds the search field once the window is up.
+		    // is added once the window is up.
 		    Var flexible As New DesktopToolbarButton
 		    flexible.ButtonStyle = DesktopToolbarButton.ButtonStyles.FlexibleSpace
 		    MainToolbar.AddButtonAt(0, flexible)
-		    Var searchItem As New DesktopToolbarButton
-		    searchItem.ButtonStyle = DesktopToolbarButton.ButtonStyles.PushButton
-		    searchItem.Caption = "Search"
-		    MainToolbar.AddButton(searchItem)
-		    // Without a space after it, the search field runs into the window's edge.
-		    Var trailing As New DesktopToolbarButton
-		    trailing.ButtonStyle = DesktopToolbarButton.ButtonStyles.Space
-		    MainToolbar.AddButton(trailing)
 		    
 		    MainToolbar.Style = DesktopToolbar.Styles.IconOnly
 		    mKindItem.Symbol = "line.3.horizontal.decrease"
@@ -1347,7 +1339,7 @@ End
 		  // Mirrors the kind and date popups in their toolbar menus.
 		  WakeTitleBar.MirrorPopup(mKindItem, KindPopup)
 		  WakeTitleBar.MirrorPopup(mDateItem, DatePopup)
-		  WakeTitleBar.SetToolbarSymbols(Self, Array("", "line.3.horizontal.decrease", "calendar", ""))
+		  WakeTitleBar.SetToolbarSymbols(Self, Array("", "line.3.horizontal.decrease", "calendar"))
 		End Sub
 	#tag EndMethod
 
@@ -1368,7 +1360,7 @@ End
 		  // Xojo sets its own toolbar style when the window first shows, so Opening runs this twice:
 		  // at once, and again right after the window is up, when the toolbar can take the search field.
 		  WakeTitleBar.Unify(Self, False)
-		  WakeTitleBar.HostControl(Self, 3, SearchField, 240)
+		  WakeTitleBar.AddSearchItem(Self, SearchField)
 		  SyncToolbar
 		  LayOutTitleBar
 		End Sub

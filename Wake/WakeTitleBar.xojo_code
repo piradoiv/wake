@@ -1,6 +1,69 @@
 #tag Module
 Protected Module WakeTitleBar
 	#tag Method, Flags = &h0
+		Sub AddSearchItem(w As DesktopWindow, field As DesktopSearchField)
+		  // Adds AppKit's own search toolbar item, the one Mail has, at the end of the window's toolbar,
+		  // with the Xojo field as its search field, so the field keeps its events. Xojo's toolbar has
+		  // no such item, and only the toolbar's delegate can make one, so this gives Xojo's delegate a
+		  // subclass, made at runtime, that answers for the search item and leaves every other item to
+		  // Xojo. Call it once the window is up. It does nothing before macOS 11 or off macOS.
+		  #If TargetMacOS
+		    Declare Function NSClassFromString Lib "Foundation" (name As CFStringRef) As Ptr
+		    Declare Function NSSelectorFromString Lib "Foundation" (name As CFStringRef) As Ptr
+		    Declare Function Alloc Lib "Foundation" Selector "alloc" (cls As Ptr) As Ptr
+		    Declare Function InitWithItemIdentifier Lib "AppKit" Selector "initWithItemIdentifier:" (item As Ptr, identifier As CFStringRef) As Ptr
+		    Declare Sub SetSearchField Lib "AppKit" Selector "setSearchField:" (item As Ptr, field As Ptr)
+		    Declare Function Toolbar Lib "AppKit" Selector "toolbar" (window As Ptr) As Ptr
+		    Declare Function Delegate_ Lib "AppKit" Selector "delegate" (toolbar As Ptr) As Ptr
+		    Declare Function Items Lib "AppKit" Selector "items" (toolbar As Ptr) As Ptr
+		    Declare Function ItemCount Lib "Foundation" Selector "count" (nsArray As Ptr) As UInteger
+		    Declare Sub InsertItem Lib "AppKit" Selector "insertItemWithItemIdentifier:atIndex:" (toolbar As Ptr, identifier As CFStringRef, index As Integer)
+		    Declare Function objc_getClass Lib "/usr/lib/libobjc.A.dylib" (name As CString) As Ptr
+		    Declare Function objc_allocateClassPair Lib "/usr/lib/libobjc.A.dylib" (superclass As Ptr, name As CString, extraBytes As UInteger) As Ptr
+		    Declare Sub objc_registerClassPair Lib "/usr/lib/libobjc.A.dylib" (cls As Ptr)
+		    Declare Function class_addMethod Lib "/usr/lib/libobjc.A.dylib" (cls As Ptr, sel As Ptr, imp As Ptr, types As CString) As Boolean
+		    Declare Function class_getName Lib "/usr/lib/libobjc.A.dylib" (cls As Ptr) As CString
+		    Declare Function object_getClass Lib "/usr/lib/libobjc.A.dylib" (obj As Ptr) As Ptr
+		    Declare Function object_setClass Lib "/usr/lib/libobjc.A.dylib" (obj As Ptr, cls As Ptr) As Ptr
+
+		    Var searchClass As Ptr = NSClassFromString("NSSearchToolbarItem")
+		    If searchClass = Nil Then Return
+		    Var bar As Ptr = Toolbar(w.Handle)
+		    If bar = Nil Then Return
+		    If mSearchItems Is Nil Then mSearchItems = New Dictionary
+		    If mSearchItems.HasKey(Integer(bar)) Then Return
+		    Var xojoDelegate As Ptr = Delegate_(bar)
+		    If xojoDelegate = Nil Then Return
+
+		    // One subclass per delegate class, named after it, made the first time it's needed.
+		    Var original As Ptr = object_getClass(xojoDelegate)
+		    Var originalName As String = class_getName(original)
+		    If Not originalName.BeginsWith(kDelegatePrefix) Then
+		      Var subclassName As String = kDelegatePrefix + originalName
+		      Var subclass As Ptr = objc_getClass(subclassName)
+		      If subclass = Nil Then
+		        subclass = objc_allocateClassPair(original, subclassName, 0)
+		        If subclass = Nil Then Return
+		        Call class_addMethod(subclass, NSSelectorFromString("toolbar:itemForItemIdentifier:willBeInsertedIntoToolbar:"), _
+		        AddressOf ItemForIdentifier, "@@:@@c")
+		        objc_registerClassPair(subclass)
+		      End If
+		      Call object_setClass(xojoDelegate, subclass)
+		    End If
+
+		    // The item is kept here for the window's life, so the delegate can hand it to the toolbar.
+		    Var item As Ptr = InitWithItemIdentifier(Alloc(searchClass), kSearchItemIdentifier)
+		    SetSearchField(item, field.Handle)
+		    mSearchItems.Value(Integer(bar)) = item
+		    InsertItem(bar, kSearchItemIdentifier, ItemCount(Items(bar)))
+		  #Else
+		    #Pragma Unused w
+		    #Pragma Unused field
+		  #EndIf
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function HandleMouseDown(w As DesktopWindow, y As Integer) As Boolean
 		  // Called from the window's MouseDown, which only fires outside controls. In the bar, a press
 		  // drags the window and a double-click does what the user chose in System Settings, as an
@@ -61,72 +124,6 @@ Protected Module WakeTitleBar
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
-		Sub HostControl(w As DesktopWindow, index As Integer, c As DesktopUIControl, width As Integer)
-		  // Moves the control's own view into the window's toolbar item at this index, so the control
-		  // sits in the unified bar, and in its overlay in full screen, like the toolbar's own items.
-		  // The control keeps its events, but the window must no longer move or resize it.
-		  #If TargetMacOS
-		    Declare Function Toolbar Lib "AppKit" Selector "toolbar" (window As Ptr) As Ptr
-		    Declare Function Items Lib "AppKit" Selector "items" (toolbar As Ptr) As Ptr
-		    Declare Function ItemCount Lib "Foundation" Selector "count" (nsArray As Ptr) As UInteger
-		    Declare Function ObjectAtIndex Lib "Foundation" Selector "objectAtIndex:" (nsArray As Ptr, index As UInteger) As Ptr
-		    Declare Function View Lib "AppKit" Selector "view" (item As Ptr) As Ptr
-		    Declare Sub SetView Lib "AppKit" Selector "setView:" (item As Ptr, view As Ptr)
-		    Declare Function NSSelectorFromString Lib "Foundation" (name As CFStringRef) As Ptr
-		    Declare Function RespondsToSelector Lib "Foundation" Selector "respondsToSelector:" (obj As Ptr, sel As Ptr) As Boolean
-		    Declare Sub SetBordered Lib "AppKit" Selector "setBordered:" (item As Ptr, value As Boolean)
-		    Declare Sub SetControlSize Lib "AppKit" Selector "setControlSize:" (control As Ptr, size As UInteger)
-		    Declare Function IsBezeled Lib "AppKit" Selector "isBezeled" (field As Ptr) As Boolean
-		    Declare Function IsBordered Lib "AppKit" Selector "isBordered" (field As Ptr) As Boolean
-		    Declare Function DrawsBackground Lib "AppKit" Selector "drawsBackground" (field As Ptr) As Boolean
-		    Declare Function BezelStyle Lib "AppKit" Selector "bezelStyle" (field As Ptr) As Integer
-		    Declare Function WidthAnchor Lib "AppKit" Selector "widthAnchor" (view As Ptr) As Ptr
-		    Declare Function ConstraintEqualToConstant Lib "AppKit" Selector "constraintEqualToConstant:" (anchor As Ptr, value As CGFloat) As Ptr
-		    Declare Sub SetActive Lib "AppKit" Selector "setActive:" (constraint As Ptr, value As Boolean)
-		    Declare Function ClassOf Lib "Foundation" Selector "class" (obj As Ptr) As Ptr
-		    Declare Function NSStringFromClass Lib "Foundation" (cls As Ptr) As CFStringRef
-
-		    Var bar As Ptr = Toolbar(w.Handle)
-		    If bar = Nil Then Return
-		    Var list As Ptr = Items(bar)
-		    Var available As Integer = ItemCount(list)
-		    If index < 0 Or index >= available Then Return
-
-		    Var item As Ptr = ObjectAtIndex(list, index)
-		    Var controlView As Ptr = c.Handle
-		    If controlView = Nil Or View(item) = controlView Then Return
-
-		    c.LockLeft = False
-		    c.LockTop = False
-		    c.LockRight = False
-		    c.LockBottom = False
-		    SetView(item, controlView)
-		    // Bordered, the item gets a capsule, drawn in Liquid Glass on macOS 26, as Mail's search has.
-		    If RespondsToSelector(item, NSSelectorFromString("setBordered:")) Then SetBordered(item, True)
-		    
-		    // Spike only: how Xojo sets up its field, then the large size AppKit uses for toolbar search.
-		    Const kControlSizeLarge As UInteger = 3
-		    If RespondsToSelector(controlView, NSSelectorFromString("isBezeled")) Then
-		      System.DebugLog("WakeTitleBar: field bezeled " + If(IsBezeled(controlView), "yes", "no") _
-		      + ", bezel style " + BezelStyle(controlView).ToString _
-		      + ", bordered " + If(IsBordered(controlView), "yes", "no") _
-		      + ", draws background " + If(DrawsBackground(controlView), "yes", "no"))
-		    End If
-		    If RespondsToSelector(controlView, NSSelectorFromString("setControlSize:")) Then SetControlSize(controlView, kControlSizeLarge)
-		    SetActive(ConstraintEqualToConstant(WidthAnchor(controlView), width), True)
-
-		    // Spike only: what Xojo's control view is.
-		    System.DebugLog("WakeTitleBar: hosting " + NSStringFromClass(ClassOf(controlView)) + " in item " + index.ToString)
-		  #Else
-		    #Pragma Unused w
-		    #Pragma Unused index
-		    #Pragma Unused c
-		    #Pragma Unused width
-		  #EndIf
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h0
 		Function IsUnified(w As DesktopWindow) As Boolean
 		  // True once Unify has merged the window's title bar with its content.
 		  #If TargetMacOS
@@ -138,6 +135,37 @@ Protected Module WakeTitleBar
 		  #Else
 		    #Pragma Unused w
 		    Return False
+		  #EndIf
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function ItemForIdentifier(delegateObj As Ptr, sel As Ptr, toolbar As Ptr, identifier As Ptr, willInsert As Boolean) As Ptr
+		  // The delegate subclass's toolbar:itemForItemIdentifier:willBeInsertedIntoToolbar:. It returns
+		  // the toolbar's search item for its identifier, and asks Xojo's own delegate for anything else.
+		  #If TargetMacOS
+		    Declare Function IsEqualToString Lib "Foundation" Selector "isEqualToString:" (value As Ptr, other As CFStringRef) As Boolean
+		    Declare Function object_getClass Lib "/usr/lib/libobjc.A.dylib" (obj As Ptr) As Ptr
+		    Declare Function class_getSuperclass Lib "/usr/lib/libobjc.A.dylib" (cls As Ptr) As Ptr
+		    Declare Function SendSuper Lib "/usr/lib/libobjc.A.dylib" Alias "objc_msgSendSuper" (receiver As Ptr, sel As Ptr, toolbar As Ptr, identifier As Ptr, willInsert As Boolean) As Ptr
+
+		    If identifier <> Nil And IsEqualToString(identifier, kSearchItemIdentifier) _
+		      And mSearchItems <> Nil And mSearchItems.HasKey(Integer(toolbar)) Then
+		      Return mSearchItems.Value(Integer(toolbar))
+		    End If
+
+		    // objc_super: the receiver, then the class whose superclass's method to run.
+		    Var receiver As New MemoryBlock(16)
+		    receiver.Ptr(0) = delegateObj
+		    receiver.Ptr(8) = class_getSuperclass(object_getClass(delegateObj))
+		    Return SendSuper(receiver, sel, toolbar, identifier, willInsert)
+		  #Else
+		    #Pragma Unused delegateObj
+		    #Pragma Unused sel
+		    #Pragma Unused toolbar
+		    #Pragma Unused identifier
+		    #Pragma Unused willInsert
+		    Return Nil
 		  #EndIf
 		End Function
 	#tag EndMethod
@@ -362,6 +390,18 @@ Protected Module WakeTitleBar
 		  #EndIf
 		End Sub
 	#tag EndMethod
+
+
+	#tag Property, Flags = &h21
+		Private mSearchItems As Dictionary
+	#tag EndProperty
+
+
+	#tag Constant, Name = kDelegatePrefix, Type = String, Dynamic = False, Default = \"WakeTitleBarDelegate_", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kSearchItemIdentifier, Type = String, Dynamic = False, Default = \"WakeSearch", Scope = Private
+	#tag EndConstant
 
 
 End Module
