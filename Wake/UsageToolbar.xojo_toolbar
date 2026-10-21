@@ -1,14 +1,14 @@
 #tag DesktopToolbar
-Begin DesktopToolbar Toolbar1
+Begin DesktopToolbar UsageToolbar
 Inherits DesktopToolbar
 	Style = 0
-	Begin DesktopToolbarButton ToolItem1
+	Begin DesktopToolbarButton GroupItem
 		Caption = "By day"
 		Tooltip = ""
 		ButtonStyle = 3
 		Symbol = ""
 	End
-	Begin DesktopToolbarButton ToolItem2
+	Begin DesktopToolbarButton PeriodItem
 		Caption = "Last 30 days"
 		Tooltip = ""
 		ButtonStyle = 3

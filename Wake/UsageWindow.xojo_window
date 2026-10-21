@@ -267,7 +267,7 @@ Begin DesktopWindow UsageWindow
       Visible         =   True
       Width           =   936
    End
-   Begin Toolbar1 Toolbar11
+   Begin UsageToolbar UsageBar
       Enabled         =   True
       Index           =   -2147483648
       LockedInPosition=   False
@@ -296,6 +296,7 @@ End
 	#tag Event
 		Sub Opening()
 		  SetUp
+		  SetUpToolbar
 		  WakeTitleBar.Unify(Self, False)
 		  LayOutTitleBar
 		  LayOutLists
@@ -517,32 +518,17 @@ End
 
 	#tag Method, Flags = &h21
 		Private Sub LayOutTitleBar()
-		  // On macOS the popups sit in the unified bar beside the window buttons, and the tiles, chart
-		  // and lists start right under it. In full screen, which hides the bar, they go back to a row
-		  // at the top. Elsewhere the window keeps its editor layout.
-		  If Not WakeTitleBar.IsUnified(Self) Then Return
-		  WakeTitleBar.FollowFullScreen(Self)
-		  
+		  // On macOS the grouping and period are menus in the unified bar, and the tiles, chart and
+		  // lists start right under it. Elsewhere the window keeps its editor layout, with the popups.
 		  Var bar As Integer = WakeTitleBar.Height(Self)
-		  If bar > 0 Then
-		    GroupPopup.Left = WakeTitleBar.LeftInset(Self)
-		    GroupPopup.Top = WakeTitleBar.RowTop(Self, GroupPopup.Height)
-		    GlanceTiles.Top = bar
-		  Else
-		    GroupPopup.Left = 12
-		    GroupPopup.Top = 8
-		    GlanceTiles.Top = 36
-		  End If
+		  If bar = 0 Then Return
 		  
-		  PeriodPopup.Left = GroupPopup.Left + GroupPopup.Width + 10
-		  PeriodPopup.Top = GroupPopup.Top
+		  GlanceTiles.Top = bar
 		  DayChart.Top = GlanceTiles.Top + GlanceTiles.Height
 		  UsageList.Top = DayChart.Top + DayChart.Height + 4
 		  
 		  // Spike only: what the window sees, for checking the coordinates.
-		  System.DebugLog("WakeTitleBar: bar " + bar.ToString + ", inset " + GroupPopup.Left.ToString _
-		  + ", row top " + GroupPopup.Top.ToString + ", window height " + Self.Height.ToString _
-		  + ", full screen " + If(WakeTitleBar.IsFullScreen(Self), "yes", "no"))
+		  System.DebugLog("WakeTitleBar: bar " + bar.ToString + ", window height " + Self.Height.ToString)
 		End Sub
 	#tag EndMethod
 
@@ -738,6 +724,22 @@ End
 		  mToolGrouping = -1
 		  
 		  mLoading = False
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub SetUpToolbar()
+		  // On macOS the grouping and period are toolbar menus, so they stay in the bar in full screen and
+		  // look like the bar's own items. They mirror the popups, which stay the model and are what
+		  // Windows and Linux show.
+		  #If TargetMacOS
+		    UsageBar.Style = DesktopToolbar.DesktopToolbarStyles.CaptionOnly
+		    GroupPopup.Visible = False
+		    PeriodPopup.Visible = False
+		    SyncToolbar
+		  #Else
+		    UsageBar.Visible = False
+		  #EndIf
 		End Sub
 	#tag EndMethod
 
@@ -1062,6 +1064,33 @@ End
 		End Sub
 	#tag EndMethod
 
+	#tag Method, Flags = &h21
+		Private Sub SyncToolbar()
+		  // Gives each toolbar menu the rows of its popup, with the selected one checked and as the caption.
+		  SyncToolbarItem(DesktopToolbarButton(UsageBar.ButtonAt(0)), GroupPopup)
+		  SyncToolbarItem(DesktopToolbarButton(UsageBar.ButtonAt(1)), PeriodPopup)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub SyncToolbarItem(item As DesktopToolbarButton, popup As DesktopPopupMenu)
+		  // Each menu item's tag is its row in the popup. Separator rows have no tag.
+		  Var menu As New DesktopMenuItem
+		  For row As Integer = 0 To popup.LastRowIndex
+		    If popup.RowTagAt(row).IsNull Then
+		      menu.AddMenu(New DesktopMenuItem(DesktopMenuItem.TextSeparator))
+		    Else
+		      Var choice As New DesktopMenuItem(popup.RowTextAt(row), row)
+		      choice.HasCheckMark = (row = popup.SelectedRowIndex)
+		      menu.AddMenu(choice)
+		    End If
+		  Next
+		  
+		  item.Menu = menu
+		  item.Caption = popup.RowTextAt(popup.SelectedRowIndex)
+		End Sub
+	#tag EndMethod
+
 
 	#tag Property, Flags = &h21
 		Private mCatalog As WakeCatalog
@@ -1192,5 +1221,18 @@ End
 		  column = kCallColumnCall)
 		  Return True
 		End Function
+	#tag EndEvent
+#tag EndEvents
+#tag Events UsageBar
+	#tag Event
+		Sub MenuItemSelected(item As DesktopToolbarItem, selectedItem As DesktopMenuItem)
+		  // Choosing from a toolbar menu selects that row in its popup, which reloads the window.
+		  If item Is UsageBar.ButtonAt(0) Then
+		    GroupPopup.SelectedRowIndex = selectedItem.Tag
+		  Else
+		    PeriodPopup.SelectedRowIndex = selectedItem.Tag
+		  End If
+		  SyncToolbar
+		End Sub
 	#tag EndEvent
 #tag EndEvents
