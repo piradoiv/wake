@@ -267,11 +267,14 @@ End
 
 	#tag Method, Flags = &h0
 		Sub IndexChanged()
-		  // An indexing run stored new files. If this transcript is one of them, say so and offer to
-		  // reload, rather than reloading and losing the reader's place.
+		  // An indexing run stored new files. If this transcript is one of them, the title and tiles
+		  // take the index's latest figures at once, since they don't move the page. The page itself
+		  // only offers to reload, so the reader keeps their place.
 		  If mInfo Is Nil Then Return
 		  Var signature As String = WakeCore.FileSignature(mInfo.AgentID, mInfo.FilePath)
 		  If signature = mSignature Then Return
+		  
+		  If signature <> "" And LoadLatest Then ShowTiles
 		  
 		  If signature = "" Then
 		    UpdateLabel.Text = "The transcript is no longer on disk"
@@ -285,21 +288,29 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
-		Private Function LatestInfo() As WakeSessionInfo
-		  // The session as the index has it now, for the tiles, or Nil when it can't be read.
+		Private Function LoadLatest() As Boolean
+		  // Takes the session and its usage per model as the index has them now. False, keeping
+		  // what was shown, when the index can't be read or no longer has the session.
 		  Var index As New WakeIndex(WakeFolders.DefaultIndexFile)
 		  Var found As WakeSessionInfo
+		  Var usage As WakeUsageGroup
 		  Try
 		    index.Open
 		    Var catalog As New WakeCatalog(index)
 		    found = catalog.SessionForFile(mInfo.FilePath)
+		    If found <> Nil Then usage = catalog.SessionUsage(found.ID)
 		  Catch err As DatabaseException
 		    found = Nil
 		  Catch err As IOException
 		    found = Nil
 		  End Try
 		  index.Close
-		  Return found
+		  
+		  If found Is Nil Or usage Is Nil Then Return False
+		  mInfo = found
+		  mUsage = usage
+		  Title = found.DisplayTitle
+		  Return True
 		End Function
 	#tag EndMethod
 
@@ -337,10 +348,9 @@ End
 		  Timer.CancelCallLater(AddressOf ReloadSession)
 		  If mInfo Is Nil Then Return
 		  
-		  Var info As WakeSessionInfo = LatestInfo
-		  If info Is Nil Then info = mInfo
+		  Call LoadLatest
 		  Var scroll As Integer = mRestoreScroll
-		  ShowSession(info)
+		  ShowSession(mInfo)
 		  mRestoreScroll = scroll
 		End Sub
 	#tag EndMethod
@@ -377,6 +387,7 @@ End
 		  Title = info.DisplayTitle
 		  mSignature = WakeCore.FileSignature(info.AgentID, info.FilePath)
 		  mTimeline = WakeTimeline.Load(info.AgentID, info.FilePath)
+		  mUsage = mTimeline.Session.TotalUsageByModel
 		  ShowTiles
 		  UpdateLabel.Visible = False
 		  ReloadButton.Visible = False
@@ -390,10 +401,10 @@ End
 
 	#tag Method, Flags = &h21
 		Private Sub ShowTiles()
-		  // The same tiles as the main window, with the cost from the parsed transcript, and the full
-		  // path and branch under the title.
-		  If mInfo Is Nil Or mTimeline Is Nil Then Return
-		  GlanceTiles.ShowSession(mInfo, mTimeline.Session.TotalUsageByModel, App.Prices)
+		  // The same tiles as the main window, with the cost from the parsed transcript, or from the
+		  // index once the session has grown, and the full path and branch under the title.
+		  If mInfo Is Nil Or mUsage Is Nil Then Return
+		  GlanceTiles.ShowSession(mInfo, mUsage, App.Prices)
 		  
 		  Var facts() As String
 		  If mInfo.ProjectPath <> "" Then facts.Add(mInfo.ProjectPath)
@@ -429,6 +440,10 @@ End
 
 	#tag Property, Flags = &h21
 		Private mTimeline As WakeTimeline
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mUsage As WakeUsageGroup
 	#tag EndProperty
 
 

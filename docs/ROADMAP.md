@@ -170,9 +170,10 @@ Each milestone below is one session's work, ending with tests and a commit.
   keys it doesn't know. `WakeSessionInfo.FileModified` and `IsLive` (changed
   in the last 2 minutes) draw a "Live" badge, checked at paint time and
   repainted on every tick. An open timeline compares `WakeCore.FileSignature`
-  after each run that changed files and shows "Session updated" with a
-  Reload button; Reload fetches fresh info with `WakeCatalog.SessionForFile`
-  and scrolls back to where the page was. 108 tests.
+  after each run that changed files: its title and tiles take the index's
+  latest figures at once (`WakeCatalog.SessionForFile`, `SessionUsage`),
+  and the page shows "Session updated" with a Reload button, which scrolls
+  back to where the page was. 108 tests.
 
 - [ ] **19. Context growth.** Every response re-sends the whole context, so a
   long session pays for its early turns again on every later one. Per
