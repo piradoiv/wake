@@ -10,10 +10,6 @@ Inherits WakeUsageGroup
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
-		CarriedTokens As Int64
-	#tag EndProperty
-
-	#tag Property, Flags = &h0
 		LineRangeReads As Integer
 	#tag EndProperty
 

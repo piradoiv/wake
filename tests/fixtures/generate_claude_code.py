@@ -216,6 +216,32 @@ s.assistant("2026-08-30T09:00:20.000Z", "msg_pat_99", {"type": "text", "text": "
 # Its own root, next to projects/, so the other tests' counts don't change.
 s.write(os.path.join(os.path.dirname(OUT), "patterns", "-Users-dev-lab"))
 
+# 8. Context growth: four turns, the third compacted partway, so later turns carry less.
+LONG = "/Users/dev/long"
+s = Session(8, LONG)
+turns = [
+    ("Add a loader for the settings file.", [usage(5, 100, 100, 0), usage(5, 50, 2000, 205)]),
+    ("Now add tests for the loader.", [usage(5, 100, 50, 2260), usage(5, 40, 60, 2415)]),
+    # The second response's context shrinks to less than half: the context was compacted.
+    ("Fix the failing test.", [usage(5, 50, 100, 2520), usage(5, 50, 800, 0), usage(5, 30, 100, 850)]),
+    ("Rename the option to settings_path.", [usage(5, 20, 50, 985)]),
+]
+k = 0
+for t, (prompt, responses) in enumerate(turns, 1):
+    s.user("2026-08-31T14:%02d:00.000Z" % (t * 10), prompt, promptId="p-8-%d" % t)
+    for r, u in enumerate(responses, 1):
+        k += 1
+        ts = "2026-08-31T14:%02d:%02d.000Z" % (t * 10, r * 5)
+        if r < len(responses):
+            a = s.assistant(ts, "msg_long_%02d" % k, {"type": "tool_use", "id": "toolu_long_%02d" % k, "name": "Bash",
+                            "input": {"command": "python3 -m pytest -q", "description": "Run the tests"}}, u)
+            s.result("2026-08-31T14:%02d:%02d.500Z" % (t * 10, r * 5), "toolu_long_%02d" % k, "4 passed",
+                     {"stdout": "4 passed", "stderr": "", "interrupted": False, "isImage": False, "noOutputExpected": False}, a)
+        else:
+            s.assistant(ts, "msg_long_%02d" % k, {"type": "text", "text": "Done."}, u, stop="end_turn")
+# Its own root, so the other tests' counts don't change.
+s.write(os.path.join(os.path.dirname(OUT), "context", "-Users-dev-long"))
+
 # Not a session: memory notes are ignored.
 mem = os.path.join(DEMO_DIR, "memory"); os.makedirs(mem, exist_ok=True)
 with open(os.path.join(mem, "MEMORY.md"), "w") as f: f.write("- [Example](example.md) - not a transcript\n")

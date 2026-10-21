@@ -90,6 +90,62 @@ Protected Class WakeSession
 		End Sub
 	#tag EndMethod
 
+	#tag Method, Flags = &h21
+		Private Sub ComputeContextGrowth()
+		  // Every response re-sends the whole context. A turn's older context is what the context
+		  // held before its first response, and every response of the turn sends it again. What it
+		  // holds beyond the session's starting context (the system prompt and tools) is what the
+		  // turn carried. A compaction inside a turn drops the older context, so the rest of the turn
+		  // carries nothing. Subagents have contexts of their own and don't count here.
+		  If Responses.Count = 0 Then Return
+		  StartingContextTokens = Responses(0).ContextTokens
+		  CarriedUsage = New WakeUsageGroup
+		  
+		  Var prompt, turnPrompt As WakeEvent
+		  Var scan As Integer
+		  Var older As Int64
+		  Var carrying As Boolean
+		  
+		  For i As Integer = 0 To Responses.LastIndex
+		    Var response As WakeResponse = Responses(i)
+		    While response.FirstSequence >= 0 And scan <= response.FirstSequence And scan <= Events.LastIndex
+		      If Events(scan).Kind = WakeEvent.Kinds.UserPrompt Then prompt = Events(scan)
+		      scan = scan + 1
+		    Wend
+		    If prompt Is Nil Then Continue
+		    response.TurnSequence = prompt.Sequence
+		    
+		    If prompt <> turnPrompt Then
+		      turnPrompt = prompt
+		      prompt.TurnContextTokens = response.ContextTokens
+		      If i = 0 Or response.StartsNewContext Then
+		        older = response.ContextTokens
+		        prompt.TurnStartsNewContext = response.StartsNewContext
+		      Else
+		        Var previous As WakeResponse = Responses(i - 1)
+		        older = previous.ContextTokens + previous.Usage.OutputTokens
+		        If older > response.ContextTokens Then older = response.ContextTokens
+		      End If
+		      carrying = True
+		    ElseIf response.StartsNewContext Then
+		      carrying = False
+		      prompt.TurnStartsNewContext = True
+		    End If
+		    
+		    Var carried As Int64 = older - StartingContextTokens
+		    If Not carrying Or carried <= 0 Then Continue
+		    
+		    Var resent As New WakeTokenUsage
+		    resent.CacheReadTokens = carried
+		    If prompt.TurnCarriedUsage Is Nil Then prompt.TurnCarriedUsage = New WakeUsageGroup
+		    prompt.TurnCarriedUsage.Add(response.Model, resent)
+		    prompt.TurnCarriedTokens = prompt.TurnCarriedTokens + carried
+		    CarriedUsage.Add(response.Model, resent)
+		    CarriedTokens = CarriedTokens + carried
+		  Next
+		End Sub
+	#tag EndMethod
+
 	#tag Method, Flags = &h0
 		Sub ComputeStats()
 		  // Estimates what each input cost and totals each turn. Run it once the session and its
@@ -171,6 +227,8 @@ Protected Class WakeSession
 		      Next
 		    End If
 		  Next
+		  
+		  ComputeContextGrowth
 		End Sub
 	#tag EndMethod
 
@@ -303,6 +361,14 @@ Protected Class WakeSession
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
+		CarriedTokens As Int64
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		CarriedUsage As WakeUsageGroup
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
 		EndTime As DateTime
 	#tag EndProperty
 
@@ -364,6 +430,10 @@ Protected Class WakeSession
 
 	#tag Property, Flags = &h0
 		SourceFile As FolderItem
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		StartingContextTokens As Int64
 	#tag EndProperty
 
 	#tag Property, Flags = &h0

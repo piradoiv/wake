@@ -45,6 +45,56 @@ Protected Class WakeTokenReport
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Sub AddLongSessions(out() As String)
+		  // The sessions that paid most to re-send their earlier turns, and where that began to
+		  // outweigh each turn's own work.
+		  Var sessions() As WakeLongSession = mCatalog.LongSessions(mFromTime, kLongSessionCount)
+		  If sessions.Count = 0 Then Return
+		  
+		  out.Add("## Long sessions")
+		  out.Add("")
+		  out.Add("Every response sends the whole context again, so a long session pays for its early turns on every " + _
+		  "later one. **≈ Carried** is what a session's turns paid to re-send context from earlier turns, beyond " + _
+		  "what the session started with.")
+		  out.Add("")
+		  out.Add("**What to change:** " + LongSessionAdvice)
+		  out.Add("")
+		  
+		  For i As Integer = 0 To sessions.LastIndex
+		    Var g As WakeLongSession = sessions(i)
+		    Var number As Integer = i + 1
+		    out.Add("### " + number.ToString + ". " + WakeMarkdown.Cell(g.Label) + ": ≈" + WakeFormat.Tokens(g.CarriedTokens) + " carried")
+		    out.Add("")
+		    
+		    Var facts() As String
+		    facts.Add(WakeFormat.Count(g.TurnCount) + If(g.TurnCount = 1, " turn", " turns"))
+		    If g.Session <> Nil Then
+		      If g.Session.StartTime <> Nil Then facts.Add(g.Session.StartTime.ToString(DateTime.FormatStyles.Medium, DateTime.FormatStyles.Short))
+		      facts.Add("started with " + WakeFormat.Tokens(g.Session.StartingContextTokens) + " of context")
+		    End If
+		    facts.Add("peak context " + WakeFormat.Tokens(g.PeakContextTokens))
+		    Var estimate As WakeCostEstimate = mPrices.Estimate(g.ByModel)
+		    If estimate.PricedTokens > 0 Then facts.Add("estimated cost of carrying " + WakeFormat.Cost(estimate))
+		    out.Add(String.FromArray(facts, " · "))
+		    out.Add("")
+		    
+		    If g.TippingTurn > 0 Then
+		      Var line As String = "From turn " + g.TippingTurn.ToString + " on, re-sending earlier turns cost more " + _
+		      "than a turn's own work"
+		      If g.TippingPrompt <> "" Then
+		        out.Add(line + ". That turn began with:")
+		        out.Add("")
+		        out.Add(WakeMarkdown.Fence(WakeFormat.OneLine(g.TippingPrompt, kPromptLength), ""))
+		      Else
+		        out.Add(line + ".")
+		      End If
+		      out.Add("")
+		    End If
+		  Next
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Sub AddPattern(out() As String, number As Integer, g As WakeToolUsageGroup)
 		  // One section per pattern: what it cost, what to change, where, and examples.
 		  Var tokens As Int64 = g.AddedTokens + g.CarriedTokens
@@ -89,9 +139,18 @@ Protected Class WakeTokenReport
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Shared Function LongSessionAdvice() As String
+		  Return "Start a new session, or compact, at a task boundary. Once a task is done, its context is sent " + _
+		  "again with every later response but is rarely needed. Carry over only what the next task needs, such " + _
+		  "as a short note of the decisions made and what is still open."
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function Markdown() As String
-		  // Totals, then one section per pattern with the most tokens first. Re-reads have their own
-		  // section. Patterns with no calls have none. Raises DatabaseException.
+		  // Totals, then one section per pattern with the most tokens first, then the sessions that
+		  // carried most. Re-reads have their own section. Patterns with no calls have none.
+		  // Raises DatabaseException.
 		  Var groups() As WakeToolUsageGroup = mCatalog.ToolUsage(WakeCatalog.ToolGroupings.Pattern, mFromTime)
 		  
 		  Var all As New WakeUsageGroup
@@ -132,6 +191,8 @@ Protected Class WakeTokenReport
 		    AddPattern(out, i + 1, groups(i))
 		  Next
 		  
+		  AddLongSessions(out)
+		  
 		  out.Add("_Exported by Wake._")
 		  Return String.FromArray(out, &u0A) + &u0A
 		End Function
@@ -160,6 +221,12 @@ Protected Class WakeTokenReport
 
 
 	#tag Constant, Name = kExampleCount, Type = Double, Dynamic = False, Default = \"3", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kLongSessionCount, Type = Double, Dynamic = False, Default = \"5", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kPromptLength, Type = Double, Dynamic = False, Default = \"200", Scope = Private
 	#tag EndConstant
 
 	#tag Constant, Name = kTopFileCount, Type = Double, Dynamic = False, Default = \"5", Scope = Private

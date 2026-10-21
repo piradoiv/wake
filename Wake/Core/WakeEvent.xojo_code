@@ -418,7 +418,23 @@ Protected Class WakeEvent
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
+		TurnCarriedTokens As Int64
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		TurnCarriedUsage As WakeUsageGroup
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		TurnContextTokens As Int64
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
 		TurnResponses As Integer
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		TurnStartsNewContext As Boolean
 	#tag EndProperty
 
 	#tag Property, Flags = &h0

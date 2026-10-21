@@ -28,6 +28,87 @@ Protected Class WakeCatalog
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function LongSessions(fromTime As DateTime = Nil, limit As Integer = 5) As WakeLongSession()
+		  // The top-level sessions whose turns carried the most from fromTime on, at most limit of
+		  // them, each with its carried tokens per model and the first turn whose carried tokens
+		  // outweighed its own work. Hidden projects are left out unless IncludeHidden is set.
+		  // Raises DatabaseException.
+		  Var clauses() As String
+		  Var values() As Variant
+		  clauses.Add("s.parent_id IS NULL")
+		  
+		  Var hidden As String = HiddenProjectsClause("s.project_id")
+		  If hidden <> "" Then clauses.Add(hidden)
+		  
+		  If fromTime <> Nil Then
+		    clauses.Add("coalesce(t.timestamp, s.start_time) >= ?")
+		    values.Add(fromTime.SecondsFrom1970)
+		  End If
+		  values.Add(Max(limit, 1))
+		  
+		  Var rs As RowSet = mIndex.Database.SelectSQL("SELECT t.session_id, sum(t.carried_tokens) AS carried, " + _
+		  "sum(t.is_first) AS turns, max(t.context_tokens) AS peak FROM turns t JOIN sessions s ON s.id = t.session_id " + _
+		  "WHERE " + String.FromArray(clauses, " AND ") + " GROUP BY t.session_id HAVING carried > 0 " + _
+		  "ORDER BY carried DESC, t.session_id LIMIT ?", values)
+		  
+		  Var result() As WakeLongSession
+		  Var byID As New Dictionary
+		  Var marks() As String
+		  Var ids() As Variant
+		  For Each row As DatabaseRow In rs
+		    Var g As New WakeLongSession
+		    g.Key = row.Column("session_id").StringValue
+		    g.CarriedTokens = row.Column("carried").Int64Value
+		    g.TurnCount = row.Column("turns").IntegerValue
+		    g.PeakContextTokens = row.Column("peak").Int64Value
+		    result.Add(g)
+		    byID.Value(row.Column("session_id").IntegerValue) = g
+		    marks.Add("?")
+		    ids.Add(row.Column("session_id").IntegerValue)
+		  Next
+		  
+		  If result.Count = 0 Then Return result
+		  Var idList As String = "(" + String.FromArray(marks, ", ") + ")"
+		  
+		  For Each info As WakeSessionInfo In ReadSessions("s.id IN " + idList, ids, "s.id")
+		    WakeLongSession(byID.Value(info.ID).ObjectValue).Session = info
+		    WakeLongSession(byID.Value(info.ID).ObjectValue).Label = info.DisplayTitle
+		  Next
+		  
+		  rs = mIndex.Database.SelectSQL("SELECT session_id, model, 0 AS input_tokens, 0 AS output_tokens, " + _
+		  "0 AS cache_write_tokens, 0 AS cache_write_1h_tokens, sum(carried_tokens) AS cache_read_tokens FROM turns " + _
+		  "WHERE session_id IN " + idList + " AND model <> '' GROUP BY session_id, model", ids)
+		  For Each row As DatabaseRow In rs
+		    WakeLongSession(byID.Value(row.Column("session_id").IntegerValue).ObjectValue).Add(row.Column("model").StringValue, UsageFrom(row))
+		  Next
+		  
+		  // The whole session's turns in order, to find where carrying began to outweigh the work.
+		  rs = mIndex.Database.SelectSQL("SELECT t.session_id, t.seq, max(t.timestamp) AS timestamp, " + _
+		  "max(t.turn_tokens) AS turn_tokens, sum(t.carried_tokens) AS carried, " + _
+		  "(SELECT e.summary FROM events e WHERE e.session_id = t.session_id AND e.seq = t.seq LIMIT 1) AS summary " + _
+		  "FROM turns t WHERE t.session_id IN " + idList + " GROUP BY t.session_id, t.seq ORDER BY t.session_id, t.seq", ids)
+		  Var lastID, number As Integer
+		  For Each row As DatabaseRow In rs
+		    Var id As Integer = row.Column("session_id").IntegerValue
+		    If id <> lastID Then
+		      lastID = id
+		      number = 0
+		    End If
+		    number = number + 1
+		    
+		    Var g As WakeLongSession = WakeLongSession(byID.Value(id).ObjectValue)
+		    Var carried As Int64 = row.Column("carried").Int64Value
+		    If g.TippingTurn > 0 Or carried <= row.Column("turn_tokens").Int64Value - carried Then Continue
+		    g.TippingTurn = number
+		    g.TippingPrompt = row.Column("summary").StringValue
+		    g.TippingTime = TimeFrom(row.Column("timestamp"))
+		  Next
+		  
+		  Return result
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function Models() As String()
 		  // Every model that has used tokens in any session, by name. Raises DatabaseException.
 		  Var result() As String
@@ -110,6 +191,8 @@ Protected Class WakeCatalog
 		    s.HasAgentCost = Not row.Column("agent_cost_usd").Value.IsNull
 		    If s.HasAgentCost Then s.AgentCostUSD = row.Column("agent_cost_usd").DoubleValue
 		    
+		    s.StartingContextTokens = row.Column("starting_context_tokens").Int64Value
+		    s.CarriedTokens = row.Column("carried_tokens").Int64Value
 		    s.OwnUsage = UsageFrom(row)
 		    s.TotalUsage = UsageFrom(row, "total_")
 		    
@@ -592,6 +675,17 @@ Protected Class WakeCatalog
 		  For Each row As DatabaseRow In rs
 		    Var g As WakeUsageGroup = WakeUsageGroup(byKey.Lookup(row.Column("group_key").StringValue, Nil).ObjectValue)
 		    If g <> Nil Then g.Add(row.Column("model").StringValue, UsageFrom(row))
+		  Next
+		  
+		  // What the turns in each group carried. Turns have the columns the key needs under the same
+		  // names, so they take the usage table's alias.
+		  Var turnSource As String = source.Replace("FROM usage u ", "FROM turns u ")
+		  rs = mIndex.Database.SelectSQL("SELECT " + keyExpression + " AS group_key, sum(u.carried_tokens) AS carried" + _
+		  turnSource + " GROUP BY group_key", values)
+		  
+		  For Each row As DatabaseRow In rs
+		    Var g As WakeUsageGroup = WakeUsageGroup(byKey.Lookup(row.Column("group_key").StringValue, Nil).ObjectValue)
+		    If g <> Nil Then g.CarriedTokens = row.Column("carried").Int64Value
 		  Next
 		  
 		  Return groups

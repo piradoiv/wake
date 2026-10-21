@@ -37,6 +37,10 @@ Protected Class WakeUsageGroup
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
+		CarriedTokens As Int64
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
 		Key As String
 	#tag EndProperty
 

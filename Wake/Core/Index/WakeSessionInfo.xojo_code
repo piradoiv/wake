@@ -47,6 +47,10 @@ Protected Class WakeSessionInfo
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
+		CarriedTokens As Int64
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
 		EndTime As DateTime
 	#tag EndProperty
 
@@ -112,6 +116,10 @@ Protected Class WakeSessionInfo
 
 	#tag Property, Flags = &h0
 		PromptCount As Integer
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		StartingContextTokens As Int64
 	#tag EndProperty
 
 	#tag Property, Flags = &h0

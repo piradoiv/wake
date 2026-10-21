@@ -705,8 +705,14 @@ Protected Class WakeTimeline
 		  If e.TurnResponses > 0 Then parts.Add(If(e.TurnResponses = 1, "1 response", WakeFormat.Count(e.TurnResponses) + " responses"))
 		  Var total As WakeTokenUsage = e.TurnUsage.Total
 		  If Not total.IsEmpty Then parts.Add(WakeFormat.Tokens(total.Total) + " tokens")
+		  If e.TurnCarriedTokens > 0 Then parts.Add("≈" + WakeFormat.Tokens(e.TurnCarriedTokens) + " carried")
 
-		  Return Stats(parts, e.TurnUsage, "This turn, up to the next prompt")
+		  Var detail As String = "This turn, up to the next prompt"
+		  If e.TurnCarriedTokens > 0 Then
+		    detail = detail + ". About " + WakeFormat.Count(e.TurnCarriedTokens) + " of its tokens re-sent context from " + _
+		    "earlier turns, beyond the session's starting context."
+		  End If
+		  Return Stats(parts, e.TurnUsage, detail)
 		End Function
 	#tag EndMethod
 

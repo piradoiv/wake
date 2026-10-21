@@ -9,6 +9,7 @@ Protected Class WakeResponse
 		  Self.StartTime = startTime
 		  Self.EndTime = endTime
 		  FirstSequence = -1
+		  TurnSequence = -1
 		End Sub
 	#tag EndMethod
 
@@ -60,6 +61,10 @@ Protected Class WakeResponse
 
 	#tag Property, Flags = &h0
 		StartTime As DateTime
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		TurnSequence As Integer
 	#tag EndProperty
 
 	#tag Property, Flags = &h0

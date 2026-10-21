@@ -29,7 +29,7 @@ Protected Class WakeIndex
 		  
 		  mDB.BeginTransaction
 		  Try
-		    For Each name As String In Array("events_fts", "events", "tool_usage", "usage", "session_models", "sessions", "projects", "files", "meta")
+		    For Each name As String In Array("events_fts", "events", "turns", "tool_usage", "usage", "session_models", "sessions", "projects", "files", "meta")
 		      mDB.ExecuteSQL("DROP TABLE IF EXISTS " + name)
 		    Next
 		    
@@ -112,14 +112,15 @@ Protected Class WakeIndex
 		  "input_tokens, output_tokens, cache_write_tokens, cache_write_1h_tokens, cache_read_tokens, " + _
 		  "total_input_tokens, total_output_tokens, total_cache_write_tokens, total_cache_write_1h_tokens, " + _
 		  "total_cache_read_tokens, agent_cost_usd, partial, parse_note, subagent_type, subagent_description, " + _
-		  "parent_tool_use_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", _
+		  "parent_tool_use_id, starting_context_tokens, carried_tokens) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", _
 		  fileID, parentID, projectID, session.AgentID, uid, session.Title, session.FirstPrompt, _
 		  TimeValue(session.StartTime), TimeValue(session.EndTime), session.ActiveDurationMs, session.PromptCount, _
 		  session.Events.Count, If(session.IsCommandOnly, 1, 0), session.GitBranch, session.AgentVersion, _
 		  own.InputTokens, own.OutputTokens, own.CacheWriteTokens, own.CacheWrite1hTokens, own.CacheReadTokens, _
 		  total.InputTokens, total.OutputTokens, total.CacheWriteTokens, total.CacheWrite1hTokens, total.CacheReadTokens, _
 		  reportedCost, If(session.Report.IsPartial, 1, 0), session.Report.Summary, _
-		  session.SubagentType, session.SubagentDescription, session.ParentToolUseID)
+		  session.SubagentType, session.SubagentDescription, session.ParentToolUseID, _
+		  session.StartingContextTokens, session.CarriedTokens)
 		  
 		  Var sessionID As Integer = mDB.LastRowID
 		  
@@ -141,6 +142,7 @@ Protected Class WakeIndex
 		  
 		  InsertEvents(sessionID, session)
 		  InsertToolUsage(sessionID, session)
+		  InsertTurns(sessionID, session)
 		  
 		  For Each child As WakeSession In session.Subagents
 		    InsertSession(fileID, sessionID, projectID, child)
@@ -182,6 +184,38 @@ Protected Class WakeIndex
 		      sessionID, e.Sequence, isFirst, TimeValue(e.Timestamp), e.ToolName, e.ShellProgram, e.FileType, _
 		      target, WakeCallPattern.Key(e.Pattern), If(e.IsReread, 1, 0), model, added.Total, carried.CacheReadTokens, _
 		      added.InputTokens, added.CacheWriteTokens, added.CacheWrite1hTokens, carried.CacheReadTokens)
+		      isFirst = 0
+		    Next
+		  Next
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub InsertTurns(sessionID As Integer, session As WakeSession)
+		  // One row per turn and model, with the context at the turn's first response, the turn's
+		  // tokens (subagents included) and what it carried. is_first marks one row per turn, so
+		  // turns can be counted and their own figures summed once.
+		  For Each e As WakeEvent In session.Events
+		    If e.Kind <> WakeEvent.Kinds.UserPrompt Then Continue
+		    
+		    Var turnTokens As Int64
+		    If e.TurnUsage <> Nil Then turnTokens = e.TurnUsage.Total.Total
+		    
+		    Var models() As String
+		    If e.TurnCarriedUsage <> Nil Then
+		      For Each key As Variant In e.TurnCarriedUsage.ByModel.Keys
+		        models.Add(key.StringValue)
+		      Next
+		    End If
+		    If models.Count = 0 Then models.Add("")
+		    
+		    Var isFirst As Integer = 1
+		    For Each model As String In models
+		      Var carried As WakeTokenUsage = ModelUsage(e.TurnCarriedUsage, model)
+		      mDB.ExecuteSQL("INSERT INTO turns (session_id, seq, is_first, timestamp, model, context_tokens, " + _
+		      "turn_tokens, carried_tokens) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", _
+		      sessionID, e.Sequence, isFirst, TimeValue(e.Timestamp), model, e.TurnContextTokens, turnTokens, _
+		      carried.CacheReadTokens)
 		      isFirst = 0
 		    Next
 		  Next
@@ -287,7 +321,8 @@ Protected Class WakeIndex
 		  "total_cache_read_tokens INTEGER NOT NULL DEFAULT 0, " + _
 		  "agent_cost_usd REAL, partial INTEGER NOT NULL DEFAULT 0, parse_note TEXT NOT NULL DEFAULT '', " + _
 		  "subagent_type TEXT NOT NULL DEFAULT '', subagent_description TEXT NOT NULL DEFAULT '', " + _
-		  "parent_tool_use_id TEXT NOT NULL DEFAULT '')")
+		  "parent_tool_use_id TEXT NOT NULL DEFAULT '', starting_context_tokens INTEGER NOT NULL DEFAULT 0, " + _
+		  "carried_tokens INTEGER NOT NULL DEFAULT 0)")
 		  s.Add("CREATE INDEX sessions_file ON sessions (file_id)")
 		  s.Add("CREATE INDEX sessions_parent ON sessions (parent_id)")
 		  s.Add("CREATE INDEX sessions_project ON sessions (project_id, start_time)")
@@ -322,6 +357,15 @@ Protected Class WakeIndex
 		  "input_tokens INTEGER NOT NULL, cache_write_tokens INTEGER NOT NULL, cache_write_1h_tokens INTEGER NOT NULL, " + _
 		  "cache_read_tokens INTEGER NOT NULL)")
 		  s.Add("CREATE INDEX tool_usage_session ON tool_usage (session_id)")
+		  
+		  // One row per turn (a prompt up to the next one) and model. context_tokens is the context at
+		  // the turn's first response and turn_tokens everything the turn used, subagents included;
+		  // both repeat on each of the turn's rows. carried_tokens is what the model's responses
+		  // re-sent of older context beyond the session's starting context, as cache reads.
+		  s.Add("CREATE TABLE turns (session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE, " + _
+		  "seq INTEGER NOT NULL, is_first INTEGER NOT NULL, timestamp REAL, model TEXT NOT NULL, " + _
+		  "context_tokens INTEGER NOT NULL, turn_tokens INTEGER NOT NULL, carried_tokens INTEGER NOT NULL)")
+		  s.Add("CREATE INDEX turns_session ON turns (session_id, seq)")
 		  
 		  // The rowid of each search row is the id of its event.
 		  s.Add("CREATE VIRTUAL TABLE events_fts USING fts5(body, tokenize = 'unicode61 remove_diacritics 2')")
@@ -429,7 +473,7 @@ Protected Class WakeIndex
 	#tag Constant, Name = kMaxSearchTextLength, Type = Double, Dynamic = False, Default = \"65536", Scope = Public
 	#tag EndConstant
 
-	#tag Constant, Name = kSchemaVersion, Type = Double, Dynamic = False, Default = \"9", Scope = Public
+	#tag Constant, Name = kSchemaVersion, Type = Double, Dynamic = False, Default = \"10", Scope = Public
 	#tag EndConstant
 
 
