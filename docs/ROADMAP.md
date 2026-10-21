@@ -175,7 +175,25 @@ Each milestone below is one session's work, ending with tests and a commit.
   and the page shows "Session updated" with a Reload button, which scrolls
   back to where the page was. 108 tests.
 
-- [ ] **19. Context growth.** Every response re-sends the whole context, so a
+- [ ] **19. Unified title bar (macOS).** Every window opens with a row of
+  controls under the title bar: search and filters in the main window,
+  grouping and period in the Usage window, Expand, Collapse and Reload in the
+  timeline. On macOS, merge that row into a taller unified title bar, as
+  Finder, Mail and Xcode do, so the lists gain about 30 px and the windows look
+  native. The docs say `DesktopToolbar` holds only buttons and dividers, so
+  the search field and popups can't go in it, and `DesktopWindow` has no
+  unified or full-size-content setting. The likely way is declares on the
+  window's `NSWindow` in `Opening`: full-size content view, a transparent
+  title bar, an empty `NSToolbar` with the unified style for the bar's
+  height, and the title hidden where the controls need the room (the
+  timeline keeps its session title). Then move each row up beside the window
+  buttons. First, spike it on one window and check that controls laid out
+  at the very top get their clicks, that empty parts of the bar still drag
+  and double-click the window, and that full screen and dark mode look
+  right. Windows and Linux keep today's layout (`#If TargetMacOS`). The
+  maintainer checks each window by eye.
+
+- [ ] **20. Context growth.** Every response re-sends the whole context, so a
   long session pays for its early turns again on every later one. Per
   response, the context is input + cache write + cache read. Per turn (from
   one prompt to the next), Wake records the context at its first response
@@ -189,7 +207,7 @@ Each milestone below is one session's work, ending with tests and a commit.
   most, the turn where carrying began to cost more than the turn's own work,
   and generic advice (start a new session or compact at a task boundary).
 
-- [ ] **20. Reads that led nowhere.** A read (line range, section, whole
+- [ ] **21. Reads that led nowhere.** A read (line range, section, whole
   file) **led nowhere** when nothing later in the same context edits the
   file or mentions its path or file name: not an answer, a later tool call's
   input or a subagent prompt. It's a flag on the call (`tool_usage`
@@ -314,17 +332,19 @@ machine to inspect, and the console companion.
 - **`String` has no `LastIndexOf`.** Split, or loop with `IndexOf`.
 - **`DesktopProgressWheel.Active` can't be set in code.** Leave it `True` in
   the layout and toggle `Visible`.
-- **Window layouts are written by hand** in `MainWindow.xojo_window`. Copy
-  control property lists from the Xojo IDE's own windows (under
-  `~/Developer/Xojo/Xojo/<version>/IDE`), which are in the same text format.
+- **Window layouts are written by hand.** Copy control property lists from
+  this project's own windows. Never read Xojo's own sources (the IDE or the
+  framework): work from the public docs, as any Xojo user would. For a
+  control or property no window here uses yet, ask the maintainer to add it
+  in the IDE, then copy what the IDE saves.
 - **The shell can't take screenshots** (no screen-recording permission), so
   the maintainer has to check UI changes by eye.
 - **Search snippets mark matches with `&u02` and `&u03`.** The index replaces
   those characters in the text it stores.
 - **Subagents are one level deep.** Search finds an event's top-level session
   as its session's parent. Revisit this if nested subagents appear.
-- **No IDE window uses `DesktopSearchField`**, so there's no property list to
-  copy. The search field is a `DesktopTextField` with a hint, and Escape clears it.
+- **The search field is a `DesktopTextField`** with a hint, and Escape
+  clears it, not a `DesktopSearchField`.
 - **Opening a hit runs `wakeGoTo` with `ExecuteJavaScript`** after
   `DocumentComplete`. The page's CSP doesn't block native script calls
   (checked in the app on macOS).
