@@ -431,6 +431,14 @@ Begin DesktopWindow MainWindow
       Visible         =   False
       Width           =   662
    End
+   Begin MainWindowToolbar MainToolbar
+      Enabled         =   True
+      Index           =   -2147483648
+      LockedInPosition=   False
+      Scope           =   2
+      TabPanelIndex   =   0
+      Visible         =   True
+   End
 End
 #tag EndDesktopWindow
 
