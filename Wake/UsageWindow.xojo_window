@@ -524,7 +524,7 @@ End
 		  If bar = 0 Then Return
 
 		  GroupPopup.Left = WakeTitleBar.LeftInset(Self)
-		  GroupPopup.Top = (bar - GroupPopup.Height) \ 2
+		  GroupPopup.Top = WakeTitleBar.RowTop(Self, GroupPopup.Height)
 		  PeriodPopup.Left = GroupPopup.Left + GroupPopup.Width + 10
 		  PeriodPopup.Top = GroupPopup.Top
 
@@ -534,6 +534,7 @@ End
 
 		  // Spike only: what the window sees, for checking the coordinates.
 		  System.DebugLog("WakeTitleBar: bar " + bar.ToString + ", inset " + GroupPopup.Left.ToString _
+		  + ", row top " + GroupPopup.Top.ToString _
 		  + ", window height " + Self.Height.ToString + ", compact " + If(WakeTitleBar.IsCompact(Self), "yes", "no"))
 		End Sub
 	#tag EndMethod

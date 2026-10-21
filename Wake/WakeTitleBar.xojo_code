@@ -146,6 +146,43 @@ Protected Module WakeTitleBar
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function RowTop(w As DesktopWindow, controlHeight As Integer) As Integer
+		  // The Top that centres a control of this height on the close, minimize and zoom buttons. They
+		  // sit above the middle of the bar, so centring on the bar puts controls too low.
+		  #If TargetMacOS
+		    Const kZoomButton = 2
+
+		    Declare Function StandardWindowButton Lib "AppKit" Selector "standardWindowButton:" (window As Ptr, kind As Integer) As Ptr
+		    Declare Function Superview Lib "AppKit" Selector "superview" (view As Ptr) As Ptr
+		    Declare Function IsFlipped Lib "AppKit" Selector "isFlipped" (view As Ptr) As Boolean
+
+		    Var fallback As Integer = (Height(w) - controlHeight) \ 2
+		    Var zoom As Ptr = StandardWindowButton(w.Handle, kZoomButton)
+		    If zoom = Nil Then Return fallback
+		    Var parent As Ptr = Superview(zoom)
+		    If parent = Nil Then Return fallback
+
+		    // The buttons' view runs along the top of the window, so its top is the window's top.
+		    Var button As MemoryBlock = RectOf(zoom, "frame")
+		    Var bar As MemoryBlock = RectOf(parent, "frame")
+		    If button Is Nil Or bar Is Nil Then Return fallback
+
+		    Var middle As Double
+		    If IsFlipped(parent) Then
+		      middle = button.DoubleValue(8) + button.DoubleValue(24) / 2
+		    Else
+		      middle = bar.DoubleValue(24) - button.DoubleValue(8) - button.DoubleValue(24) / 2
+		    End If
+		    Return Round(middle - controlHeight / 2)
+		  #Else
+		    #Pragma Unused w
+		    #Pragma Unused controlHeight
+		    Return 0
+		  #EndIf
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub Unify(w As DesktopWindow, compact As Boolean)
 		  // On macOS 11 and later, merges the window's title bar and its top row of controls into one
 		  // unified bar, as Finder and Mail do. The content view then runs under the bar, the title is
