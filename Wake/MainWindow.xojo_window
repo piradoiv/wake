@@ -285,44 +285,32 @@ Begin DesktopWindow MainWindow
       Visible         =   True
       Width           =   974
    End
-   Begin DesktopTextField SearchField
+   Begin DesktopSearchField SearchField
       AllowAutoDeactivate=   True
       AllowFocusRing  =   True
-      AllowSpellChecking=   False
-      AllowTabs       =   False
-      BackgroundColor =   &cFFFFFF00
-      Bold            =   False
+      AllowRecentItems=   False
+      AllowTabStop    =   True
+      ClearMenuItemValue=   "Clear"
       Enabled         =   True
-      FontName        =   "System"
-      FontSize        =   0.0
-      FontUnit        =   0
-      Format          =   ""
-      HasBorder       =   True
-      Height          =   24
+      Height          =   26
       Hint            =   "Search prompts, answers, commands and output"
       Index           =   -2147483648
-      Italic          =   False
+      InitialParent   =   ""
       Left            =   228
       LockBottom      =   False
       LockedInPosition=   False
       LockLeft        =   True
       LockRight       =   True
       LockTop         =   True
-      MaximumCharactersAllowed=   0
-      Password        =   False
-      ReadOnly        =   False
+      MaximumRecentItems=   -1
+      RecentItemsValue=   "Recent Searches"
       Scope           =   2
       TabIndex        =   6
       TabPanelIndex   =   0
-      TabStop         =   True
       Text            =   ""
-      TextAlignment   =   0
-      TextColor       =   &c00000000
       Tooltip         =   "Words match as prefixes. Put a phrase in double quotes to match it exactly. Searches the agent or project selected on the left."
-      Top             =   6
+      Top             =   5
       Transparent     =   False
-      Underline       =   False
-      ValidationMask  =   ""
       Visible         =   True
       Width           =   640
    End
@@ -439,35 +427,6 @@ Begin DesktopWindow MainWindow
       TabPanelIndex   =   0
       Visible         =   True
    End
-   Begin DesktopSearchField SearchField1
-      AllowAutoDeactivate=   True
-      AllowFocusRing  =   True
-      AllowRecentItems=   False
-      AllowTabStop    =   True
-      ClearMenuItemValue=   "Clear"
-      Enabled         =   True
-      Height          =   26
-      Hint            =   ""
-      Index           =   -2147483648
-      InitialParent   =   ""
-      Left            =   1329
-      LockBottom      =   False
-      LockedInPosition=   False
-      LockLeft        =   True
-      LockRight       =   False
-      LockTop         =   True
-      MaximumRecentItems=   -1
-      RecentItemsValue=   "Recent Searches"
-      Scope           =   2
-      TabIndex        =   11
-      TabPanelIndex   =   0
-      Text            =   ""
-      Tooltip         =   ""
-      Top             =   320
-      Transparent     =   False
-      Visible         =   True
-      Width           =   110
-   End
 End
 #tag EndDesktopWindow
 
@@ -525,7 +484,6 @@ End
 	#tag MenuHandler
 		Function EditFind() As Boolean Handles EditFind.Action
 		  SearchField.SetFocus
-		  SearchField.SelectAll
 		  Return True
 		End Function
 	#tag EndMenuHandler
