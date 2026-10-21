@@ -240,7 +240,7 @@ Each milestone below is one session's work, ending with tests and a commit.
   `claude-code/nowhere/`. 116 tests. On real data (1,125 reads) 181 led
   nowhere, ≈24M tokens, 6% of all tool tokens; whole files 13%, line ranges
   21%. Before the two exceptions it was 356: screenshots were nearly always
-  flagged, as were saved outputs. Not yet checked by eye.
+  flagged, as were saved outputs. Checked by eye.
 
 - [ ] **23. Translucent sidebar (macOS).** The main window's source list sits
   on the sidebar material, as Finder and Mail do. Declares (in a module
