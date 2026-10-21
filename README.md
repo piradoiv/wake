@@ -9,7 +9,9 @@ your machine, but those files are rarely read. Wake turns them into something
 you can navigate: what the agent was asked, what it read, which commands it
 ran, which files it changed and how many tokens it used.
 
-> **Status:** v0.1 in progress. Claude Code sessions are fully supported.
+<img width="1412" height="792" alt="Captura de pantalla 2026-10-21 a las 9 05 12" src="https://github.com/user-attachments/assets/ec7936c9-c0e4-4f44-8da6-bf98df0d54ea" />
+
+> **Status:** Claude Code sessions are fully supported. Other coding agents are planned.
 
 ## What it does
 
@@ -78,7 +80,12 @@ See [docs/FORMATS.md](docs/FORMATS.md) for what Wake knows about each format.
 
 ## Screenshots
 
-Coming soon.
+<img width="1412" height="792" alt="Captura de pantalla 2026-10-21 a las 9 05 12" src="https://github.com/user-attachments/assets/e9a7456a-6013-43b2-9427-8b38ef9acffc" />
+
+<img width="992" height="870" alt="Captura de pantalla 2026-10-21 a las 9 22 35" src="https://github.com/user-attachments/assets/ad4fbe65-bd7e-473c-87ab-bd2f0295370a" />
+
+<img width="995" height="501" alt="Captura de pantalla 2026-10-21 a las 9 23 00" src="https://github.com/user-attachments/assets/7563b0e5-12c0-4f63-a1bc-8cdb0128a53a" />
+
 
 ## Building
 
