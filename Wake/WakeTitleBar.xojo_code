@@ -160,10 +160,10 @@ Protected Module WakeTitleBar
 
 	#tag Method, Flags = &h0
 		Sub SetToolbarSymbols(w As DesktopWindow, symbols() As String)
-		  // Gives the window's toolbar items, in order, these SF Symbols as AppKit's own images, which the
-		  // toolbar sizes as in Apple's apps (Xojo's own symbol images come out smaller), and shows the
-		  // arrow on items with a menu. Xojo may redraw an item when its caption changes, so call this
-		  // again after changing one.
+		  // Makes the window's toolbar items look like those of Apple's apps: bordered, so macOS 26 draws
+		  // them in Liquid Glass, with a round hover, and with these SF Symbols, one per item in order.
+		  // An empty name skips its item, such as a space. Xojo may redraw an item when its caption
+		  // changes, so call this again after changing one.
 		  #If TargetMacOS
 		    Declare Function NSClassFromString Lib "Foundation" (name As CFStringRef) As Ptr
 		    Declare Function NSSelectorFromString Lib "Foundation" (name As CFStringRef) As Ptr
@@ -193,6 +193,7 @@ Protected Module WakeTitleBar
 		    Var available As Integer = ItemCount(list)
 		    Var last As Integer = Min(available, symbols.Count) - 1
 		    For index As Integer = 0 To last
+		      If symbols(index) = "" Then Continue
 		      Var item As Ptr = ObjectAtIndex(list, index)
 		      Var image As Ptr = ImageWithSymbol(imageClass, symbols(index), Nil)
 		      If image <> Nil Then SetImage(item, image)

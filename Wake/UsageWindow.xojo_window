@@ -731,10 +731,18 @@ End
 		  // On macOS the grouping and period are toolbar menus, so they stay in the bar in full screen and
 		  // look like the bar's own items. They mirror the popups, which stay the model and are what
 		  // Windows and Linux show.
+		  mGroupItem = DesktopToolbarButton(UsageBar.ButtonAt(0))
+		  mPeriodItem = DesktopToolbarButton(UsageBar.ButtonAt(1))
+		  
 		  #If TargetMacOS
+		    // The space puts each menu in a capsule of its own, as Mail does with its menus.
+		    Var gap As New DesktopToolbarButton
+		    gap.ButtonStyle = DesktopToolbarButton.ButtonStyles.Space
+		    UsageBar.AddButtonAt(1, gap)
+		    
 		    UsageBar.Style = DesktopToolbar.Styles.IconOnly
-		    DesktopToolbarButton(UsageBar.ButtonAt(0)).Symbol = "tablecells"
-		    DesktopToolbarButton(UsageBar.ButtonAt(1)).Symbol = "calendar"
+		    mGroupItem.Symbol = "tablecells"
+		    mPeriodItem.Symbol = "calendar"
 		    GroupPopup.Visible = False
 		    PeriodPopup.Visible = False
 		    SyncToolbar
@@ -1069,9 +1077,9 @@ End
 		Private Sub SyncToolbar()
 		  // Gives each toolbar menu the rows of its popup, with the selected one checked and as the caption
 		  // and tooltip. On macOS the bar shows icons only, so the caption is what VoiceOver reads.
-		  SyncToolbarItem(DesktopToolbarButton(UsageBar.ButtonAt(0)), GroupPopup)
-		  SyncToolbarItem(DesktopToolbarButton(UsageBar.ButtonAt(1)), PeriodPopup)
-		  WakeTitleBar.SetToolbarSymbols(Self, Array("tablecells", "calendar"))
+		  SyncToolbarItem(mGroupItem, GroupPopup)
+		  SyncToolbarItem(mPeriodItem, PeriodPopup)
+		  WakeTitleBar.SetToolbarSymbols(Self, Array("tablecells", "", "calendar"))
 		End Sub
 	#tag EndMethod
 
@@ -1112,11 +1120,19 @@ End
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
+		Private mGroupItem As DesktopToolbarButton
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
 		Private mIndex As WakeIndex
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
 		Private mLoading As Boolean
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mPeriodItem As DesktopToolbarButton
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
@@ -1242,7 +1258,7 @@ End
 	#tag Event
 		Sub MenuItemSelected(item As DesktopToolbarItem, selectedItem As DesktopMenuItem)
 		  // Choosing from a toolbar menu selects that row in its popup, which reloads the window.
-		  If item Is UsageBar.ButtonAt(0) Then
+		  If item Is mGroupItem Then
 		    GroupPopup.SelectedRowIndex = selectedItem.Tag
 		  Else
 		    PeriodPopup.SelectedRowIndex = selectedItem.Tag
