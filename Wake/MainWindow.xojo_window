@@ -25,12 +25,14 @@ Begin DesktopWindow MainWindow
    Type            =   0
    Visible         =   True
    Width           =   1240
-   Begin DesktopListBox SourceList
+   Begin DesktopTable SourceList
       AllowAutoDeactivate=   True
       AllowAutoHideScrollbars=   True
+      AllowColumnReordering=   False
       AllowExpandableRows=   True
       AllowFocusRing  =   False
       AllowResizableColumns=   False
+      AllowResizableRows=   False
       AllowRowDragging=   False
       AllowRowReordering=   False
       Bold            =   False
@@ -44,13 +46,11 @@ Begin DesktopWindow MainWindow
       FontUnit        =   0
       GridLineStyle   =   0
       HasBorder       =   True
-      HasHeader       =   False
+      HasColumnHeader =   False
       HasHorizontalScrollbar=   False
       HasVerticalScrollbar=   True
-      HeadingIndex    =   -1
       Height          =   689
       Index           =   -2147483648
-      InitialParent   =   ""
       InitialValue    =   ""
       Italic          =   False
       Left            =   -1
@@ -71,15 +71,15 @@ Begin DesktopWindow MainWindow
       Underline       =   False
       Visible         =   True
       Width           =   221
-      _ScrollOffset   =   0
-      _ScrollWidth    =   -1
    End
-   Begin DesktopListBox SessionsList
+   Begin DesktopTable SessionsList
       AllowAutoDeactivate=   True
       AllowAutoHideScrollbars=   True
+      AllowColumnReordering=   False
       AllowExpandableRows=   False
       AllowFocusRing  =   False
       AllowResizableColumns=   True
+      AllowResizableRows=   False
       AllowRowDragging=   False
       AllowRowReordering=   False
       Bold            =   False
@@ -93,13 +93,11 @@ Begin DesktopWindow MainWindow
       FontUnit        =   0
       GridLineStyle   =   0
       HasBorder       =   True
-      HasHeader       =   True
+      HasColumnHeader =   True
       HasHorizontalScrollbar=   False
       HasVerticalScrollbar=   True
-      HeadingIndex    =   -1
       Height          =   653
       Index           =   -2147483648
-      InitialParent   =   ""
       InitialValue    =   ""
       Italic          =   False
       Left            =   219
@@ -120,8 +118,6 @@ Begin DesktopWindow MainWindow
       Underline       =   False
       Visible         =   True
       Width           =   662
-      _ScrollOffset   =   0
-      _ScrollWidth    =   -1
    End
    Begin WakeGlanceTiles GlanceTiles
       AllowAutoDeactivate=   True
@@ -150,12 +146,14 @@ Begin DesktopWindow MainWindow
       Visible         =   True
       Width           =   360
    End
-   Begin DesktopListBox DetailList
+   Begin DesktopTable DetailList
       AllowAutoDeactivate=   True
       AllowAutoHideScrollbars=   True
+      AllowColumnReordering=   False
       AllowExpandableRows=   False
       AllowFocusRing  =   False
       AllowResizableColumns=   False
+      AllowResizableRows=   False
       AllowRowDragging=   False
       AllowRowReordering=   False
       Bold            =   False
@@ -169,13 +167,11 @@ Begin DesktopWindow MainWindow
       FontUnit        =   0
       GridLineStyle   =   0
       HasBorder       =   True
-      HasHeader       =   False
+      HasColumnHeader =   False
       HasHorizontalScrollbar=   False
       HasVerticalScrollbar=   True
-      HeadingIndex    =   -1
       Height          =   435
       Index           =   -2147483648
-      InitialParent   =   ""
       InitialValue    =   ""
       Italic          =   False
       Left            =   880
@@ -196,8 +192,6 @@ Begin DesktopWindow MainWindow
       Underline       =   False
       Visible         =   True
       Width           =   361
-      _ScrollOffset   =   0
-      _ScrollWidth    =   -1
    End
    Begin DesktopCheckBox ShowCommandsCheckBox
       AllowAutoDeactivate=   True
@@ -390,12 +384,14 @@ Begin DesktopWindow MainWindow
       Visible         =   True
       Width           =   170
    End
-   Begin DesktopListBox HitsList
+   Begin DesktopTable HitsList
       AllowAutoDeactivate=   True
       AllowAutoHideScrollbars=   True
+      AllowColumnReordering=   False
       AllowExpandableRows=   False
       AllowFocusRing  =   False
       AllowResizableColumns=   True
+      AllowResizableRows=   False
       AllowRowDragging=   False
       AllowRowReordering=   False
       Bold            =   False
@@ -409,13 +405,11 @@ Begin DesktopWindow MainWindow
       FontUnit        =   0
       GridLineStyle   =   0
       HasBorder       =   True
-      HasHeader       =   True
+      HasColumnHeader =   True
       HasHorizontalScrollbar=   False
       HasVerticalScrollbar=   True
-      HeadingIndex    =   -1
       Height          =   653
       Index           =   -2147483648
-      InitialParent   =   ""
       InitialValue    =   ""
       Italic          =   False
       Left            =   219
@@ -436,8 +430,6 @@ Begin DesktopWindow MainWindow
       Underline       =   False
       Visible         =   False
       Width           =   662
-      _ScrollOffset   =   0
-      _ScrollWidth    =   -1
    End
 End
 #tag EndDesktopWindow
@@ -1055,23 +1047,23 @@ End
 
 	#tag Method, Flags = &h21
 		Private Sub SetUpLists()
-		  SourceList.ColumnAlignmentAt(1) = DesktopListBox.Alignments.Right
+		  SourceList.ColumnAlignmentAt(1) = DesktopTable.Alignments.Right
 		  
-		  SessionsList.HeaderAt(kColumnStarted) = "Started"
-		  SessionsList.HeaderAt(kColumnDuration) = "Duration"
-		  SessionsList.HeaderAt(kColumnTitle) = "Title"
-		  SessionsList.HeaderAt(kColumnAgent) = "Agent"
-		  SessionsList.HeaderAt(kColumnTokens) = "Tokens"
-		  SessionsList.HeaderAt(kColumnCost) = "Cost"
-		  SessionsList.HeaderAt(kColumnStatus) = " " // An empty heading shows the column number.
-		  SessionsList.ColumnAlignmentAt(kColumnDuration) = DesktopListBox.Alignments.Right
-		  SessionsList.ColumnAlignmentAt(kColumnTokens) = DesktopListBox.Alignments.Right
-		  SessionsList.ColumnAlignmentAt(kColumnCost) = DesktopListBox.Alignments.Right
+		  SessionsList.ColumnHeaderAt(kColumnStarted) = "Started"
+		  SessionsList.ColumnHeaderAt(kColumnDuration) = "Duration"
+		  SessionsList.ColumnHeaderAt(kColumnTitle) = "Title"
+		  SessionsList.ColumnHeaderAt(kColumnAgent) = "Agent"
+		  SessionsList.ColumnHeaderAt(kColumnTokens) = "Tokens"
+		  SessionsList.ColumnHeaderAt(kColumnCost) = "Cost"
+		  SessionsList.ColumnHeaderAt(kColumnStatus) = " " // An empty heading shows the column number.
+		  SessionsList.ColumnAlignmentAt(kColumnDuration) = DesktopTable.Alignments.Right
+		  SessionsList.ColumnAlignmentAt(kColumnTokens) = DesktopTable.Alignments.Right
+		  SessionsList.ColumnAlignmentAt(kColumnCost) = DesktopTable.Alignments.Right
 		  
-		  HitsList.HeaderAt(kHitColumnTime) = "Time"
-		  HitsList.HeaderAt(kHitColumnKind) = "Kind"
-		  HitsList.HeaderAt(kHitColumnMatch) = "Match"
-		  HitsList.HeaderAt(kHitColumnSession) = "Session"
+		  HitsList.ColumnHeaderAt(kHitColumnTime) = "Time"
+		  HitsList.ColumnHeaderAt(kHitColumnKind) = "Kind"
+		  HitsList.ColumnHeaderAt(kHitColumnMatch) = "Match"
+		  HitsList.ColumnHeaderAt(kHitColumnSession) = "Session"
 		  
 		  // Each kind row's tag lists the event kinds it searches, as the index names them.
 		  mLoading = True
@@ -1107,7 +1099,7 @@ End
 		  DatePopup.SelectedRowIndex = 0
 		  mLoading = False
 		  
-		  DetailList.ColumnAlignmentAt(0) = DesktopListBox.Alignments.Left
+		  DetailList.ColumnAlignmentAt(0) = DesktopTable.Alignments.Left
 		End Sub
 	#tag EndMethod
 
@@ -1444,7 +1436,7 @@ End
 		End Sub
 	#tag EndEvent
 	#tag Event
-		Function PaintCellText(g as Graphics, row as Integer, column as Integer, x as Integer, y as Integer) As Boolean
+		Function PaintCellText(g As Graphics, row As Integer, column As Integer, x As Integer, y As Integer) As Boolean
 		  // Hidden projects, listed while View → Show Hidden Projects is on, are drawn dimmed.
 		  #Pragma Unused column
 		  #Pragma Unused x
@@ -1479,7 +1471,7 @@ End
 #tag EndEvents
 #tag Events SessionsList
 	#tag Event
-		Function PaintCellText(g as Graphics, row as Integer, column as Integer, x as Integer, y as Integer) As Boolean
+		Function PaintCellText(g As Graphics, row As Integer, column As Integer, x As Integer, y As Integer) As Boolean
 		  // Draws a strip under the token count and cost, as long as the largest in the list, a "Live"
 		  // badge for sessions the agent is still writing, and a "Partial" badge for sessions the
 		  // parser could not read completely.
@@ -1514,7 +1506,7 @@ End
 		End Function
 	#tag EndEvent
 	#tag Event
-		Function RowComparison(row1 as Integer, row2 as Integer, column as Integer, ByRef result as Integer) As Boolean
+		Function RowComparison(row1 As Integer, row2 As Integer, column As Integer, ByRef result As Integer) As Boolean
 		  // Dates, durations, token counts and costs sort by value, not by their text. A session
 		  // with no price sorts below every priced one.
 		  Select Case column
@@ -1540,7 +1532,9 @@ End
 		End Sub
 	#tag EndEvent
 	#tag Event
-		Sub DoublePressed()
+		Sub DoublePressed(row As Integer, column As Integer)
+		  #Pragma Unused column
+		  If row < 0 Then Return
 		  OpenTimeline
 		End Sub
 	#tag EndEvent
@@ -1614,7 +1608,7 @@ End
 #tag EndEvents
 #tag Events HitsList
 	#tag Event
-		Function PaintCellText(g as Graphics, row as Integer, column as Integer, x as Integer, y as Integer) As Boolean
+		Function PaintCellText(g As Graphics, row As Integer, column As Integer, x As Integer, y As Integer) As Boolean
 		  // Draws the snippet with its matched terms in bold.
 		  If column <> kHitColumnMatch Or row > Me.LastRowIndex Then Return False
 		  
@@ -1657,7 +1651,7 @@ End
 		End Function
 	#tag EndEvent
 	#tag Event
-		Function RowComparison(row1 as Integer, row2 as Integer, column as Integer, ByRef result as Integer) As Boolean
+		Function RowComparison(row1 As Integer, row2 As Integer, column As Integer, ByRef result As Integer) As Boolean
 		  // Times sort by value, not by their text.
 		  If column <> kHitColumnTime Then Return False
 		  
@@ -1679,7 +1673,9 @@ End
 		End Sub
 	#tag EndEvent
 	#tag Event
-		Sub DoublePressed()
+		Sub DoublePressed(row As Integer, column As Integer)
+		  #Pragma Unused column
+		  If row < 0 Then Return
 		  OpenTimeline
 		End Sub
 	#tag EndEvent

@@ -190,7 +190,8 @@ Each milestone below is one session's work, ending with tests and a commit.
   control yet, so first the maintainer adds one table in the IDE. Copy its
   saved properties, and ask the maintainer about events or behaviour the
   public docs don't cover. Then note any differences from the list box here.
-  The maintainer checks each window by eye.
+  The maintainer checks each window by eye. Status: all seven are ported in
+  memory mode and the 108 tests pass. Tick this once the eye check is done.
 
 - [ ] **20. Unified title bar (macOS).** Every window opens with a row of
   controls under the title bar: search and filters in the main window,
@@ -286,7 +287,7 @@ machine to inspect, and the console companion.
 
 ## Working notes and gotchas
 
-- **Shared borders in MainWindow:** neighbouring bordered list boxes overlap by
+- **Shared borders in MainWindow:** neighbouring bordered tables overlap by
   1 px so their borders draw as one line: the left lists' right border and
   `DetailList`'s left border both sit at x 880. `GlanceTiles` draws no border,
   so it starts at 881 and the left list's border shows beside it.
@@ -342,8 +343,17 @@ machine to inspect, and the console companion.
 - **`String.ToDouble` follows the user's locale.** In Spanish, `"3.00".ToDouble`
   is 300. Read numbers the user types with `WakePriceTable.ParsePrice`, and
   numbers Wake wrote itself with `Val` or JSON.
-- **Leaving an edited listbox cell fires both `CellAction` and
-  `CellFocusLost`**, so whatever they call must be safe to run twice.
+- **Leaving an edited cell fires both `CellAction` and `CellFocusLost`**
+  (seen on the list box; the table may do the same), so whatever they call
+  must be safe to run twice.
+- **`DesktopTable` differs from the list box in a few names.** Headings are
+  `ColumnHeaderAt`, not `HeaderAt`. `DoublePressed(row, column)` gets the
+  row, so a handler returns early on `row < 0`. In the layout, `HasHeader`
+  becomes `HasColumnHeader`, there's no `HeadingIndex`, `InitialParent` or
+  `_ScrollOffset`/`_ScrollWidth`, and `AllowColumnReordering` and
+  `AllowResizableRows` are added. The IDE's inspector can't set a column's
+  type or alignment, so set them in code (`ColumnTypeAt`, `ColumnAlignmentAt`
+  with `DesktopTable.CellTypes` and `DesktopTable.Alignments`).
 - **A method call on a string literal doesn't parse** (`"abc".IndexOf(x)`).
   Assign the literal to a variable first.
 - **`String` has no `LastIndexOf`.** Split, or loop with `IndexOf`.

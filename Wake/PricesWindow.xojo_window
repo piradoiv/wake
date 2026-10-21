@@ -1,5 +1,5 @@
 #tag DesktopWindow
-Begin DesktopWindow PricesWindow Implements TableDataSource
+Begin DesktopWindow PricesWindow
    Backdrop        =   0
    BackgroundColor =   &cFFFFFF
    Composite       =   False
@@ -58,12 +58,14 @@ Begin DesktopWindow PricesWindow Implements TableDataSource
       Visible         =   True
       Width           =   736
    End
-   Begin DesktopListBox PricesList
+   Begin DesktopTable PricesList
       AllowAutoDeactivate=   True
       AllowAutoHideScrollbars=   True
+      AllowColumnReordering=   False
       AllowExpandableRows=   False
       AllowFocusRing  =   False
       AllowResizableColumns=   True
+      AllowResizableRows=   False
       AllowRowDragging=   False
       AllowRowReordering=   False
       Bold            =   False
@@ -77,13 +79,11 @@ Begin DesktopWindow PricesWindow Implements TableDataSource
       FontUnit        =   0
       GridLineStyle   =   0
       HasBorder       =   True
-      HasHeader       =   True
+      HasColumnHeader =   True
       HasHorizontalScrollbar=   False
       HasVerticalScrollbar=   True
-      HeadingIndex    =   -1
       Height          =   347
       Index           =   -2147483648
-      InitialParent   =   ""
       InitialValue    =   ""
       Italic          =   False
       Left            =   -1
@@ -104,55 +104,6 @@ Begin DesktopWindow PricesWindow Implements TableDataSource
       Underline       =   False
       Visible         =   True
       Width           =   762
-      _ScrollOffset   =   0
-      _ScrollWidth    =   -1
-   End
-   Begin DesktopTable Table1
-      AllowAutoDeactivate=   True
-      AllowAutoHideScrollbars=   True
-      AllowColumnReordering=   False
-      AllowExpandableRows=   True
-      AllowFocusRing  =   True
-      AllowResizableColumns=   False
-      AllowResizableRows=   False
-      AllowRowDragging=   False
-      AllowRowReordering=   False
-      Bold            =   False
-      ColumnCount     =   3
-      ColumnWidths    =   ""
-      DefaultRowHeight=   -1
-      DropIndicatorVisible=   False
-      Enabled         =   True
-      FontName        =   "System"
-      FontSize        =   0.0
-      FontUnit        =   0
-      GridLineStyle   =   1
-      HasBorder       =   True
-      HasColumnHeader =   True
-      HasHorizontalScrollbar=   False
-      HasVerticalScrollbar=   True
-      Height          =   200
-      Index           =   -2147483648
-      InitialValue    =   ""
-      Italic          =   False
-      Left            =   802
-      LockBottom      =   False
-      LockedInPosition=   False
-      LockLeft        =   True
-      LockRight       =   False
-      LockTop         =   True
-      RequiresSelection=   False
-      RowSelectionType=   0
-      Scope           =   2
-      TabIndex        =   2
-      TabPanelIndex   =   0
-      TabStop         =   True
-      Tooltip         =   ""
-      Top             =   40
-      Transparent     =   False
-      Underline       =   False
-      Visible         =   True
-      Width           =   300
    End
 End
 #tag EndDesktopWindow
@@ -160,15 +111,15 @@ End
 #tag WindowCode
 	#tag Event
 		Sub Opening()
-		  PricesList.HeaderAt(kColumnModel) = "Model"
-		  PricesList.HeaderAt(kColumnInput) = "Input"
-		  PricesList.HeaderAt(kColumnOutput) = "Output"
-		  PricesList.HeaderAt(kColumnCacheWrite) = "Cache write"
-		  PricesList.HeaderAt(kColumnCacheWrite1h) = "Cache write 1h"
-		  PricesList.HeaderAt(kColumnCacheRead) = "Cache read"
+		  PricesList.ColumnHeaderAt(kColumnModel) = "Model"
+		  PricesList.ColumnHeaderAt(kColumnInput) = "Input"
+		  PricesList.ColumnHeaderAt(kColumnOutput) = "Output"
+		  PricesList.ColumnHeaderAt(kColumnCacheWrite) = "Cache write"
+		  PricesList.ColumnHeaderAt(kColumnCacheWrite1h) = "Cache write 1h"
+		  PricesList.ColumnHeaderAt(kColumnCacheRead) = "Cache read"
 		  For column As Integer = kColumnInput To kColumnCacheRead
-		    PricesList.ColumnTypeAt(column) = DesktopListBox.CellTypes.TextField
-		    PricesList.ColumnAlignmentAt(column) = DesktopListBox.Alignments.Right
+		    PricesList.ColumnTypeAt(column) = DesktopTable.CellTypes.TextField
+		    PricesList.ColumnAlignmentAt(column) = DesktopTable.Alignments.Right
 		  Next
 		  
 		  If App.Prices.LoadError <> "" Then
@@ -208,14 +159,6 @@ End
 		End Function
 	#tag EndMenuHandler
 
-
-	#tag Method, Flags = &h21
-		Private Function CellTextAt(row As Integer, column As Integer) As String
-		  // Part of the TableDataSource interface.
-		  
-		  
-		End Function
-	#tag EndMethod
 
 	#tag Method, Flags = &h21
 		Private Sub CommitRow(row As Integer)
@@ -322,14 +265,6 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
-		Private Function RowCount() As Integer
-		  // Part of the TableDataSource interface.
-		  
-		  
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
 		Private Function SamePrice(a As WakeModelPrice, b As WakeModelPrice) As Boolean
 		  If a Is Nil Or b Is Nil Then Return a Is b
 		  Return a.InputPerMillion = b.InputPerMillion And a.OutputPerMillion = b.OutputPerMillion And _
@@ -394,13 +329,13 @@ End
 		End Sub
 	#tag EndEvent
 	#tag Event
-		Sub CellFocusLost(row as Integer, column as Integer)
+		Sub CellFocusLost(row As Integer, column As Integer)
 		  #Pragma Unused column
 		  CommitRow(row)
 		End Sub
 	#tag EndEvent
 	#tag Event
-		Function CellKeyDown(row as Integer, column as Integer, key as String) As Boolean
+		Function CellKeyDown(row As Integer, column As Integer, key As String) As Boolean
 		  // Tab edits the next price, going on to the next model's Input after Cache read.
 		  // Shift+Tab goes back. Some systems send Shift+Tab as &u19.
 		  If key <> &u09 And key <> &u19 Then Return False
@@ -430,33 +365,6 @@ End
 		  mNextColumn = nextColumn
 		  Timer.CallLater(0, AddressOf EditNextCell)
 		  Return True
-		End Function
-	#tag EndEvent
-#tag EndEvents
-#tag Events Table1
-	#tag Event
-		Sub Opening()
-		  Me.DataSource = Self
-		End Sub
-	#tag EndEvent
-	#tag Event
-		Sub CellAction(row As Integer, column As Integer)
-		  
-		End Sub
-	#tag EndEvent
-	#tag Event
-		Sub DoublePressed(row As Integer, column As Integer)
-		  
-		End Sub
-	#tag EndEvent
-	#tag Event
-		Function PaintCellText(g As Graphics, row As Integer, column As Integer, x As Integer, y As Integer) As Boolean
-		  
-		End Function
-	#tag EndEvent
-	#tag Event
-		Function RowComparison(row1 As Integer, row2 As Integer, column As Integer, ByRef result As Integer) As Boolean
-		  
 		End Function
 	#tag EndEvent
 #tag EndEvents

@@ -140,12 +140,14 @@ Begin DesktopWindow UsageWindow
       Visible         =   True
       Width           =   960
    End
-   Begin DesktopListBox UsageList
+   Begin DesktopTable UsageList
       AllowAutoDeactivate=   True
       AllowAutoHideScrollbars=   True
+      AllowColumnReordering=   False
       AllowExpandableRows=   False
       AllowFocusRing  =   False
       AllowResizableColumns=   True
+      AllowResizableRows=   False
       AllowRowDragging=   False
       AllowRowReordering=   False
       Bold            =   False
@@ -159,13 +161,11 @@ Begin DesktopWindow UsageWindow
       FontUnit        =   0
       GridLineStyle   =   0
       HasBorder       =   True
-      HasHeader       =   True
+      HasColumnHeader =   True
       HasHorizontalScrollbar=   False
       HasVerticalScrollbar=   True
-      HeadingIndex    =   -1
       Height          =   381
       Index           =   -2147483648
-      InitialParent   =   ""
       InitialValue    =   ""
       Italic          =   False
       Left            =   -1
@@ -186,15 +186,15 @@ Begin DesktopWindow UsageWindow
       Underline       =   False
       Visible         =   True
       Width           =   962
-      _ScrollOffset   =   0
-      _ScrollWidth    =   -1
    End
-   Begin DesktopListBox CallsList
+   Begin DesktopTable CallsList
       AllowAutoDeactivate=   True
       AllowAutoHideScrollbars=   True
+      AllowColumnReordering=   False
       AllowExpandableRows=   False
       AllowFocusRing  =   False
       AllowResizableColumns=   True
+      AllowResizableRows=   False
       AllowRowDragging=   False
       AllowRowReordering=   False
       Bold            =   False
@@ -208,13 +208,11 @@ Begin DesktopWindow UsageWindow
       FontUnit        =   0
       GridLineStyle   =   0
       HasBorder       =   True
-      HasHeader       =   True
+      HasColumnHeader =   True
       HasHorizontalScrollbar=   False
       HasVerticalScrollbar=   True
-      HeadingIndex    =   -1
       Height          =   201
       Index           =   -2147483648
-      InitialParent   =   ""
       InitialValue    =   ""
       Italic          =   False
       Left            =   -1
@@ -235,8 +233,6 @@ Begin DesktopWindow UsageWindow
       Underline       =   False
       Visible         =   False
       Width           =   962
-      _ScrollOffset   =   0
-      _ScrollWidth    =   -1
    End
    Begin DesktopLabel StatusLabel
       AllowAutoDeactivate=   True
@@ -384,7 +380,7 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
-		Private Function CompareCells(list As DesktopListBox, row1 As Integer, row2 As Integer, column As Integer, asText As Boolean) As Integer
+		Private Function CompareCells(list As DesktopTable, row1 As Integer, row2 As Integer, column As Integer, asText As Boolean) As Integer
 		  // Compares two rows by the cell tags of a column: as text, or by value.
 		  If asText Then Return list.CellTagAt(row1, column).StringValue.Compare(list.CellTagAt(row2, column).StringValue)
 		  
@@ -629,7 +625,7 @@ End
 	#tag Method, Flags = &h21
 		Private Sub SetHeaders(labels() As String)
 		  For column As Integer = 0 To labels.LastIndex
-		    UsageList.HeaderAt(column) = labels(column)
+		    UsageList.ColumnHeaderAt(column) = labels(column)
 		  Next
 		End Sub
 	#tag EndMethod
@@ -676,18 +672,18 @@ End
 		  PeriodPopup.SelectedRowIndex = 2
 		  
 		  For column As Integer = kColumnSessions To kColumnCost
-		    UsageList.ColumnAlignmentAt(column) = DesktopListBox.Alignments.Right
+		    UsageList.ColumnAlignmentAt(column) = DesktopTable.Alignments.Right
 		  Next
 		  For column As Integer = kCallColumnAdded To kCallColumnCost
-		    CallsList.ColumnAlignmentAt(column) = DesktopListBox.Alignments.Right
+		    CallsList.ColumnAlignmentAt(column) = DesktopTable.Alignments.Right
 		  Next
-		  CallsList.HeaderAt(kCallColumnTime) = "Time"
-		  CallsList.HeaderAt(kCallColumnSession) = "Session"
-		  CallsList.HeaderAt(kCallColumnIntent) = "Intent"
-		  CallsList.HeaderAt(kCallColumnCall) = "Call"
-		  CallsList.HeaderAt(kCallColumnAdded) = "≈ Added"
-		  CallsList.HeaderAt(kCallColumnCarried) = "≈ Re-read"
-		  CallsList.HeaderAt(kCallColumnCost) = "Est. cost"
+		  CallsList.ColumnHeaderAt(kCallColumnTime) = "Time"
+		  CallsList.ColumnHeaderAt(kCallColumnSession) = "Session"
+		  CallsList.ColumnHeaderAt(kCallColumnIntent) = "Intent"
+		  CallsList.ColumnHeaderAt(kCallColumnCall) = "Call"
+		  CallsList.ColumnHeaderAt(kCallColumnAdded) = "≈ Added"
+		  CallsList.ColumnHeaderAt(kCallColumnCarried) = "≈ Re-read"
+		  CallsList.ColumnHeaderAt(kCallColumnCost) = "Est. cost"
 		  mToolGrouping = -1
 		  
 		  mLoading = False
@@ -1116,7 +1112,7 @@ End
 #tag EndEvents
 #tag Events UsageList
 	#tag Event
-		Function RowComparison(row1 as Integer, row2 as Integer, column as Integer, ByRef result as Integer) As Boolean
+		Function RowComparison(row1 As Integer, row2 As Integer, column As Integer, ByRef result As Integer) As Boolean
 		  // Days sort by date and numbers by value, not by their text. A row with no price sorts
 		  // below every priced one.
 		  result = CompareCells(Me, row1, row2, column, column = kColumnLabel)
@@ -1132,12 +1128,14 @@ End
 #tag EndEvents
 #tag Events CallsList
 	#tag Event
-		Sub DoublePressed()
+		Sub DoublePressed(row As Integer, column As Integer)
+		  #Pragma Unused column
+		  If row < 0 Then Return
 		  OpenSelectedCall
 		End Sub
 	#tag EndEvent
 	#tag Event
-		Function RowComparison(row1 as Integer, row2 as Integer, column as Integer, ByRef result as Integer) As Boolean
+		Function RowComparison(row1 As Integer, row2 As Integer, column As Integer, ByRef result As Integer) As Boolean
 		  // Times and numbers sort by value. A call with no price sorts below every priced one.
 		  result = CompareCells(Me, row1, row2, column, column = kCallColumnSession Or column = kCallColumnIntent Or _
 		  column = kCallColumnCall)
