@@ -1341,7 +1341,7 @@ End
 		  // Mirrors the kind and date popups in their toolbar menus.
 		  WakeTitleBar.MirrorPopup(mKindItem, KindPopup)
 		  WakeTitleBar.MirrorPopup(mDateItem, DatePopup)
-		  WakeTitleBar.SetToolbarSymbols(Self, Array("", "line.3.horizontal.decrease", "calendar"))
+		  WakeTitleBar.StyleToolbarItems(Self)
 		End Sub
 	#tag EndMethod
 
@@ -1361,7 +1361,7 @@ End
 		Private Sub UnifyTitleBar()
 		  // Xojo sets its own toolbar style when the window first shows, so Opening runs this twice:
 		  // at once, and again right after the window is up, when the toolbar can take the search field.
-		  WakeTitleBar.Unify(Self, False)
+		  WakeTitleBar.Unify(Self)
 		  WakeTitleBar.AddSearchItem(Self, SearchField)
 		  SyncToolbar
 		  LayOutTitleBar

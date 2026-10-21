@@ -184,23 +184,21 @@ Each milestone below is one session's work, ending with tests and a commit.
   `DetailList` no longer selects rows. A `TableDataSource` can come later if
   the sessions list grows. 108 tests.
 
-- [ ] **20. Unified title bar (macOS).** Every window opens with a row of
-  controls under the title bar: search and filters in the main window,
-  grouping and period in the Usage window, Expand, Collapse and Reload in the
-  timeline. On macOS, merge that row into a taller unified title bar, as
-  Finder, Mail and Xcode do, so the lists gain about 30 px and the windows look
-  native. The docs say `DesktopToolbar` holds only buttons and dividers, so
-  the search field and popups can't go in it, and `DesktopWindow` has no
-  unified or full-size-content setting. The likely way is declares on the
-  window's `NSWindow` in `Opening`: full-size content view, a transparent
-  title bar, an empty `NSToolbar` with the unified style for the bar's
-  height, and the title hidden where the controls need the room (the
-  timeline keeps its session title). Then move each row up beside the window
-  buttons. First, spike it on one window and check that controls laid out
-  at the very top get their clicks, that empty parts of the bar still drag
-  and double-click the window, and that full screen and dark mode look
-  right. Windows and Linux keep today's layout (`#If TargetMacOS`). The
-  maintainer checks each window by eye.
+- [x] **20. Unified title bar (macOS).** The main and Usage windows have a
+  unified bar, as Mail does: `WakeTitleBar` (declares on the `NSWindow`) turns
+  on the full-size content view, a transparent title bar, the hidden title and
+  the unified toolbar style, and the content starts at `WakeTitleBar.Height`.
+  Their filters are `DesktopToolbar` DropDown items (`UsageToolbar`,
+  `MainWindowToolbar`), icons only, which mirror the popups
+  (`WakeTitleBar.MirrorPopup`): the popups stay the model and are what Windows
+  and Linux show, with the toolbar hidden. `StyleToolbarItems` borders the
+  items, so macOS 26 draws them in a Liquid Glass capsule, at 32 by 32 for a
+  round hover. The main window's search is AppKit's `NSSearchToolbarItem`
+  holding the `DesktopSearchField` (`AddSearchItem`). Empty parts of the bar
+  drag the window and follow the double-click setting. Full screen works, as
+  the items move to AppKit's overlay. The timeline and Prices windows keep
+  the standard title bar. Checked by eye on macOS 26; Windows and Linux
+  aren't checked. 108 tests.
 
 - [ ] **21. Context growth.** Every response re-sends the whole context, so a
   long session pays for its early turns again on every later one. Per
@@ -274,6 +272,8 @@ machine to inspect, and the console companion.
 | A Markdown export lists **prompts, commands and file changes**, not the answers or tool output. | It's a record of what was asked and what changed. The timeline has the rest. |
 | Code blocks and inline code in exports use a **fence longer than any backtick run** in their text. | Transcripts often contain Markdown, and a stray fence would break the report. |
 | The daily chart covers **at least 14 days**, with days outside the chosen period drawn lighter, and at most five years. | One bar for "Today" says nothing, and a bad timestamp mustn't draw thousands of bars. |
+| On macOS the main and Usage windows have a **unified bar** whose controls are **real toolbar items**, not Xojo controls laid out in the bar. | AppKit moves toolbar items into its overlay in full screen, where it hides anything else in the bar, and only toolbar items get the Liquid Glass look of Apple's own apps. |
+| The main window's search is AppKit's **`NSSearchToolbarItem`**, added through a **runtime subclass of Xojo's toolbar delegate**. | `DesktopToolbar` has no search item and only the delegate can create one. A field in a plain item drew no capsule. The maintainer accepted the risk of a Xojo update breaking it (four releases a year). |
 | Long blocks and persisted output are **fetched on demand** with `executeInXojoSync`, not embedded. | Keeps the page small for 10 MB transcripts. Persisted output is read only when asked for, capped at 4 MB. |
 
 ## Working notes and gotchas
@@ -363,8 +363,32 @@ machine to inspect, and the console companion.
   those characters in the text it stores.
 - **Subagents are one level deep.** Search finds an event's top-level session
   as its session's parent. Revisit this if nested subagents appear.
-- **The search field is a `DesktopTextField`** with a hint, and Escape
-  clears it, not a `DesktopSearchField`.
+- **The search field is a `DesktopSearchField`** (it was a text field before
+  milestone 20). The docs list no `SelectAll` for it, so Cmd+F only focuses it.
+- **`DesktopToolbar` in a unified bar:** the docs' `DesktopToolbarStyles` is
+  `DesktopToolbar.Styles` in code. In the file, `ButtonStyle = 3` is DropDown,
+  4 SeparateDropDown and 1 Separator (unsupported on macOS); add spaces in
+  code with the enum. Each item is an `NSToolbarItem` whose view is Xojo's own
+  button, so setting the item's image does nothing. Xojo resets the window's
+  toolbar style when it first shows, so windows apply `Unify` from `Opening`
+  and again with `Timer.CallLater(0, …)`. Captions under the icons made the
+  bar 66 points instead of 52; icons only fixes it. Bordered neighbours share
+  one glass capsule; a space between them gives capsules of different sizes.
+  Divided capsules (Mail's) need an `NSToolbarItemGroup`, which only the
+  delegate can make.
+- **Declares that read an `NSRect`** go through key-value coding
+  (`valueForKey:` and `getValue:size:` into a `MemoryBlock`), so no declare
+  returns a structure (the docs don't show how a `Structure` is written in a
+  text project). `array` is a reserved word, so don't use it as a declare
+  parameter name.
+- **The window buttons aren't centred in a unified bar:** in a 66-point bar
+  they sat at 25.5 points. Not needed now that the controls are
+  toolbar items, but worth knowing before laying out controls in the bar.
+- **Running the project** after edits doesn't need the maintainer: create
+  `Wake/XojoRunProject.txt` (Agentic Mode reloads the files), and read
+  `Wake/XojoCompileErrors.txt` if it appears. `System.DebugLog` output can be
+  read with `/usr/bin/log show --predicate 'composedMessage CONTAINS "…"'`
+  (plain `log` is a zsh builtin).
 - **Opening a hit runs `wakeGoTo` with `ExecuteJavaScript`** after
   `DocumentComplete`. The page's CSP doesn't block native script calls
   (checked in the app on macOS).

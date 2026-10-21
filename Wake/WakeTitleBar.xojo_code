@@ -6,7 +6,9 @@ Protected Module WakeTitleBar
 		  // with the Xojo field as its search field, so the field keeps its events. Xojo's toolbar has
 		  // no such item, and only the toolbar's delegate can make one, so this gives Xojo's delegate a
 		  // subclass, made at runtime, that answers for the search item and leaves every other item to
-		  // Xojo. Call it once the window is up. It does nothing before macOS 11 or off macOS.
+		  // Xojo. Call it once the window is up. It does nothing before macOS 11 or off macOS. The item
+		  // is kept for the life of the app, keyed by its toolbar, which is fine for the main window:
+		  // closing it quits Wake.
 		  #If TargetMacOS
 		    Declare Function NSClassFromString Lib "Foundation" (name As CFStringRef) As Ptr
 		    Declare Function NSSelectorFromString Lib "Foundation" (name As CFStringRef) As Ptr
@@ -51,7 +53,7 @@ Protected Module WakeTitleBar
 		      Call object_setClass(xojoDelegate, subclass)
 		    End If
 
-		    // The item is kept here for the window's life, so the delegate can hand it to the toolbar.
+		    // The item is kept here, so the delegate can hand it to the toolbar.
 		    Var item As Ptr = InitWithItemIdentifier(Alloc(searchClass), kSearchItemIdentifier)
 		    SetSearchField(item, field.Handle)
 		    mSearchItems.Value(Integer(bar)) = item
@@ -171,29 +173,6 @@ Protected Module WakeTitleBar
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
-		Function LeftInset(w As DesktopWindow) As Integer
-		  // Where controls in the bar can start: past the close, minimize and zoom buttons.
-		  Const kMargin = 12
-
-		  #If TargetMacOS
-		    Const kZoomButton = 2
-		    Const kGap = 14
-
-		    Declare Function StandardWindowButton Lib "AppKit" Selector "standardWindowButton:" (window As Ptr, kind As Integer) As Ptr
-
-		    Var zoom As Ptr = StandardWindowButton(w.Handle, kZoomButton)
-		    If zoom = Nil Then Return kMargin
-		    Var frame As MemoryBlock = RectOf(zoom, "frame")
-		    If frame Is Nil Then Return kMargin
-		    Return Round(frame.DoubleValue(0) + frame.DoubleValue(16)) + kGap
-		  #Else
-		    #Pragma Unused w
-		    Return kMargin
-		  #EndIf
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h0
 		Sub MirrorPopup(item As DesktopToolbarButton, popup As DesktopPopupMenu)
 		  // Gives a toolbar menu the rows of a popup, with the selected one checked and as the caption and
 		  // tooltip, so the popup can stay the model. Each menu item's tag is its row. A "-" row is a
@@ -239,63 +218,23 @@ Protected Module WakeTitleBar
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
-		Function RowTop(w As DesktopWindow, controlHeight As Integer) As Integer
-		  // The Top that centres a control of this height on the close, minimize and zoom buttons. They
-		  // sit above the middle of the bar, so centring on the bar puts controls too low.
+		Sub StyleToolbarItems(w As DesktopWindow)
+		  // Makes the window's Xojo toolbar items look like those of Apple's apps: bordered, so macOS 26
+		  // draws them in a Liquid Glass capsule, with a round hover. Xojo may redraw an item when its
+		  // caption changes, so call this again after changing one.
 		  #If TargetMacOS
-		    Const kZoomButton = 2
+		    Const kButtonSize = 32
 
-		    Declare Function StandardWindowButton Lib "AppKit" Selector "standardWindowButton:" (window As Ptr, kind As Integer) As Ptr
-		    Declare Function Superview Lib "AppKit" Selector "superview" (view As Ptr) As Ptr
-		    Declare Function IsFlipped Lib "AppKit" Selector "isFlipped" (view As Ptr) As Boolean
-
-		    Var fallback As Integer = (Height(w) - controlHeight) \ 2
-		    Var zoom As Ptr = StandardWindowButton(w.Handle, kZoomButton)
-		    If zoom = Nil Then Return fallback
-		    Var parent As Ptr = Superview(zoom)
-		    If parent = Nil Then Return fallback
-
-		    // The buttons' view runs along the top of the window, so its top is the window's top.
-		    Var button As MemoryBlock = RectOf(zoom, "frame")
-		    Var bar As MemoryBlock = RectOf(parent, "frame")
-		    If button Is Nil Or bar Is Nil Then Return fallback
-
-		    Var middle As Double
-		    If IsFlipped(parent) Then
-		      middle = button.DoubleValue(8) + button.DoubleValue(24) / 2
-		    Else
-		      middle = bar.DoubleValue(24) - button.DoubleValue(8) - button.DoubleValue(24) / 2
-		    End If
-		    Return Round(middle - controlHeight / 2)
-		  #Else
-		    #Pragma Unused w
-		    #Pragma Unused controlHeight
-		    Return 0
-		  #EndIf
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h0
-		Sub SetToolbarSymbols(w As DesktopWindow, symbols() As String)
-		  // Makes the window's toolbar items look like those of Apple's apps: bordered, so macOS 26 draws
-		  // them in Liquid Glass, with a round hover, and with these SF Symbols, one per item in order.
-		  // An empty name skips its item. Xojo may redraw an item when its caption changes, so call
-		  // this again after changing one.
-		  #If TargetMacOS
-		    Declare Function NSClassFromString Lib "Foundation" (name As CFStringRef) As Ptr
 		    Declare Function NSSelectorFromString Lib "Foundation" (name As CFStringRef) As Ptr
 		    Declare Function RespondsToSelector Lib "Foundation" Selector "respondsToSelector:" (obj As Ptr, sel As Ptr) As Boolean
+		    Declare Function IsEqualToString Lib "Foundation" Selector "isEqualToString:" (value As Ptr, other As CFStringRef) As Boolean
 		    Declare Function Toolbar Lib "AppKit" Selector "toolbar" (window As Ptr) As Ptr
 		    Declare Function Items Lib "AppKit" Selector "items" (toolbar As Ptr) As Ptr
 		    Declare Function ItemCount Lib "Foundation" Selector "count" (nsArray As Ptr) As UInteger
 		    Declare Function ObjectAtIndex Lib "Foundation" Selector "objectAtIndex:" (nsArray As Ptr, index As UInteger) As Ptr
-		    Declare Function ImageWithSymbol Lib "AppKit" Selector "imageWithSystemSymbolName:accessibilityDescription:" (cls As Ptr, name As CFStringRef, description As Ptr) As Ptr
-		    Declare Sub SetImage Lib "AppKit" Selector "setImage:" (item As Ptr, image As Ptr)
-		    Declare Sub SetShowsIndicator Lib "AppKit" Selector "setShowsIndicator:" (item As Ptr, value As Boolean)
-		    Declare Sub SetBordered Lib "AppKit" Selector "setBordered:" (item As Ptr, value As Boolean)
+		    Declare Function ItemIdentifier Lib "AppKit" Selector "itemIdentifier" (item As Ptr) As Ptr
 		    Declare Function View Lib "AppKit" Selector "view" (item As Ptr) As Ptr
-		    Declare Function ClassOf Lib "Foundation" Selector "class" (obj As Ptr) As Ptr
-		    Declare Function NSStringFromClass Lib "Foundation" (cls As Ptr) As CFStringRef
+		    Declare Sub SetBordered Lib "AppKit" Selector "setBordered:" (item As Ptr, value As Boolean)
 		    Declare Function WidthAnchor Lib "AppKit" Selector "widthAnchor" (view As Ptr) As Ptr
 		    Declare Function HeightAnchor Lib "AppKit" Selector "heightAnchor" (view As Ptr) As Ptr
 		    Declare Function ConstraintEqualToConstant Lib "AppKit" Selector "constraintEqualToConstant:" (anchor As Ptr, value As CGFloat) As Ptr
@@ -303,57 +242,44 @@ Protected Module WakeTitleBar
 
 		    Var bar As Ptr = Toolbar(w.Handle)
 		    If bar = Nil Then Return
-		    Var imageClass As Ptr = NSClassFromString("NSImage")
-		    If Not RespondsToSelector(imageClass, NSSelectorFromString("imageWithSystemSymbolName:accessibilityDescription:")) Then Return
 
 		    Var list As Ptr = Items(bar)
 		    Var available As Integer = ItemCount(list)
-		    Var last As Integer = Min(available, symbols.Count) - 1
-		    For index As Integer = 0 To last
-		      If symbols(index) = "" Then Continue
+		    For index As Integer = 0 To available - 1
+		      // Spaces have no view, and the search item draws its own capsule.
 		      Var item As Ptr = ObjectAtIndex(list, index)
-		      Var image As Ptr = ImageWithSymbol(imageClass, symbols(index), Nil)
-		      If image <> Nil Then SetImage(item, image)
-		      If RespondsToSelector(item, NSSelectorFromString("setShowsIndicator:")) Then SetShowsIndicator(item, True)
-		      // Bordered items get a capsule, drawn in Liquid Glass on macOS 26, as in Apple's apps.
-		      If RespondsToSelector(item, NSSelectorFromString("setBordered:")) Then SetBordered(item, True)
-		      
-		      // Xojo puts its own button in the item. With icons only it comes out 36 by 24 points, so the
-		      // hover highlight is a short, wide pill inside the capsule. Xojo's own size before that, 32
-		      // by 32, gives the round highlight of a native icon button. Constraints are added only once.
-		      Const kButtonSize = 32
 		      Var itemView As Ptr = View(item)
-		      If itemView = Nil Then Continue
+		      If itemView = Nil Or IsEqualToString(ItemIdentifier(item), kSearchItemIdentifier) Then Continue
+
+		      If RespondsToSelector(item, NSSelectorFromString("setBordered:")) Then SetBordered(item, True)
+
+		      // Xojo's button comes out 36 by 24 points with icons only, so the hover was a short, wide
+		      // pill. At 32 by 32, Xojo's own size before that, it's round. The check keeps the
+		      // constraints from being added again.
 		      Var frame As MemoryBlock = RectOf(itemView, "frame")
 		      If frame Is Nil Then Continue
 		      If frame.DoubleValue(24) < kButtonSize - 0.5 Then
 		        SetActive(ConstraintEqualToConstant(WidthAnchor(itemView), kButtonSize), True)
 		        SetActive(ConstraintEqualToConstant(HeightAnchor(itemView), kButtonSize), True)
 		      End If
-		      
-		      // Spike only: the button's size before this call's constraints.
-		      System.DebugLog("WakeTitleBar: item " + index.ToString + " " + frame.DoubleValue(16).ToString + " x " + frame.DoubleValue(24).ToString)
 		    Next
 		  #Else
 		    #Pragma Unused w
-		    #Pragma Unused symbols
 		  #EndIf
 		End Sub
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
-		Sub Unify(w As DesktopWindow, compact As Boolean)
-		  // On macOS 11 and later, merges the window's title bar and its top row of controls into one
-		  // unified bar, as Finder and Mail do. The content view then runs under the bar, the title is
-		  // hidden (it still names the window in the Window menu), and an empty toolbar gives the bar
-		  // its height, unless the window has a toolbar of its own. The window lays its content out
-		  // with Height, and any controls it keeps in the bar with LeftInset and RowTop. Elsewhere
-		  // this does nothing.
+		Sub Unify(w As DesktopWindow)
+		  // On macOS 11 and later, merges the window's title bar and its toolbar into one unified bar,
+		  // as Finder and Mail do. The content view then runs under the bar, so the window lays its
+		  // content out from Height. The title is hidden, but still names the window in the Window
+		  // menu. A window without a toolbar gets an empty one, for the bar's height. Elsewhere this
+		  // does nothing.
 		  #If TargetMacOS
 		    Const kFullSizeContentView As UInteger = &h8000
 		    Const kTitleHidden = 1
 		    Const kToolbarStyleUnified = 3
-		    Const kToolbarStyleUnifiedCompact = 4
 
 		    Declare Function NSClassFromString Lib "Foundation" (name As CFStringRef) As Ptr
 		    Declare Function NSSelectorFromString Lib "Foundation" (name As CFStringRef) As Ptr
@@ -372,12 +298,10 @@ Protected Module WakeTitleBar
 		    Var window As Ptr = w.Handle
 		    If Not RespondsToSelector(window, NSSelectorFromString("setToolbarStyle:")) Then Return
 
-		    // The style goes on before the toolbar. The other way round, the regular bar first measured
-		    // 66 points instead of 52.
 		    SetStyleMask(window, StyleMask(window) Or kFullSizeContentView)
 		    SetTitlebarAppearsTransparent(window, True)
 		    SetTitleVisibility(window, kTitleHidden)
-		    SetToolbarStyle(window, If(compact, kToolbarStyleUnifiedCompact, kToolbarStyleUnified))
+		    SetToolbarStyle(window, kToolbarStyleUnified)
 
 		    If Toolbar(window) = Nil Then
 		      Var bar As Ptr = InitWithIdentifier(Alloc(NSClassFromString("NSToolbar")), "WakeTitleBar")
@@ -386,7 +310,6 @@ Protected Module WakeTitleBar
 		    End If
 		  #Else
 		    #Pragma Unused w
-		    #Pragma Unused compact
 		  #EndIf
 		End Sub
 	#tag EndMethod

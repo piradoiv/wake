@@ -525,9 +525,6 @@ End
 		  GlanceTiles.Top = bar
 		  DayChart.Top = GlanceTiles.Top + GlanceTiles.Height
 		  UsageList.Top = DayChart.Top + DayChart.Height + 4
-		  
-		  // Spike only: what the window sees, for checking the coordinates.
-		  System.DebugLog("WakeTitleBar: bar " + bar.ToString + ", window height " + Self.Height.ToString)
 		End Sub
 	#tag EndMethod
 
@@ -1074,7 +1071,7 @@ End
 		  // and tooltip. On macOS the bar shows icons only, so the caption is what VoiceOver reads.
 		  WakeTitleBar.MirrorPopup(mGroupItem, GroupPopup)
 		  WakeTitleBar.MirrorPopup(mPeriodItem, PeriodPopup)
-		  WakeTitleBar.SetToolbarSymbols(Self, Array("tablecells", "calendar"))
+		  WakeTitleBar.StyleToolbarItems(Self)
 		End Sub
 	#tag EndMethod
 
@@ -1082,7 +1079,7 @@ End
 		Private Sub UnifyTitleBar()
 		  // Xojo sets its own toolbar style when the window first shows, so Opening runs this twice:
 		  // at once, and again right after the window is up.
-		  WakeTitleBar.Unify(Self, False)
+		  WakeTitleBar.Unify(Self)
 		  SyncToolbar
 		  LayOutTitleBar
 		  LayOutLists
