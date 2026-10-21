@@ -218,7 +218,7 @@ Each milestone below is one session's work, ending with tests and a commit.
   sessions". Fixture session 8 is in its own root, `claude-code/context/`.
   112 tests. On real data (121 files, 403 turns) 27% of all tokens were
   carried, 50–75% in the longest sessions, where carrying overtook the work
-  by turns 2–5. Not yet checked by eye.
+  by turns 2–5. Checked by eye.
 
 - [ ] **22. Reads that led nowhere.** A read (line range, section, whole
   file) **led nowhere** when nothing later in the same context edits the
