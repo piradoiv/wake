@@ -179,50 +179,6 @@ Inherits TestGroup
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
-		Sub SessionForFileTest()
-		  // Windows find their session again by file, because ids change when a file is re-indexed.
-		  Var listed As WakeSessionInfo = FindSession(mCatalog.Sessions("", 0), 4)
-		  Var s As WakeSessionInfo = mCatalog.SessionForFile(listed.FilePath)
-		  Assert.IsNotNil(s)
-		  If s Is Nil Then Return
-		  Assert.AreEqual(listed.ID, s.ID)
-		  Assert.AreEqual(0, s.ParentID, "the top-level session, not its subagent")
-		  Var modelCount As Integer = s.Models.Count
-		  Assert.IsTrue(modelCount > 0, "with per-model usage")
-		  
-		  Assert.IsNil(mCatalog.SessionForFile(mScratch.Child("missing.jsonl").NativePath))
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h0
-		Sub SettingsFileTest()
-		  Var f As FolderItem = mScratch.Child("settings.json")
-		  Assert.IsTrue(WakeSettings.Load(f).WatchForChanges, "watching is on by default")
-		  
-		  TestSupport.AppendLine(f, "{""watchForChanges"": false, ""laterSetting"": 3}")
-		  Var settings As WakeSettings = WakeSettings.Load(f)
-		  Assert.IsFalse(settings.WatchForChanges)
-		  
-		  settings.WatchForChanges = True
-		  settings.Save(f)
-		  Var input As TextInputStream = TextInputStream.Open(f)
-		  input.Encoding = Encodings.UTF8
-		  Var saved As Dictionary = WakeCore.AsDictionary(ParseJSON(input.ReadAll))
-		  input.Close
-		  Assert.IsTrue(saved.Lookup("watchForChanges", False).BooleanValue)
-		  Assert.AreEqual(3, saved.Lookup("laterSetting", 0).IntegerValue, "unknown keys are kept")
-		  
-		  Var wrongType As FolderItem = mScratch.Child("wrong-type.json")
-		  TestSupport.AppendLine(wrongType, "{""watchForChanges"": ""no""}")
-		  Assert.IsTrue(WakeSettings.Load(wrongType).WatchForChanges, "a value of the wrong type")
-		  
-		  Var broken As FolderItem = mScratch.Child("broken.json")
-		  TestSupport.AppendLine(broken, "{""watchForChanges"": ")
-		  Assert.IsTrue(WakeSettings.Load(broken).WatchForChanges, "malformed JSON")
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h0
 		Sub SessionFlagsTest()
 		  Var all() As WakeSessionInfo = mCatalog.Sessions("", 0, True)
 		  
@@ -239,6 +195,22 @@ Inherits TestGroup
 		  Assert.IsTrue(s5.IsCommandOnly)
 		  Assert.IsNil(s5.StartTime)
 		  Assert.AreEqual(WakeFormat.kUnknown, WakeFormat.Duration(s5.DurationSeconds))
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub SessionForFileTest()
+		  // Windows find their session again by file, because ids change when a file is re-indexed.
+		  Var listed As WakeSessionInfo = FindSession(mCatalog.Sessions("", 0), 4)
+		  Var s As WakeSessionInfo = mCatalog.SessionForFile(listed.FilePath)
+		  Assert.IsNotNil(s)
+		  If s Is Nil Then Return
+		  Assert.AreEqual(listed.ID, s.ID)
+		  Assert.AreEqual(0, s.ParentID, "the top-level session, not its subagent")
+		  Var modelCount As Integer = s.Models.Count
+		  Assert.IsTrue(modelCount > 0, "with per-model usage")
+		  
+		  Assert.IsNil(mCatalog.SessionForFile(mScratch.Child("missing.jsonl").NativePath))
 		End Sub
 	#tag EndMethod
 
@@ -270,6 +242,34 @@ Inherits TestGroup
 		    Assert.AreEqual(demo.ID, s.ProjectID)
 		    Assert.AreEqual("/Users/dev/demo", s.ProjectPath)
 		  Next
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub SettingsFileTest()
+		  Var f As FolderItem = mScratch.Child("settings.json")
+		  Assert.IsTrue(WakeSettings.Load(f).WatchForChanges, "watching is on by default")
+		  
+		  TestSupport.AppendLine(f, "{""watchForChanges"": false, ""laterSetting"": 3}")
+		  Var settings As WakeSettings = WakeSettings.Load(f)
+		  Assert.IsFalse(settings.WatchForChanges)
+		  
+		  settings.WatchForChanges = True
+		  settings.Save(f)
+		  Var input As TextInputStream = TextInputStream.Open(f)
+		  input.Encoding = Encodings.UTF8
+		  Var saved As Dictionary = WakeCore.AsDictionary(ParseJSON(input.ReadAll))
+		  input.Close
+		  Assert.IsTrue(saved.Lookup("watchForChanges", False).BooleanValue)
+		  Assert.AreEqual(3, saved.Lookup("laterSetting", 0).IntegerValue, "unknown keys are kept")
+		  
+		  Var wrongType As FolderItem = mScratch.Child("wrong-type.json")
+		  TestSupport.AppendLine(wrongType, "{""watchForChanges"": ""no""}")
+		  Assert.IsTrue(WakeSettings.Load(wrongType).WatchForChanges, "a value of the wrong type")
+		  
+		  Var broken As FolderItem = mScratch.Child("broken.json")
+		  TestSupport.AppendLine(broken, "{""watchForChanges"": ")
+		  Assert.IsTrue(WakeSettings.Load(broken).WatchForChanges, "malformed JSON")
 		End Sub
 	#tag EndMethod
 

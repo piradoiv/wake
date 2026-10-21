@@ -313,11 +313,11 @@ Inherits DesktopApplication
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
-		Private mLastFailure As String
+		Private mHiddenProjects As WakeHiddenProjects
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
-		Private mHiddenProjects As WakeHiddenProjects
+		Private mLastFailure As String
 	#tag EndProperty
 
 	#tag Property, Flags = &h21

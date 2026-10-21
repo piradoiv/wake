@@ -288,6 +288,24 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Sub LayOutHeader()
+		  // The tiles take the height their rows need at this width, then the buttons, then the page.
+		  // The canvas pads its tiles by 12, so they line up with the page's 24-point margin.
+		  GlanceTiles.Left = 12
+		  GlanceTiles.Width = Width - 24
+		  GlanceTiles.Height = GlanceTiles.HeightFor(GlanceTiles.Width)
+		  
+		  ExpandButton.Top = GlanceTiles.Top + GlanceTiles.Height
+		  CollapseButton.Top = ExpandButton.Top
+		  UpdateLabel.Top = ExpandButton.Top
+		  ReloadButton.Top = ExpandButton.Top
+		  
+		  TimelineViewer.Top = ExpandButton.Top + ExpandButton.Height + 10
+		  TimelineViewer.Height = Height - TimelineViewer.Top
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function LoadLatest() As Boolean
 		  // Takes the session and its usage per model as the index has them now. False, keeping
 		  // what was shown, when the index can't be read or no longer has the session.
@@ -312,24 +330,6 @@ End
 		  Title = found.DisplayTitle
 		  Return True
 		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Sub LayOutHeader()
-		  // The tiles take the height their rows need at this width, then the buttons, then the page.
-		  // The canvas pads its tiles by 12, so they line up with the page's 24-point margin.
-		  GlanceTiles.Left = 12
-		  GlanceTiles.Width = Width - 24
-		  GlanceTiles.Height = GlanceTiles.HeightFor(GlanceTiles.Width)
-		  
-		  ExpandButton.Top = GlanceTiles.Top + GlanceTiles.Height
-		  CollapseButton.Top = ExpandButton.Top
-		  UpdateLabel.Top = ExpandButton.Top
-		  ReloadButton.Top = ExpandButton.Top
-		  
-		  TimelineViewer.Top = ExpandButton.Top + ExpandButton.Height + 10
-		  TimelineViewer.Height = Height - TimelineViewer.Top
-		End Sub
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
@@ -463,19 +463,6 @@ End
 		End Sub
 	#tag EndEvent
 #tag EndEvents
-#tag Events ReloadButton
-	#tag Event
-		Sub Pressed()
-		  // The page reports how far down it is scrolled, then the session reloads. If the report
-		  // doesn't come in time, it reloads at the top.
-		  If Not mLoadingPage Then
-		    TimelineViewer.ExecuteJavaScript("if (typeof executeInXojoSync === 'function') executeInXojoSync('" + _
-		    kScrollMethod + "', String(Math.round(window.scrollY)));")
-		  End If
-		  Timer.CallLater(kReloadDelay, AddressOf ReloadSession)
-		End Sub
-	#tag EndEvent
-#tag EndEvents
 #tag Events CollapseButton
 	#tag Event
 		Sub Pressed()
@@ -503,7 +490,7 @@ End
 		    TimelineViewer.ExecuteJavaScript("window.scrollTo(0, " + mRestoreScroll.ToString + ");")
 		    mRestoreScroll = 0
 		  End If
-
+		  
 		  // A search hit asked for an event before the page was ready. Anchors are generated ids,
 		  // never transcript text.
 		  If mPendingAnchor <> "" Then
@@ -523,5 +510,18 @@ End
 		  End If
 		  Return mTimeline.Request(method, parameters(0).StringValue)
 		End Function
+	#tag EndEvent
+#tag EndEvents
+#tag Events ReloadButton
+	#tag Event
+		Sub Pressed()
+		  // The page reports how far down it is scrolled, then the session reloads. If the report
+		  // doesn't come in time, it reloads at the top.
+		  If Not mLoadingPage Then
+		    TimelineViewer.ExecuteJavaScript("if (typeof executeInXojoSync === 'function') executeInXojoSync('" + _
+		    kScrollMethod + "', String(Math.round(window.scrollY)));")
+		  End If
+		  Timer.CallLater(kReloadDelay, AddressOf ReloadSession)
+		End Sub
 	#tag EndEvent
 #tag EndEvents
