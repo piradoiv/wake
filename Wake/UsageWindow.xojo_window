@@ -733,7 +733,7 @@ End
 		  // look like the bar's own items. They mirror the popups, which stay the model and are what
 		  // Windows and Linux show.
 		  #If TargetMacOS
-		    UsageBar.Style = DesktopToolbar.DesktopToolbarStyles.CaptionOnly
+		    UsageBar.Style = DesktopToolbar.Styles.CaptionOnly
 		    GroupPopup.Visible = False
 		    PeriodPopup.Visible = False
 		    SyncToolbar
