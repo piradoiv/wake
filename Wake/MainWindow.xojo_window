@@ -293,7 +293,7 @@ Begin DesktopWindow MainWindow
       ClearMenuItemValue=   "Clear"
       Enabled         =   True
       Height          =   26
-      Hint            =   "Search prompts, answers, commands and output"
+      Hint            =   "Search"
       Index           =   -2147483648
       InitialParent   =   ""
       Left            =   228
@@ -1149,6 +1149,8 @@ End
 		    MainToolbar.Style = DesktopToolbar.Styles.IconOnly
 		    mKindItem.Symbol = "line.3.horizontal.decrease"
 		    mDateItem.Symbol = "calendar"
+		    // The glass capsule is wider than the field, so its focus ring would be the wrong size.
+		    SearchField.AllowFocusRing = False
 		    KindPopup.Visible = False
 		    DatePopup.Visible = False
 		    SyncToolbar
