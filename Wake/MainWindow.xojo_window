@@ -1140,11 +1140,11 @@ End
 		  mDateItem = DesktopToolbarButton(MainToolbar.ButtonAt(1))
 		  
 		  #If TargetMacOS
-		    // The flexible space keeps the filters and search at the right, as in Mail. The search item
-		    // is added once the window is up.
+		    // The filters sit beside the window buttons and the flexible space pushes the search to the
+		    // right, as in Mail. The search item is added at the end once the window is up.
 		    Var flexible As New DesktopToolbarButton
 		    flexible.ButtonStyle = DesktopToolbarButton.ButtonStyles.FlexibleSpace
-		    MainToolbar.AddButtonAt(0, flexible)
+		    MainToolbar.AddButton(flexible)
 		    
 		    MainToolbar.Style = DesktopToolbar.Styles.IconOnly
 		    mKindItem.Symbol = "line.3.horizontal.decrease"
