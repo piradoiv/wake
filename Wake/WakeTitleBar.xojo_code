@@ -175,6 +175,10 @@ Protected Module WakeTitleBar
 		    Declare Function ImageWithSymbol Lib "AppKit" Selector "imageWithSystemSymbolName:accessibilityDescription:" (cls As Ptr, name As CFStringRef, description As Ptr) As Ptr
 		    Declare Sub SetImage Lib "AppKit" Selector "setImage:" (item As Ptr, image As Ptr)
 		    Declare Sub SetShowsIndicator Lib "AppKit" Selector "setShowsIndicator:" (item As Ptr, value As Boolean)
+		    Declare Sub SetBordered Lib "AppKit" Selector "setBordered:" (item As Ptr, value As Boolean)
+		    Declare Function View Lib "AppKit" Selector "view" (item As Ptr) As Ptr
+		    Declare Function ClassOf Lib "Foundation" Selector "class" (obj As Ptr) As Ptr
+		    Declare Function NSStringFromClass Lib "Foundation" (cls As Ptr) As CFStringRef
 
 		    Var bar As Ptr = Toolbar(w.Handle)
 		    If bar = Nil Then Return
@@ -189,6 +193,15 @@ Protected Module WakeTitleBar
 		      Var image As Ptr = ImageWithSymbol(imageClass, symbols(index), Nil)
 		      If image <> Nil Then SetImage(item, image)
 		      If RespondsToSelector(item, NSSelectorFromString("setShowsIndicator:")) Then SetShowsIndicator(item, True)
+		      // Bordered items get a capsule, drawn in Liquid Glass on macOS 26, as in Apple's apps.
+		      If RespondsToSelector(item, NSSelectorFromString("setBordered:")) Then SetBordered(item, True)
+		      
+		      // Spike only: what kind of item Xojo made.
+		      Var itemView As Ptr = View(item)
+		      Var viewClass As String = "none"
+		      If itemView <> Nil Then viewClass = NSStringFromClass(ClassOf(itemView))
+		      System.DebugLog("WakeTitleBar: item " + index.ToString + " is " + NSStringFromClass(ClassOf(item)) + ", view " + viewClass _
+		      + ", image " + If(image = Nil, "nil", "set"))
 		    Next
 		  #Else
 		    #Pragma Unused w
