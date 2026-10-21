@@ -353,7 +353,9 @@ machine to inspect, and the console companion.
   `_ScrollOffset`/`_ScrollWidth`, and `AllowColumnReordering` and
   `AllowResizableRows` are added. The IDE's inspector can't set a column's
   type or alignment, so set them in code (`ColumnTypeAt`, `ColumnAlignmentAt`
-  with `DesktopTable.CellTypes` and `DesktopTable.Alignments`).
+  with `DesktopTable.CellTypes` and `DesktopTable.Alignments`). There's no
+  "no selection" type: a read-only table (`DetailList`) returns True from
+  `MouseDown`, has `TabStop` off and clears any selection that gets through.
 - **A method call on a string literal doesn't parse** (`"abc".IndexOf(x)`).
   Assign the literal to a variable first.
 - **`String` has no `LastIndexOf`.** Split, or loop with `IndexOf`.

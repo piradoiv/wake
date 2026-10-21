@@ -185,7 +185,7 @@ Begin DesktopWindow MainWindow
       Scope           =   2
       TabIndex        =   2
       TabPanelIndex   =   0
-      TabStop         =   True
+      TabStop         =   False
       Tooltip         =   ""
       Top             =   253
       Transparent     =   False
@@ -1547,6 +1547,22 @@ End
 		  End If
 		  Return False
 		End Function
+	#tag EndEvent
+#tag EndEvents
+#tag Events DetailList
+	#tag Event
+		Function MouseDown(x As Integer, y As Integer) As Boolean
+		  // The details are only for reading, so clicks don't select rows.
+		  #Pragma Unused x
+		  #Pragma Unused y
+		  Return True
+		End Function
+	#tag EndEvent
+	#tag Event
+		Sub SelectionChanged()
+		  // The table has no setting for no selection, so drop any that gets through.
+		  If Me.SelectedRowIndex >= 0 Then Me.SelectedRowIndex = -1
+		End Sub
 	#tag EndEvent
 #tag EndEvents
 #tag Events ShowCommandsCheckBox
