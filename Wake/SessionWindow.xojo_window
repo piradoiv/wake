@@ -52,6 +52,31 @@ Begin DesktopWindow SessionWindow
       Visible         =   True
       Width           =   936
    End
+   Begin WakeContextChart ContextChart
+      AllowAutoDeactivate=   True
+      AllowFocus      =   False
+      AllowFocusRing  =   True
+      AllowTabs       =   False
+      Backdrop        =   0
+      Enabled         =   True
+      Height          =   110
+      Index           =   -2147483648
+      Left            =   12
+      LockBottom      =   False
+      LockedInPosition=   False
+      LockLeft        =   True
+      LockRight       =   True
+      LockTop         =   True
+      Scope           =   2
+      TabIndex        =   6
+      TabPanelIndex   =   0
+      TabStop         =   True
+      Tooltip         =   ""
+      Top             =   138
+      Transparent     =   True
+      Visible         =   True
+      Width           =   936
+   End
    Begin DesktopButton ExpandButton
       AllowAutoDeactivate=   True
       Bold            =   False
@@ -289,13 +314,19 @@ End
 
 	#tag Method, Flags = &h21
 		Private Sub LayOutHeader()
-		  // The tiles take the height their rows need at this width, then the buttons, then the page.
-		  // The canvas pads its tiles by 12, so they line up with the page's 24-point margin.
+		  // The tiles take the height their rows need at this width, then the context curve when the
+		  // session has one, then the buttons, then the page. The canvases pad their contents by 12,
+		  // so they line up with the page's 24-point margin.
 		  GlanceTiles.Left = 12
 		  GlanceTiles.Width = Width - 24
 		  GlanceTiles.Height = GlanceTiles.HeightFor(GlanceTiles.Width)
 		  
-		  ExpandButton.Top = GlanceTiles.Top + GlanceTiles.Height
+		  ContextChart.Left = GlanceTiles.Left
+		  ContextChart.Width = GlanceTiles.Width
+		  ContextChart.Top = GlanceTiles.Top + GlanceTiles.Height
+		  ContextChart.Height = kChartHeight
+		  
+		  ExpandButton.Top = If(ContextChart.Visible, ContextChart.Top + ContextChart.Height, GlanceTiles.Top + GlanceTiles.Height)
 		  CollapseButton.Top = ExpandButton.Top
 		  UpdateLabel.Top = ExpandButton.Top
 		  ReloadButton.Top = ExpandButton.Top
@@ -388,6 +419,9 @@ End
 		  mSignature = WakeCore.FileSignature(info.AgentID, info.FilePath)
 		  mTimeline = WakeTimeline.Load(info.AgentID, info.FilePath)
 		  mUsage = mTimeline.Session.TotalUsageByModel
+		  ContextChart.ShowSession(mTimeline.Session)
+		  ContextChart.Visible = mTimeline.Session.Responses.Count > 1
+		  ContextChart.Refresh(False)
 		  ShowTiles
 		  UpdateLabel.Visible = False
 		  ReloadButton.Visible = False
@@ -447,6 +481,9 @@ End
 	#tag EndProperty
 
 
+	#tag Constant, Name = kChartHeight, Type = Double, Dynamic = False, Default = \"110", Scope = Private
+	#tag EndConstant
+
 	#tag Constant, Name = kReloadDelay, Type = Double, Dynamic = False, Default = \"150", Scope = Private
 	#tag EndConstant
 
@@ -456,6 +493,14 @@ End
 
 #tag EndWindowCode
 
+#tag Events ContextChart
+	#tag Event
+		Sub TurnPressed(sequence As Integer)
+		  // A point of the curve shows the prompt of its turn.
+		  If mTimeline <> Nil Then ShowEvent(mTimeline.Session.ID, sequence)
+		End Sub
+	#tag EndEvent
+#tag EndEvents
 #tag Events ExpandButton
 	#tag Event
 		Sub Pressed()

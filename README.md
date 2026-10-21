@@ -30,6 +30,12 @@ ran, which files it changed and how many tokens it used.
   (Cmd+F), filtered by kind of event and by period. Opening a match scrolls
   the timeline to it.
 - **See usage** per day, project or model for a period (Window → Usage, Cmd+U).
+- **See what long sessions cost.** Every response sends the whole context
+  again, so a long session pays for its early turns on every later one. Wake
+  estimates what each turn paid to re-send earlier turns (**≈ carried**) and
+  shows it in the sessions list, the Usage window and on each prompt. A
+  timeline opens with a curve of the context per response, compactions
+  marked; click a point to jump to its turn.
 - **See where the tokens went** by intent, tool, tool and file type, shell
   command or file, in the same window. The figures are estimates from how the
   context grows between responses. Intents group calls by what they were
@@ -39,8 +45,9 @@ ran, which files it changed and how many tokens it used.
   expensive first, and double-click one to open it in its timeline.
 - **Export the findings as a report** (File → Export Report in the Usage
   window): a Markdown task list with a section per intent, its advice, the
-  files it cost most on and the most expensive calls, ready to paste into an
-  issue or hand to an agent.
+  files it cost most on and the most expensive calls, then the sessions that
+  carried most and the turn where that began to outweigh the work, ready to
+  paste into an issue or hand to an agent.
 - **Estimate costs** from your own price table (Window → Prices). Wake ships no
   prices, because they change: enter them per million tokens from your
   provider's price list. The cost the agent itself reports is shown next to

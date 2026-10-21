@@ -235,6 +235,13 @@ response reads those tokens again from the cache. When a context shrinks to
 less than half of the previous one, it was compacted, and nothing before it
 is counted as re-read.
 
+The same usage gives what each turn **carried**. The session's starting
+context is its first response's context (system prompt and tools). A turn's
+older context is the previous response's context plus its output, and every
+response of the turn sends it again; what it holds beyond the starting
+context counts as carried, as cache reads of that response's model. A
+compaction inside a turn ends its carrying.
+
 ### Ambiguities and open questions
 
 - There is no schema version. `version` is the CLI version, which is the best

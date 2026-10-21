@@ -200,19 +200,25 @@ Each milestone below is one session's work, ending with tests and a commit.
   the standard title bar. Checked by eye on macOS 26; Windows and Linux
   aren't checked. 108 tests.
 
-- [ ] **21. Context growth.** Every response re-sends the whole context, so a
-  long session pays for its early turns again on every later one. Per
-  response, the context is input + cache write + cache read. Per turn (from
-  one prompt to the next), Wake records the context at its first response
-  and estimates **≈ carried**: what the turn paid to re-send context older
-  than the turn itself, beyond the session's starting context. Starting
-  context and carried tokens go into the index per turn (schema bump). The
-  timeline header gets a context curve (a drawn control, like
-  `WakeDayChart`) with compactions marked, and clicking a point scrolls to
-  its turn. The sessions list and the Usage window get a "≈ carried" column,
-  and the report gains a "Long sessions" section: the sessions that carried
-  most, the turn where carrying began to cost more than the turn's own work,
-  and generic advice (start a new session or compact at a task boundary).
+- [x] **21. Context growth.** `WakeSession.ComputeStats` sets the
+  session's `StartingContextTokens` (its first response's context) and, on
+  each prompt, `TurnContextTokens`, `TurnCarriedTokens` and
+  `TurnCarriedUsage` (as cache reads per model): every response of a turn
+  re-sends the context from before the turn, beyond the starting context,
+  until a compaction. `WakeResponse.TurnSequence` names its prompt. The
+  index has a `turns` row per turn and model, and `sessions` gains
+  `starting_context_tokens` and `carried_tokens` (schema 10).
+  `WakeCatalog.Usage` fills `WakeUsageGroup.CarriedTokens`, and
+  `LongSessions` returns `WakeLongSession`s with the first turn whose carried
+  tokens outweighed its own work. "≈ Carried" in the sessions list, the
+  detail pane and the Usage window's usage groupings (a ninth column the tool
+  groupings drop), and on each prompt's turn line. `WakeContextChart` in the
+  timeline header draws the context per response, compactions in orange;
+  pressing a point scrolls to its prompt. The report ends with "Long
+  sessions". Fixture session 8 is in its own root, `claude-code/context/`.
+  112 tests. On real data (121 files, 403 turns) 27% of all tokens were
+  carried, 50–75% in the longest sessions, where carrying overtook the work
+  by turns 2–5. Not yet checked by eye.
 
 - [ ] **22. Reads that led nowhere.** A read (line range, section, whole
   file) **led nowhere** when nothing later in the same context edits the
@@ -274,6 +280,7 @@ machine to inspect, and the console companion.
 | A call's **intent** comes only from its shape: the tool, the program and how it asks (`sed -n 10,80p` is a line range, `/a/,/b/` a section, `sed -n /x/p` a search, `sed -i` and `cat > f` an edit). Only the first command of a line counts. | The rule in `CLAUDE.md`: reports work for any language and project. |
 | A **re-read** is any read (line range, section, whole file) of a file already read in the same context, unless an edit or write to it came in between. Compaction starts a new context. Re-reads are their own intent, not counted in their read's pattern. | The content is already in the context, so reading it again is the waste to show. After an edit or compaction, reading again is needed. |
 | Index **targets are resolved** against the session's folder (or a leading `cd`). | Otherwise `src/a.c` and `/work/src/a.c` are two files, and re-reads across shell and Read are missed. |
+| **≈ Carried** is counted per turn, against the context from before the turn and beyond the session's starting context, and only for the session's own responses. | The starting context (system prompt, tools) is paid in any session, so only what earlier turns left behind is the cost of a long session. Subagents start contexts of their own. |
 | Token figures per tool call are **estimates, marked ≈**, from context growth between responses, split among the inputs by text length. | Transcripts record usage only per response, so this is the only per-result signal. Attachments and reminders Wake can't see inflate it a little. |
 | Search words match as **prefixes**, `"quoted text"` as a phrase, and every term must match. Every term is quoted, so FTS5 operators are plain words. | Search as you type needs partial words, and no input may raise an FTS5 syntax error. |
 | Search lives **in the main window**, scoped by the source-list selection, not in its own window. | Agent and project filters come for free, and the detail pane shows the hit's session. |
@@ -364,6 +371,12 @@ machine to inspect, and the console companion.
   `MouseDown`, has `TabStop` off and clears any selection that gets through.
 - **A method call on a string literal doesn't parse** (`"abc".IndexOf(x)`).
   Assign the literal to a variable first.
+- **String constants with commas:** how the IDE escapes a comma in a
+  constant's `Default` isn't documented, so put such text in a method
+  (`WakeTokenReport.LongSessionAdvice`) or a literal instead.
+- **`DesktopTable.ColumnCount` and `ColumnWidths` can be set in code.**
+  Lowering the count drops the columns on the right, so reset
+  `SortingColumn` first if it points at one (`UsageWindow.SetHeaders`).
 - **`String` has no `LastIndexOf`.** Split, or loop with `IndexOf`.
 - **`DesktopProgressWheel.Active` can't be set in code.** Leave it `True` in
   the layout and toggle `Visible`.

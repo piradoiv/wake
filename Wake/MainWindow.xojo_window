@@ -83,8 +83,8 @@ Begin DesktopWindow MainWindow
       AllowRowDragging=   False
       AllowRowReordering=   False
       Bold            =   False
-      ColumnCount     =   7
-      ColumnWidths    =   "124,60,*,90,60,70,96"
+      ColumnCount     =   8
+      ColumnWidths    =   "124,60,*,90,60,76,70,96"
       DefaultRowHeight=   22
       DropIndicatorVisible=   False
       Enabled         =   True
@@ -805,13 +805,15 @@ End
 		    If estimate.PricedTokens > 0 Then mMaxCost = Max(mMaxCost, estimate.AmountUSD)
 		    
 		    SessionsList.AddRow(FormatTime(s.StartTime), WakeFormat.Duration(s.DurationSeconds), s.DisplayTitle, _
-		    AgentName(s.AgentID), WakeFormat.Tokens(s.TotalUsage.Total), WakeFormat.Cost(estimate), "")
+		    AgentName(s.AgentID), WakeFormat.Tokens(s.TotalUsage.Total), If(s.CarriedTokens > 0, WakeFormat.Tokens(s.CarriedTokens), ""), _
+		    WakeFormat.Cost(estimate), "")
 		    
 		    Var row As Integer = SessionsList.LastAddedRowIndex
 		    SessionsList.RowTagAt(row) = s
 		    SessionsList.CellTagAt(row, kColumnStarted) = If(s.StartTime Is Nil, 0.0, s.StartTime.SecondsFrom1970)
 		    SessionsList.CellTagAt(row, kColumnDuration) = s.DurationSeconds
 		    SessionsList.CellTagAt(row, kColumnTokens) = s.TotalUsage.Total
+		    SessionsList.CellTagAt(row, kColumnCarried) = s.CarriedTokens
 		    SessionsList.CellTagAt(row, kColumnCost) = If(estimate.PricedTokens > 0, estimate.AmountUSD, -1.0)
 		    If estimate.UnpricedModels.Count > 0 Then
 		      SessionsList.CellTooltipAt(row, kColumnCost) = "No price set for " + String.FromArray(estimate.UnpricedModels, ", ")
@@ -1082,10 +1084,12 @@ End
 		  SessionsList.ColumnHeaderAt(kColumnTitle) = "Title"
 		  SessionsList.ColumnHeaderAt(kColumnAgent) = "Agent"
 		  SessionsList.ColumnHeaderAt(kColumnTokens) = "Tokens"
+		  SessionsList.ColumnHeaderAt(kColumnCarried) = "≈ Carried"
 		  SessionsList.ColumnHeaderAt(kColumnCost) = "Cost"
 		  SessionsList.ColumnHeaderAt(kColumnStatus) = " " // An empty heading shows the column number.
 		  SessionsList.ColumnAlignmentAt(kColumnDuration) = DesktopTable.Alignments.Right
 		  SessionsList.ColumnAlignmentAt(kColumnTokens) = DesktopTable.Alignments.Right
+		  SessionsList.ColumnAlignmentAt(kColumnCarried) = DesktopTable.Alignments.Right
 		  SessionsList.ColumnAlignmentAt(kColumnCost) = DesktopTable.Alignments.Right
 		  
 		  HitsList.ColumnHeaderAt(kHitColumnTime) = "Time"
@@ -1226,6 +1230,8 @@ End
 		  AddDetail("Cache write", WakeFormat.Count(s.TotalUsage.CacheWriteTokens))
 		  AddDetail("Cache read", WakeFormat.Count(s.TotalUsage.CacheReadTokens))
 		  If s.SubagentCount > 0 Then AddDetail("Without subagents", WakeFormat.Count(s.OwnUsage.Total))
+		  If s.StartingContextTokens > 0 Then AddDetail("Starting context", WakeFormat.Count(s.StartingContextTokens))
+		  If s.CarriedTokens > 0 Then AddDetail("≈ Carried", WakeFormat.Count(s.CarriedTokens))
 		  
 		  // Wake's own estimate from the user's prices, and the agent's figure as a cross-check.
 		  Var estimate As WakeCostEstimate = App.Prices.Estimate(usage.ByModel)
@@ -1452,7 +1458,10 @@ End
 	#tag Constant, Name = kColumnAgent, Type = Double, Dynamic = False, Default = \"3", Scope = Private
 	#tag EndConstant
 
-	#tag Constant, Name = kColumnCost, Type = Double, Dynamic = False, Default = \"5", Scope = Private
+	#tag Constant, Name = kColumnCarried, Type = Double, Dynamic = False, Default = \"5", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kColumnCost, Type = Double, Dynamic = False, Default = \"6", Scope = Private
 	#tag EndConstant
 
 	#tag Constant, Name = kColumnDuration, Type = Double, Dynamic = False, Default = \"1", Scope = Private
@@ -1461,7 +1470,7 @@ End
 	#tag Constant, Name = kColumnStarted, Type = Double, Dynamic = False, Default = \"0", Scope = Private
 	#tag EndConstant
 
-	#tag Constant, Name = kColumnStatus, Type = Double, Dynamic = False, Default = \"6", Scope = Private
+	#tag Constant, Name = kColumnStatus, Type = Double, Dynamic = False, Default = \"7", Scope = Private
 	#tag EndConstant
 
 	#tag Constant, Name = kColumnTitle, Type = Double, Dynamic = False, Default = \"2", Scope = Private
@@ -1595,7 +1604,7 @@ End
 		  // Dates, durations, token counts and costs sort by value, not by their text. A session
 		  // with no price sorts below every priced one.
 		  Select Case column
-		  Case kColumnStarted, kColumnDuration, kColumnTokens, kColumnCost
+		  Case kColumnStarted, kColumnDuration, kColumnTokens, kColumnCarried, kColumnCost
 		    Var a As Double = Me.CellTagAt(row1, column).DoubleValue
 		    Var b As Double = Me.CellTagAt(row2, column).DoubleValue
 		    If a < b Then

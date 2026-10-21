@@ -367,7 +367,8 @@ End
 		  
 		  UsageList.AddRow(label, WakeFormat.Count(usage.SessionCount), WakeFormat.Tokens(total.InputTokens), _
 		  WakeFormat.Tokens(total.OutputTokens), WakeFormat.Tokens(total.CacheWriteTokens), _
-		  WakeFormat.Tokens(total.CacheReadTokens), WakeFormat.Tokens(total.Total), WakeFormat.Cost(estimate))
+		  WakeFormat.Tokens(total.CacheReadTokens), WakeFormat.Tokens(total.Total), WakeFormat.Cost(estimate), _
+		  If(usage.CarriedTokens > 0, WakeFormat.Tokens(usage.CarriedTokens), ""))
 		  
 		  Var row As Integer = UsageList.LastAddedRowIndex
 		  UsageList.CellTagAt(row, kColumnLabel) = sortKey
@@ -378,6 +379,7 @@ End
 		  UsageList.CellTagAt(row, kColumnCacheRead) = total.CacheReadTokens
 		  UsageList.CellTagAt(row, kColumnTotal) = total.Total
 		  UsageList.CellTagAt(row, kColumnCost) = If(estimate.PricedTokens > 0, estimate.AmountUSD, -1.0)
+		  UsageList.CellTagAt(row, kColumnCarried) = usage.CarriedTokens
 		  If estimate.UnpricedModels.Count > 0 Then
 		    UsageList.CellTooltipAt(row, kColumnCost) = "No price set for " + String.FromArray(estimate.UnpricedModels, ", ")
 		  End If
@@ -612,7 +614,7 @@ End
 		  Case WakeCatalog.UsageGroupings.Project
 		    label = "Project"
 		  End Select
-		  SetHeaders(Array(label, "Sessions", "Input", "Output", "Cache write", "Cache read", "Total", "Est. cost"))
+		  SetHeaders(Array(label, "Sessions", "Input", "Output", "Cache write", "Cache read", "Total", "Est. cost", "≈ Carried"))
 		  
 		  Var groups() As WakeUsageGroup
 		  Try
@@ -623,7 +625,9 @@ End
 		  End Try
 		  
 		  Var all As New WakeUsageGroup
+		  Var carried As Int64
 		  For Each g As WakeUsageGroup In groups
+		    carried = carried + g.CarriedTokens
 		    Select Case grouping
 		    Case WakeCatalog.UsageGroupings.Day
 		      AddUsageRow(DayLabel(g.Key), g.Key, g)
@@ -645,6 +649,7 @@ End
 		  Var estimate As WakeCostEstimate = App.Prices.Estimate(all.ByModel)
 		  Var parts() As String
 		  parts.Add(WakeFormat.Count(all.Total.Total) + " tokens")
+		  If carried > 0 Then parts.Add("≈" + WakeFormat.Tokens(carried) + " re-sending earlier turns")
 		  If estimate.HasTokens Then parts.Add("estimated cost " + WakeFormat.Cost(estimate))
 		  If estimate.UnpricedModels.Count > 0 Then
 		    parts.Add("no price set for " + String.FromArray(estimate.UnpricedModels, ", ") + " (Window → Prices)")
@@ -657,6 +662,15 @@ End
 
 	#tag Method, Flags = &h21
 		Private Sub SetHeaders(labels() As String)
+		  // Usage has a column more than the tool groupings: what later turns paid to re-send earlier
+		  // ones, which tool calls don't have.
+		  If UsageList.ColumnCount <> labels.Count Then
+		    If UsageList.SortingColumn > labels.LastIndex Then UsageList.SortingColumn = -1
+		    UsageList.ColumnCount = labels.Count
+		    UsageList.ColumnWidths = If(labels.Count > kColumnCarried, "*,70,90,90,100,100,90,110,90", "*,70,90,90,100,100,90,110")
+		    UsageList.ColumnAlignmentAt(UsageList.LastColumnIndex) = DesktopTable.Alignments.Right
+		  End If
+		  
 		  For column As Integer = 0 To labels.LastIndex
 		    UsageList.ColumnHeaderAt(column) = labels(column)
 		  Next
@@ -1145,6 +1159,9 @@ End
 	#tag EndConstant
 
 	#tag Constant, Name = kColumnCacheWrite, Type = Double, Dynamic = False, Default = \"4", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kColumnCarried, Type = Double, Dynamic = False, Default = \"8", Scope = Private
 	#tag EndConstant
 
 	#tag Constant, Name = kColumnCost, Type = Double, Dynamic = False, Default = \"7", Scope = Private
