@@ -267,6 +267,14 @@ Begin DesktopWindow UsageWindow
       Visible         =   True
       Width           =   936
    End
+   Begin Toolbar1 Toolbar11
+      Enabled         =   True
+      Index           =   -2147483648
+      LockedInPosition=   False
+      Scope           =   2
+      TabPanelIndex   =   0
+      Visible         =   True
+   End
 End
 #tag EndDesktopWindow
 
@@ -291,7 +299,7 @@ End
 		  WakeTitleBar.Unify(Self, False)
 		  LayOutTitleBar
 		  LayOutLists
-
+		  
 		  // Like the main window, open the index only once an indexing run has finished.
 		  If App.IsIndexing Then
 		    StatusLabel.Text = "Indexing" + WakeFormat.kEllipsis
