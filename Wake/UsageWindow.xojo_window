@@ -278,10 +278,29 @@ End
 	#tag EndEvent
 
 	#tag Event
+		Function MouseDown(x As Integer, y As Integer) As Boolean
+		  #Pragma Unused x
+
+		  // Spike only: Option-click an empty part of the bar to switch between the regular and
+		  // compact bars.
+		  If Keyboard.AsyncOptionKey And y < WakeTitleBar.Height(Self) Then
+		    WakeTitleBar.Unify(Self, Not WakeTitleBar.IsCompact(Self))
+		    LayOutTitleBar
+		    LayOutLists
+		    Return True
+		  End If
+
+		  Return WakeTitleBar.HandleMouseDown(Self, y)
+		End Function
+	#tag EndEvent
+
+	#tag Event
 		Sub Opening()
 		  SetUp
+		  WakeTitleBar.Unify(Self, False)
+		  LayOutTitleBar
 		  LayOutLists
-		  
+
 		  // Like the main window, open the index only once an indexing run has finished.
 		  If App.IsIndexing Then
 		    StatusLabel.Text = "Indexing" + WakeFormat.kEllipsis
@@ -293,12 +312,14 @@ End
 
 	#tag Event
 		Sub Resized()
+		  LayOutTitleBar
 		  LayOutLists
 		End Sub
 	#tag EndEvent
 
 	#tag Event
 		Sub Resizing()
+		  LayOutTitleBar
 		  LayOutLists
 		End Sub
 	#tag EndEvent
@@ -492,6 +513,28 @@ End
 		  Else
 		    UsageList.Height = available
 		  End If
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub LayOutTitleBar()
+		  // On macOS the popups sit in the unified bar beside the window buttons, and the tiles, chart
+		  // and lists start right under it. Elsewhere the window keeps its editor layout.
+		  Var bar As Integer = WakeTitleBar.Height(Self)
+		  If bar = 0 Then Return
+
+		  GroupPopup.Left = WakeTitleBar.LeftInset(Self)
+		  GroupPopup.Top = (bar - GroupPopup.Height) \ 2
+		  PeriodPopup.Left = GroupPopup.Left + GroupPopup.Width + 10
+		  PeriodPopup.Top = GroupPopup.Top
+
+		  GlanceTiles.Top = bar
+		  DayChart.Top = GlanceTiles.Top + GlanceTiles.Height
+		  UsageList.Top = DayChart.Top + DayChart.Height + 4
+
+		  // Spike only: what the window sees, for checking the coordinates.
+		  System.DebugLog("WakeTitleBar: bar " + bar.ToString + ", inset " + GroupPopup.Left.ToString _
+		  + ", window height " + Self.Height.ToString + ", compact " + If(WakeTitleBar.IsCompact(Self), "yes", "no"))
 		End Sub
 	#tag EndMethod
 

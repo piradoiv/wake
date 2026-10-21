@@ -69,6 +69,7 @@ Class=WakeCallPatternTests;Tests/WakeCallPatternTests.xojo_code;&h000000002D6F84
 Class=WakeTokenReportTests;Tests/WakeTokenReportTests.xojo_code;&h0000000071C3A0E5;&h000000001662E964;false
 Class=WakeGlanceTiles;WakeGlanceTiles.xojo_code;&h000000004F2C8A17;&h0000000000000000;false
 Class=WakeDayChart;WakeDayChart.xojo_code;&h000000001D6B93E5;&h0000000000000000;false
+Module=WakeTitleBar;WakeTitleBar.xojo_code;&h000000003A71C2D9;&h0000000000000000;false
 DefaultWindow=MainWindow
 AppMenuBar=MainMenuBar
 MajorVersion=1
