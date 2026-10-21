@@ -297,9 +297,8 @@ End
 		Sub Opening()
 		  SetUp
 		  SetUpToolbar
-		  WakeTitleBar.Unify(Self, False)
-		  LayOutTitleBar
-		  LayOutLists
+		  UnifyTitleBar
+		  Timer.CallLater(0, AddressOf UnifyTitleBar)
 		  
 		  // Like the main window, open the index only once an indexing run has finished.
 		  If App.IsIndexing Then
@@ -733,7 +732,8 @@ End
 		  // look like the bar's own items. They mirror the popups, which stay the model and are what
 		  // Windows and Linux show.
 		  #If TargetMacOS
-		    UsageBar.Style = DesktopToolbar.Styles.CaptionOnly
+		    DesktopToolbarButton(UsageBar.ButtonAt(0)).Symbol = "tablecells"
+		    DesktopToolbarButton(UsageBar.ButtonAt(1)).Symbol = "calendar"
 		    GroupPopup.Visible = False
 		    PeriodPopup.Visible = False
 		    SyncToolbar
@@ -1088,6 +1088,17 @@ End
 		  
 		  item.Menu = menu
 		  item.Caption = popup.RowTextAt(popup.SelectedRowIndex)
+		  item.Tooltip = item.Caption
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub UnifyTitleBar()
+		  // Xojo sets its own toolbar style when the window first shows, so Opening runs this twice:
+		  // at once, and again right after the window is up.
+		  WakeTitleBar.Unify(Self, False)
+		  LayOutTitleBar
+		  LayOutLists
 		End Sub
 	#tag EndMethod
 
