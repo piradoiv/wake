@@ -204,9 +204,9 @@ Protected Class WakeSession
 		      If read.HasKey(target) Then read.Remove(target)
 		    End If
 		  Next
-
+		  
 		  FindReadsLedNowhere
-
+		  
 		  // A turn runs from a prompt to the next one, and includes the subagents it started.
 		  Var prompt As WakeEvent
 		  For Each e As WakeEvent In Events
@@ -261,7 +261,7 @@ Protected Class WakeSession
 		  Var pending() As WakeEvent
 		  Var targets() As String
 		  Var names() As String
-
+		  
 		  For Each e As WakeEvent In Events
 		    If e.Response <> Nil And e.Response.StartsNewContext And e.Response.FirstSequence = e.Sequence Then
 		      For Each r As WakeEvent In pending
@@ -271,7 +271,7 @@ Protected Class WakeSession
 		      targets.RemoveAll
 		      names.RemoveAll
 		    End If
-
+		    
 		    Var text As String
 		    Var target As String
 		    If e.Kind = WakeEvent.Kinds.AssistantText Then
@@ -280,7 +280,7 @@ Protected Class WakeSession
 		      text = e.Command + &u0A + e.FilePath + &u0A + e.ToolInputJSON
 		      If WakeCallPattern.IsRead(e.Pattern) Then target = e.ResolvedTargetPath(ProjectPath)
 		    End If
-
+		    
 		    If text.Trim <> "" Then
 		      For i As Integer = pending.LastIndex DownTo 0
 		        If target <> "" And targets(i) = target Then Continue
@@ -291,7 +291,7 @@ Protected Class WakeSession
 		        End If
 		      Next
 		    End If
-
+		    
 		    Var path As String = target.ReplaceAll("\", "/")
 		    Var name As String = path.NthField("/", path.CountFields("/"))
 		    If name <> "" And Not e.ResultHasImage And Not IsHandedFile(e, path, name) Then
@@ -300,7 +300,7 @@ Protected Class WakeSession
 		      names.Add(name)
 		    End If
 		  Next
-
+		  
 		  For Each r As WakeEvent In pending
 		    r.LedNowhere = True
 		  Next

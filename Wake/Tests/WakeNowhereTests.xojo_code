@@ -7,14 +7,14 @@ Inherits TestGroup
 		  // a separate connection.
 		  mScratch = TestSupport.NewScratchFolder
 		  TestSupport.CopyFolder(TestSupport.FixturesFolder("claude-code").Child("nowhere"), mScratch.Child("nowhere"))
-
+		  
 		  Var writer As New WakeIndex(mScratch.Child("index.sqlite"))
 		  writer.Open
 		  Var indexer As New WakeIndexer(writer)
 		  indexer.AddRoot(New WakeIndexRoot("claude-code", mScratch.Child("nowhere")))
 		  Call indexer.Run
 		  writer.Close
-
+		  
 		  mIndex = New WakeIndex(mScratch.Child("index.sqlite"))
 		  mIndex.Open
 		  mCatalog = New WakeCatalog(mIndex)
@@ -39,7 +39,7 @@ Inherits TestGroup
 		  For Each c As WakeToolCallInfo In calls
 		    Assert.IsTrue(c.LedNowhere)
 		  Next
-
+		  
 		  calls = mCatalog.ToolCalls(WakeCatalog.ToolGroupings.File, "/Users/dev/notes/src/parser.c")
 		  count = calls.Count
 		  Assert.AreEqual(2, count, "the read and the edit")
@@ -52,7 +52,7 @@ Inherits TestGroup
 	#tag Method, Flags = &h0
 		Sub FileGroupingTest()
 		  Var files() As WakeToolUsageGroup = mCatalog.ToolUsage(WakeCatalog.ToolGroupings.File)
-
+		  
 		  Var lexer As WakeToolUsageGroup = FindGroup(files, "/Users/dev/notes/src/lexer.c")
 		  Assert.IsNotNil(lexer)
 		  If lexer <> Nil Then
@@ -61,7 +61,7 @@ Inherits TestGroup
 		    Assert.IsTrue(lexer.NowhereTokens > 0)
 		    Assert.AreEqual(lexer.AddedTokens + lexer.CarriedTokens, lexer.NowhereTokens)
 		  End If
-
+		  
 		  Var parser As WakeToolUsageGroup = FindGroup(files, "/Users/dev/notes/src/parser.c")
 		  Assert.IsNotNil(parser)
 		  If parser <> Nil Then
@@ -69,11 +69,11 @@ Inherits TestGroup
 		    Assert.AreEqual(0, parser.NowhereReads)
 		    Assert.AreEqual(0, parser.NowhereTokens)
 		  End If
-
+		  
 		  Var util As WakeToolUsageGroup = FindGroup(files, "/Users/dev/notes/src/util.h")
 		  Assert.IsNotNil(util)
 		  If util <> Nil Then Assert.AreEqual(1, util.NowhereReads)
-
+		  
 		  Var intents() As WakeToolUsageGroup = mCatalog.ToolUsage(WakeCatalog.ToolGroupings.Pattern)
 		  Var reads, nowhere As Integer
 		  For Each g As WakeToolUsageGroup In intents
@@ -82,7 +82,7 @@ Inherits TestGroup
 		  Next
 		  Assert.AreEqual(9, reads, "a re-read is still a read")
 		  Assert.AreEqual(4, nowhere)
-
+		  
 		  Var reread As WakeToolUsageGroup = FindGroup(intents, WakeCallPattern.kKeyReread)
 		  Assert.IsNotNil(reread)
 		  If reread <> Nil Then Assert.AreEqual(1, reread.NowhereReads)
@@ -106,7 +106,7 @@ Inherits TestGroup
 		  Var session As WakeSession = TestSupport.ParseClaudeFixture(9, "-Users-dev-notes", "nowhere")
 		  Assert.IsNotNil(session)
 		  If session Is Nil Then Return
-
+		  
 		  Var names() As String
 		  Var flags() As String
 		  For Each e As WakeEvent In session.Events
@@ -115,7 +115,7 @@ Inherits TestGroup
 		    names.Add(path.NthField("/", path.CountFields("/")))
 		    flags.Add(If(e.LedNowhere, "nowhere", "used"))
 		  Next
-
+		  
 		  Assert.AreEqual("parser.c README.md util.h lexer.c lexer.c notes.md old.c window.png b0fixture9.txt", _
 		  String.FromArray(names, " "))
 		  Assert.AreEqual("used used nowhere nowhere nowhere used nowhere used used", String.FromArray(flags, " "), _
@@ -133,13 +133,13 @@ Inherits TestGroup
 		Sub ReportTest()
 		  Var report As New WakeTokenReport(mCatalog, Nil, Nil, "All time")
 		  Var text As String = report.Markdown
-
+		  
 		  Assert.IsTrue(text.IndexOf("## Reads that led nowhere: ≈") >= 0)
 		  Assert.IsTrue(text.IndexOf("4 of 9 reads (44%)") >= 0)
 		  Assert.IsTrue(text.IndexOf(WakeCallPattern.LedNowhereAdvice) >= 0)
 		  Assert.IsTrue(text.IndexOf("| `/Users/dev/notes/src/lexer.c` | 2 | 2 |") >= 0)
 		  Assert.IsTrue(text.IndexOf("`/Users/dev/notes/src/parser.c` | 1 | 0") < 0, "only files with reads that led nowhere")
-
+		  
 		  Var later As DateTime = DateTime.Now.AddInterval(0, 0, 1)
 		  Var empty As New WakeTokenReport(mCatalog, Nil, later, "Tomorrow")
 		  Assert.IsTrue(empty.Markdown.IndexOf("## Reads that led nowhere") < 0)
