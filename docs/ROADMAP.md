@@ -175,7 +175,24 @@ Each milestone below is one session's work, ending with tests and a commit.
   and the page shows "Session updated" with a Reload button, which scrolls
   back to where the page was. 108 tests.
 
-- [ ] **19. Unified title bar (macOS).** Every window opens with a row of
+- [ ] **19. DesktopTable instead of DesktopListBox.** Replace the seven list
+  boxes (`MainWindow`: SourceList, SessionsList, DetailList, HitsList;
+  `UsageWindow`: UsageList, CallsList; `PricesWindow`: PricesList) with
+  `DesktopTable`, which should look and work better. Its API mostly mirrors
+  the list box (`AddRow`, `CellTextAt`, `CellTagAt`, `RowTagAt`,
+  `PaintCellText`, `RowComparison`, `RowExpanded`/`RowCollapsed`,
+  `CellAction`, `ConstructContextualMenu`), so keep the in-memory mode
+  (`DataSource = Nil`) and port each window as it is. A `TableDataSource`
+  can come later if the sessions list grows. Everything has to keep working:
+  sorting by value, the "Partial" and "Live" badges, collapsible agents in
+  the source list, editable prices, keys and double-click, the shared 1 px
+  borders and keeping selection and scroll on reload. No window uses the
+  control yet, so first the maintainer adds one table in the IDE. Copy its
+  saved properties, and ask the maintainer about events or behaviour the
+  public docs don't cover. Then note any differences from the list box here.
+  The maintainer checks each window by eye.
+
+- [ ] **20. Unified title bar (macOS).** Every window opens with a row of
   controls under the title bar: search and filters in the main window,
   grouping and period in the Usage window, Expand, Collapse and Reload in the
   timeline. On macOS, merge that row into a taller unified title bar, as
@@ -193,7 +210,7 @@ Each milestone below is one session's work, ending with tests and a commit.
   right. Windows and Linux keep today's layout (`#If TargetMacOS`). The
   maintainer checks each window by eye.
 
-- [ ] **20. Context growth.** Every response re-sends the whole context, so a
+- [ ] **21. Context growth.** Every response re-sends the whole context, so a
   long session pays for its early turns again on every later one. Per
   response, the context is input + cache write + cache read. Per turn (from
   one prompt to the next), Wake records the context at its first response
@@ -207,7 +224,7 @@ Each milestone below is one session's work, ending with tests and a commit.
   most, the turn where carrying began to cost more than the turn's own work,
   and generic advice (start a new session or compact at a task boundary).
 
-- [ ] **21. Reads that led nowhere.** A read (line range, section, whole
+- [ ] **22. Reads that led nowhere.** A read (line range, section, whole
   file) **led nowhere** when nothing later in the same context edits the
   file or mentions its path or file name: not an answer, a later tool call's
   input or a subagent prompt. It's a flag on the call (`tool_usage`
