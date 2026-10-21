@@ -1,6 +1,28 @@
 #tag Module
 Protected Module WakeTitleBar
 	#tag Method, Flags = &h0
+		Sub FollowFullScreen(w As DesktopWindow)
+		  // Hides the empty toolbar in full screen and shows it again outside it. In full screen the
+		  // toolbar moves to an overlay above the content, which would cover the controls in the bar,
+		  // so the window lays them out in a row at the top instead, as on other systems.
+		  #If TargetMacOS
+		    Declare Function Toolbar Lib "AppKit" Selector "toolbar" (window As Ptr) As Ptr
+		    Declare Function IsVisible Lib "AppKit" Selector "isVisible" (toolbar As Ptr) As Boolean
+		    Declare Sub SetVisible Lib "AppKit" Selector "setVisible:" (toolbar As Ptr, value As Boolean)
+
+		    If Not IsUnified(w) Then Return
+		    Var bar As Ptr = Toolbar(w.Handle)
+		    If bar = Nil Then Return
+
+		    Var visible As Boolean = Not IsFullScreen(w)
+		    If IsVisible(bar) <> visible Then SetVisible(bar, visible)
+		  #Else
+		    #Pragma Unused w
+		  #EndIf
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function HandleMouseDown(w As DesktopWindow, y As Integer) As Boolean
 		  // Called from the window's MouseDown, which only fires outside controls. In the bar, a press
 		  // drags the window and a double-click does what the user chose in System Settings, as an
@@ -45,9 +67,10 @@ Protected Module WakeTitleBar
 
 	#tag Method, Flags = &h0
 		Function Height(w As DesktopWindow) As Integer
-		  // The height of the unified bar over the window's content, or 0 for a window that isn't unified.
+		  // The height of the unified bar over the window's content, or 0 for a window that isn't
+		  // unified or is in full screen.
 		  #If TargetMacOS
-		    If Not IsUnified(w) Then Return 0
+		    If Not IsUnified(w) Or IsFullScreen(w) Then Return 0
 
 		    Var frame As MemoryBlock = RectOf(w.Handle, "frame")
 		    Var content As MemoryBlock = RectOf(w.Handle, "contentLayoutRect")
@@ -61,17 +84,14 @@ Protected Module WakeTitleBar
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
-		Function IsCompact(w As DesktopWindow) As Boolean
-		  // True when the window has the shorter unified bar.
+		Function IsFullScreen(w As DesktopWindow) As Boolean
+		  // True while the window is in full screen, including the animation into it.
 		  #If TargetMacOS
-		    Const kToolbarStyleUnifiedCompact = 4
+		    Const kFullScreen As UInteger = &h4000
 
-		    Declare Function NSSelectorFromString Lib "Foundation" (name As CFStringRef) As Ptr
-		    Declare Function RespondsToSelector Lib "Foundation" Selector "respondsToSelector:" (obj As Ptr, sel As Ptr) As Boolean
-		    Declare Function ToolbarStyle Lib "AppKit" Selector "toolbarStyle" (window As Ptr) As Integer
+		    Declare Function StyleMask Lib "AppKit" Selector "styleMask" (window As Ptr) As UInteger
 
-		    If Not RespondsToSelector(w.Handle, NSSelectorFromString("toolbarStyle")) Then Return False
-		    Return ToolbarStyle(w.Handle) = kToolbarStyleUnifiedCompact
+		    Return (StyleMask(w.Handle) And kFullScreen) <> 0
 		  #Else
 		    #Pragma Unused w
 		    Return False
@@ -97,19 +117,14 @@ Protected Module WakeTitleBar
 
 	#tag Method, Flags = &h0
 		Function LeftInset(w As DesktopWindow) As Integer
-		  // Where controls in the bar can start: past the close, minimize and zoom buttons, or at the
-		  // usual margin in full screen, where those buttons aren't in the window.
+		  // Where controls in the bar can start: past the close, minimize and zoom buttons.
 		  Const kMargin = 12
 
 		  #If TargetMacOS
-		    Const kFullScreen As UInteger = &h4000
 		    Const kZoomButton = 2
 		    Const kGap = 14
 
-		    Declare Function StyleMask Lib "AppKit" Selector "styleMask" (window As Ptr) As UInteger
 		    Declare Function StandardWindowButton Lib "AppKit" Selector "standardWindowButton:" (window As Ptr, kind As Integer) As Ptr
-
-		    If (StyleMask(w.Handle) And kFullScreen) <> 0 Then Return kMargin
 
 		    Var zoom As Ptr = StandardWindowButton(w.Handle, kZoomButton)
 		    If zoom = Nil Then Return kMargin
@@ -187,8 +202,8 @@ Protected Module WakeTitleBar
 		  // On macOS 11 and later, merges the window's title bar and its top row of controls into one
 		  // unified bar, as Finder and Mail do. The content view then runs under the bar, the title is
 		  // hidden (it still names the window in the Window menu), and an empty toolbar gives the bar
-		  // its height. The window lays its controls out with Height and LeftInset. Elsewhere this
-		  // does nothing.
+		  // its height. The window lays its controls out with Height, LeftInset and RowTop, and calls
+		  // FollowFullScreen when it resizes. Elsewhere this does nothing.
 		  #If TargetMacOS
 		    Const kFullSizeContentView As UInteger = &h8000
 		    Const kTitleHidden = 1
@@ -212,16 +227,18 @@ Protected Module WakeTitleBar
 		    Var window As Ptr = w.Handle
 		    If Not RespondsToSelector(window, NSSelectorFromString("setToolbarStyle:")) Then Return
 
+		    // The style goes on before the toolbar. The other way round, the regular bar first measured
+		    // 66 points instead of 52.
+		    SetStyleMask(window, StyleMask(window) Or kFullSizeContentView)
+		    SetTitlebarAppearsTransparent(window, True)
+		    SetTitleVisibility(window, kTitleHidden)
+		    SetToolbarStyle(window, If(compact, kToolbarStyleUnifiedCompact, kToolbarStyleUnified))
+
 		    If Toolbar(window) = Nil Then
 		      Var bar As Ptr = InitWithIdentifier(Alloc(NSClassFromString("NSToolbar")), "WakeTitleBar")
 		      SetToolbar(window, bar)
 		      Release(bar)
 		    End If
-
-		    SetStyleMask(window, StyleMask(window) Or kFullSizeContentView)
-		    SetTitlebarAppearsTransparent(window, True)
-		    SetTitleVisibility(window, kTitleHidden)
-		    SetToolbarStyle(window, If(compact, kToolbarStyleUnifiedCompact, kToolbarStyleUnified))
 		  #Else
 		    #Pragma Unused w
 		    #Pragma Unused compact

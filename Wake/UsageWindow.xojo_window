@@ -280,16 +280,7 @@ End
 	#tag Event
 		Function MouseDown(x As Integer, y As Integer) As Boolean
 		  #Pragma Unused x
-
-		  // Spike only: Option-click an empty part of the bar to switch between the regular and
-		  // compact bars.
-		  If Keyboard.AsyncOptionKey And y < WakeTitleBar.Height(Self) Then
-		    WakeTitleBar.Unify(Self, Not WakeTitleBar.IsCompact(Self))
-		    LayOutTitleBar
-		    LayOutLists
-		    Return True
-		  End If
-
+		  
 		  Return WakeTitleBar.HandleMouseDown(Self, y)
 		End Function
 	#tag EndEvent
@@ -519,23 +510,31 @@ End
 	#tag Method, Flags = &h21
 		Private Sub LayOutTitleBar()
 		  // On macOS the popups sit in the unified bar beside the window buttons, and the tiles, chart
-		  // and lists start right under it. Elsewhere the window keeps its editor layout.
+		  // and lists start right under it. In full screen, which hides the bar, they go back to a row
+		  // at the top. Elsewhere the window keeps its editor layout.
+		  If Not WakeTitleBar.IsUnified(Self) Then Return
+		  WakeTitleBar.FollowFullScreen(Self)
+		  
 		  Var bar As Integer = WakeTitleBar.Height(Self)
-		  If bar = 0 Then Return
-
-		  GroupPopup.Left = WakeTitleBar.LeftInset(Self)
-		  GroupPopup.Top = WakeTitleBar.RowTop(Self, GroupPopup.Height)
+		  If bar > 0 Then
+		    GroupPopup.Left = WakeTitleBar.LeftInset(Self)
+		    GroupPopup.Top = WakeTitleBar.RowTop(Self, GroupPopup.Height)
+		    GlanceTiles.Top = bar
+		  Else
+		    GroupPopup.Left = 12
+		    GroupPopup.Top = 8
+		    GlanceTiles.Top = 36
+		  End If
+		  
 		  PeriodPopup.Left = GroupPopup.Left + GroupPopup.Width + 10
 		  PeriodPopup.Top = GroupPopup.Top
-
-		  GlanceTiles.Top = bar
 		  DayChart.Top = GlanceTiles.Top + GlanceTiles.Height
 		  UsageList.Top = DayChart.Top + DayChart.Height + 4
-
+		  
 		  // Spike only: what the window sees, for checking the coordinates.
 		  System.DebugLog("WakeTitleBar: bar " + bar.ToString + ", inset " + GroupPopup.Left.ToString _
-		  + ", row top " + GroupPopup.Top.ToString _
-		  + ", window height " + Self.Height.ToString + ", compact " + If(WakeTitleBar.IsCompact(Self), "yes", "no"))
+		  + ", row top " + GroupPopup.Top.ToString + ", window height " + Self.Height.ToString _
+		  + ", full screen " + If(WakeTitleBar.IsFullScreen(Self), "yes", "no"))
 		End Sub
 	#tag EndMethod
 
