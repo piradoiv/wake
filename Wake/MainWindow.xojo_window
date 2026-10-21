@@ -1149,6 +1149,10 @@ End
 		    searchItem.ButtonStyle = DesktopToolbarButton.ButtonStyles.PushButton
 		    searchItem.Caption = "Search"
 		    MainToolbar.AddButton(searchItem)
+		    // Without a space after it, the search field runs into the window's edge.
+		    Var trailing As New DesktopToolbarButton
+		    trailing.ButtonStyle = DesktopToolbarButton.ButtonStyles.Space
+		    MainToolbar.AddButton(trailing)
 		    
 		    MainToolbar.Style = DesktopToolbar.Styles.IconOnly
 		    mKindItem.Symbol = "line.3.horizontal.decrease"

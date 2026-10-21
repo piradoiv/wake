@@ -75,6 +75,11 @@ Protected Module WakeTitleBar
 		    Declare Function NSSelectorFromString Lib "Foundation" (name As CFStringRef) As Ptr
 		    Declare Function RespondsToSelector Lib "Foundation" Selector "respondsToSelector:" (obj As Ptr, sel As Ptr) As Boolean
 		    Declare Sub SetBordered Lib "AppKit" Selector "setBordered:" (item As Ptr, value As Boolean)
+		    Declare Sub SetControlSize Lib "AppKit" Selector "setControlSize:" (control As Ptr, size As UInteger)
+		    Declare Function IsBezeled Lib "AppKit" Selector "isBezeled" (field As Ptr) As Boolean
+		    Declare Function IsBordered Lib "AppKit" Selector "isBordered" (field As Ptr) As Boolean
+		    Declare Function DrawsBackground Lib "AppKit" Selector "drawsBackground" (field As Ptr) As Boolean
+		    Declare Function BezelStyle Lib "AppKit" Selector "bezelStyle" (field As Ptr) As Integer
 		    Declare Function WidthAnchor Lib "AppKit" Selector "widthAnchor" (view As Ptr) As Ptr
 		    Declare Function ConstraintEqualToConstant Lib "AppKit" Selector "constraintEqualToConstant:" (anchor As Ptr, value As CGFloat) As Ptr
 		    Declare Sub SetActive Lib "AppKit" Selector "setActive:" (constraint As Ptr, value As Boolean)
@@ -98,6 +103,16 @@ Protected Module WakeTitleBar
 		    SetView(item, controlView)
 		    // Bordered, the item gets a capsule, drawn in Liquid Glass on macOS 26, as Mail's search has.
 		    If RespondsToSelector(item, NSSelectorFromString("setBordered:")) Then SetBordered(item, True)
+		    
+		    // Spike only: how Xojo sets up its field, then the large size AppKit uses for toolbar search.
+		    Const kControlSizeLarge As UInteger = 3
+		    If RespondsToSelector(controlView, NSSelectorFromString("isBezeled")) Then
+		      System.DebugLog("WakeTitleBar: field bezeled " + If(IsBezeled(controlView), "yes", "no") _
+		      + ", bezel style " + BezelStyle(controlView).ToString _
+		      + ", bordered " + If(IsBordered(controlView), "yes", "no") _
+		      + ", draws background " + If(DrawsBackground(controlView), "yes", "no"))
+		    End If
+		    If RespondsToSelector(controlView, NSSelectorFromString("setControlSize:")) Then SetControlSize(controlView, kControlSizeLarge)
 		    SetActive(ConstraintEqualToConstant(WidthAnchor(controlView), width), True)
 
 		    // Spike only: what Xojo's control view is.
