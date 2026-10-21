@@ -3,11 +3,11 @@ Protected Module WakeSidebar
 	#tag Method, Flags = &h0
 		Sub MakeTranslucent(list As DesktopTable)
 		  // On macOS, puts the list on the sidebar material, as Finder and Mail do: a visual effect view,
-		  // blending with what is behind the window and dimming when it is inactive, sits under the
-		  // list's scroll view and fills the control. On macOS the list is a view holding a scroll view,
-		  // and only the selected rows are drawn opaque, so the material shows through everywhere else.
-		  // The border is turned off. Safe to call again. Elsewhere this does nothing, and the list keeps
-		  // its look.
+		  // blending with what is behind the window and dimming when it is inactive, sits right behind
+		  // the list and is kept its size. Xojo draws the rows on the list's own view, which a subview
+		  // would cover, so the effect view is the list's sibling. Only selected rows are drawn opaque,
+		  // so the material shows through everywhere else. The border is turned off. Safe to call
+		  // again. Elsewhere this does nothing, and the list keeps its look.
 		  #If TargetMacOS
 		    Const kMaterialSidebar = 7
 		    Const kBlendingBehindWindow = 0
@@ -19,10 +19,12 @@ Protected Module WakeSidebar
 		    Declare Function Init Lib "Foundation" Selector "init" (obj As Ptr) As Ptr
 		    Declare Sub Release Lib "Foundation" Selector "release" (obj As Ptr)
 		    Declare Function IsKindOfClass Lib "Foundation" Selector "isKindOfClass:" (obj As Ptr, cls As Ptr) As Boolean
+		    Declare Function Superview Lib "AppKit" Selector "superview" (view As Ptr) As Ptr
 		    Declare Function Subviews Lib "AppKit" Selector "subviews" (view As Ptr) As Ptr
 		    Declare Function ItemCount Lib "Foundation" Selector "count" (nsArray As Ptr) As UInteger
 		    Declare Function ObjectAtIndex Lib "Foundation" Selector "objectAtIndex:" (nsArray As Ptr, index As UInteger) As Ptr
 		    Declare Sub AddSubview Lib "AppKit" Selector "addSubview:positioned:relativeTo:" (view As Ptr, subview As Ptr, place As Integer, other As Ptr)
+		    Declare Sub SetWantsLayer Lib "AppKit" Selector "setWantsLayer:" (view As Ptr, value As Boolean)
 		    Declare Sub SetDrawsBackground Lib "AppKit" Selector "setDrawsBackground:" (view As Ptr, value As Boolean)
 		    Declare Sub SetMaterial Lib "AppKit" Selector "setMaterial:" (view As Ptr, material As Integer)
 		    Declare Sub SetBlendingMode Lib "AppKit" Selector "setBlendingMode:" (view As Ptr, mode As Integer)
@@ -39,21 +41,29 @@ Protected Module WakeSidebar
 		    Var scrollClass As Ptr = NSClassFromString("NSScrollView")
 		    Var control As Ptr = list.Handle
 		    If control = Nil Or effectClass = Nil Then Return
+		    Var parent As Ptr = Superview(control)
+		    If parent = Nil Then Return
+		    If mEffects Is Nil Then mEffects = New Dictionary
+		    If mEffects.HasKey(Integer(control)) Then Return
 
 		    // The scroll view draws nothing behind the rows today. Turning that off again keeps it so.
 		    Var views As Ptr = Subviews(control)
 		    For index As Integer = 0 To ItemCount(views) - 1
 		      Var child As Ptr = ObjectAtIndex(views, index)
-		      If IsKindOfClass(child, effectClass) Then Return
 		      If IsKindOfClass(child, scrollClass) Then SetDrawsBackground(child, False)
 		    Next
 
+		    // The effect view has a layer of its own, which would go over a sibling without one,
+		    // whatever their order. With a layer, the list stays in front of it.
+		    SetWantsLayer(control, True)
+		    
 		    Var effect As Ptr = Init(Alloc(effectClass))
 		    SetMaterial(effect, kMaterialSidebar)
 		    SetBlendingMode(effect, kBlendingBehindWindow)
 		    SetState(effect, kStateFollowsWindow)
 		    SetTranslatesAutoresizing(effect, False)
-		    AddSubview(control, effect, kWindowBelow, Nil)
+		    AddSubview(parent, effect, kWindowBelow, control)
+		    mEffects.Value(Integer(control)) = True
 		    Release(effect)
 
 		    // Constraints keep it the size of the control as the window resizes.
@@ -68,6 +78,11 @@ Protected Module WakeSidebar
 		  #EndIf
 		End Sub
 	#tag EndMethod
+
+
+	#tag Property, Flags = &h21
+		Private mEffects As Dictionary
+	#tag EndProperty
 
 
 End Module

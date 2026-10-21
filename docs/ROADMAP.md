@@ -245,13 +245,14 @@ Each milestone below is one session's work, ending with tests and a commit.
 - [x] **23. Translucent sidebar (macOS).** The main window's source list sits
   on the sidebar material, as Finder and Mail do. `WakeSidebar.MakeTranslucent`
   puts an `NSVisualEffectView` (sidebar material, behind-window blending,
-  following the active state) inside `SourceList`'s view, under its scroll
-  view and pinned to it with constraints, and turns the border off. The probe
-  run found nothing to switch off: Xojo leaves unselected rows and the empty
-  area transparent (see the `DesktopTable` gotcha). `SourceList` stays a
-  regular `DesktopTable` (same selection, text and layout); Windows and Linux
-  keep today's look. The sidebar starts under the bar, not under the window
-  buttons as in Mail. 116 tests.
+  following the active state) right behind `SourceList`'s view, as its
+  sibling, kept its size with constraints; gives the list a layer so it stays
+  in front; and turns the border off. Xojo leaves unselected rows and the
+  empty area transparent, so nothing had to be switched off (see the
+  `DesktopTable` gotcha). `SourceList` stays a regular `DesktopTable` (same
+  selection, text and layout); Windows and Linux keep today's look. The
+  sidebar starts under the bar, not under the window buttons as in Mail.
+  116 tests. Checked by eye in dark mode.
 
 After v0.1: Codex CLI and Gemini CLI parsers, once real sessions exist on a
 machine to inspect, and the console companion.
@@ -411,12 +412,15 @@ machine to inspect, and the console companion.
   Divided capsules (Mail's) need an `NSToolbarItemGroup`, which only the
   delegate can make.
 - **`DesktopTable` on macOS** is a `XOJCanvasView` holding an `NSScrollView`
-  (`DLB2PassThruScrollView`) whose document view (`DLB2FlippedDocView`) Xojo
-  draws itself; it isn't an `NSTableView`. The scroll and clip views don't
-  draw backgrounds, and only selected rows are painted opaque, so a view
-  added under the scroll view shows through. Returning True from
-  `PaintCellBackground` also drops the selection highlight. On macOS 26 the
-  scroll view also holds `NSScrollPocket` views (the scroll edge effect).
+  (`DLB2PassThruScrollView`, document view `DLB2FlippedDocView`); it isn't an
+  `NSTableView`. Xojo draws the rows on the outer `XOJCanvasView` itself, so a
+  subview added inside covers them: put views meant to show behind the list
+  in its superview, below it. A layer-backed sibling (an
+  `NSVisualEffectView`) goes over a sibling without a layer whatever their
+  order, so give the list a layer too. Unselected rows and the empty area are
+  transparent. Returning True from `PaintCellBackground` also drops the
+  selection highlight. On macOS 26 the scroll view also holds `NSScrollPocket`
+  views (the scroll edge effect).
 - **Declares that read an `NSRect`** go through key-value coding
   (`valueForKey:` and `getValue:size:` into a `MemoryBlock`), so no declare
   returns a structure (the docs don't show how a `Structure` is written in a
