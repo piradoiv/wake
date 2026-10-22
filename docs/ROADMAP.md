@@ -260,7 +260,61 @@ Each milestone below is one session's work, ending with tests and a commit.
   its own view with opaque white, in front of anything behind it, and
   returning True from `PaintCellBackground` doesn't remove the fill (see the
   `DesktopTable` gotcha). Dark mode worked. Pick this up again once Xojo
-  can make the list transparent in both appearances.
+  can make the list transparent in both appearances. Skip it while blocked.
+
+- [ ] **24. Files view.** The main window gets a second view beside the
+  sessions list: the files agents changed, for the source-list selection.
+  A Sessions/Files switch sits in the toolbar on macOS (a real toolbar
+  item, see Decisions) and in View → Sessions (Cmd+1) / Files (Cmd+2) on
+  every platform. If `DesktopToolbar` can't make a two-segment item, that's
+  a roadblock to raise, not to work around: fall back to two toggle
+  buttons. The date menu, today only for search, filters both views
+  (by a session's start for sessions, by the change's own time for files).
+  The index gets a `file_changes` row per edit or write a session made,
+  subagents included: session, seq, the turn's prompt seq, time, the path
+  resolved and made relative to the project folder (absolute when outside
+  it), the action (create, edit, write) and lines added and removed, from
+  `structuredPatch` or the written content (schema bump). Only the agent's
+  edit and write tools count, not shell commands. `WakeCatalog.ChangedFiles`
+  returns `WakeChangedFile`s (path, edits, sessions, lines added and
+  removed, reads, last changed, ≈ tokens spent on it). The list is a tree:
+  folders sum their files, single-child folder chains collapse
+  (`Wake/Core/Index`), and files outside the project folder go in a last
+  "Outside the project" group. A project or agent selection lists each
+  project as a top node. Columns: Name, Edits, Sessions, +/−, Reads, Last
+  changed, ≈ Tokens; sorts by value. Files no longer on disk are grey (an
+  existence check, nothing else is read). Selecting a file fills the detail
+  pane with its summary and its changes, newest first: date, session title,
+  the prompt on one line, +/−. Double-clicking a file opens its history
+  (milestone 25); double-clicking a change opens its session timeline at
+  that edit. A session's detail pane gains "Files changed", and clicking
+  one switches to the Files view with it selected. Fixture: a session that
+  creates, edits and rewrites files, one inside and one outside its folder,
+  one with a subagent edit. Checked by eye.
+
+- [ ] **25. File history.** A `FileHistoryWindow`, one per file, shows
+  every change agents made to a file across sessions, oldest first: a page
+  rendered by `WakeFileHistory` (Core) with the same rules as the timeline
+  (self-contained, CSP `default-src 'none'`, transcript text escaped with
+  `WakeTimeline.EscapeHTML`, diffs drawn as the timeline draws them, costs
+  filled after load). It groups by session, then by prompt: the session's
+  title and date, the prompt that asked for the change, each edit as a
+  diff, and the agent's first answer after the edits as the "why", cut to
+  a few lines with a "more" link. Changes made by subagents sit under the
+  prompt that started the subagent, marked "subagent". A switch shows the
+  reads of the file too, as one-line rows. Each group's header opens its
+  session timeline at the first edit. The page re-parses only the sessions
+  that changed the file. A header line says what the history can't show:
+  the user's own edits, and whether a change is still in the file. Markdown
+  export (Cmd+E) lists the prompts and diffs. Checked by eye.
+
+- [ ] **26. Line blame.** The file history window gets a Blame tab: the
+  file as it is on disk now (read-only, capped in size, text files only),
+  each line marked with the latest agent change whose added lines produce
+  it, matched by text, nearest position first. Pressing a mark jumps to
+  that change in the history. Lines no change accounts for read "not from
+  an agent edit, or changed since". Stays a heuristic and says so. Tests
+  for moved lines, repeated lines and edits that later edits overwrote.
 
 After v0.1: Codex CLI and Gemini CLI parsers, once real sessions exist on a
 machine to inspect, and the console companion.
@@ -311,6 +365,9 @@ machine to inspect, and the console companion.
 | The daily chart covers **at least 14 days**, with days outside the chosen period drawn lighter, and at most five years. | One bar for "Today" says nothing, and a bad timestamp mustn't draw thousands of bars. |
 | On macOS the main and Usage windows have a **unified bar** whose controls are **real toolbar items**, not Xojo controls laid out in the bar. | AppKit moves toolbar items into its overlay in full screen, where it hides anything else in the bar, and only toolbar items get the Liquid Glass look of Apple's own apps. |
 | The main window's search is AppKit's **`NSSearchToolbarItem`**, added through a **runtime subclass of Xojo's toolbar delegate**. | `DesktopToolbar` has no search item and only the delegate can create one. A field in a plain item drew no capsule. The maintainer accepted the risk of a Xojo update breaking it (four releases a year). |
+| Changed files are a **second view in the main window** (Sessions/Files), not a window of their own, and a file's full history **opens in its own window**. | The view shares the source list, date filter and detail pane. A history needs the width for diffs, as the timeline does. |
+| A file's history shows **what agents changed and why** (the prompt and the answer around each edit). It is built from transcripts only, never from git or the user's own edits. | Transcripts are the only source Wake reads. The view says so, because a change in the history may no longer be in the file. |
+| Changes come only from **edit and write tool calls**, not shell commands. | `sed -i`, `mv` or a script's writes can't be read reliably from a command's shape. |
 | Long blocks and persisted output are **fetched on demand** with `executeInXojoSync`, not embedded. | Keeps the page small for 10 MB transcripts. Persisted output is read only when asked for, capped at 4 MB. |
 
 ## Working notes and gotchas
