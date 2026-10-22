@@ -341,14 +341,14 @@ Each milestone below is one session's work, ending with tests and a commit.
   reuse an open window. Fixture session 11 is in its own root,
   `claude-code/history/`. It doesn't watch for new changes yet.
 
-- [ ] **26. Line blame.** The file history window gets a Blame tab: the
+- [x] **26. Line blame.** The file history window gets a Blame tab: the
   file as it is on disk now (read-only, capped in size, text files only),
   each line marked with the latest agent change whose added lines produce
   it, matched by text, nearest position first. Pressing a mark jumps to
   that change in the history. Lines no change accounts for read "not from
   an agent edit, or changed since". Stays a heuristic and says so. Tests
   for moved lines, repeated lines and edits that later edits overwrote.
-  **Built, waiting on a check by eye** (138 tests): `WakeBlame` (Core)
+  **Done, checked by eye** (138 tests): `WakeBlame` (Core)
   takes each change's patch oldest first. Removed lines cancel the nearest
   live line an earlier change added with that text; a create, or a write
   with no hunks, cancels everything. Positions come from hunk headers (or
