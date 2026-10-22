@@ -413,6 +413,28 @@ Each milestone below is one session's work, ending with tests and a commit.
   Then the **Releases** note below says to ship the `.dmg` instead of a zip,
   uploaded as `Wake-macOS.dmg`, and the README's download links follow.
 
+- [ ] **29. Homebrew cask.** `brew install piradoiv/tap/wake` installs the
+  app. Needs 28. A third-party tap, because the official `homebrew/cask`
+  only takes apps that are already well known (stars, forks, watchers).
+  The tap is a new public repository, `piradoiv/homebrew-tap`. Before
+  starting, ask the maintainer to create it on GitHub and wait for it:
+  don't create it yourself. It holds `Casks/wake.rb`: `version`, `sha256` of
+  the `.dmg`, a versioned `url` built from the tag
+  (`…/releases/download/v#{version}/Wake-macOS.dmg`, not the `latest`
+  link, so the checksum always matches), `name`, `desc`, `homepage`,
+  `livecheck` on GitHub's latest release, `depends_on arch: :arm64` while
+  only Apple silicon builds ship, `depends_on macos:` matching the build's
+  `LSMinimumSystemVersion` (11.0 today), `app "Wake.app"`, and `zap trash:`
+  for the index folder (`~/Library/Application Support/Wake`) and anything
+  else under `dev.rcruz.wake` that the app writes. `brew install` and
+  `zap` touch only Wake's own files, never the agents' transcripts. The
+  app must stay signed and notarized: Homebrew no longer lets users skip
+  Gatekeeper. Checked with `brew audit --cask --new --online` and
+  `brew style`, then `brew install`, launching Wake, `brew uninstall
+  --zap`. The **Releases** note gains a step to bump `version` and `sha256`
+  (`shasum -a 256 Wake-macOS.dmg`) in the tap after each upload, and the
+  README lists the `brew` line under the download link.
+
 After v0.1: Codex CLI and Gemini CLI parsers, once real sessions exist on a
 machine to inspect, and the console companion.
 
