@@ -311,7 +311,7 @@ Each milestone below is one session's work, ending with tests and a commit.
   outside their project; 222 creates and 15 rewrites, as many as the Write
   results.
 
-- [ ] **25. File history.** A `FileHistoryWindow`, one per file, shows
+- [x] **25. File history.** A `FileHistoryWindow`, one per file, shows
   every change agents made to a file across sessions, oldest first: a page
   rendered by `WakeFileHistory` (Core) with the same rules as the timeline
   (self-contained, CSP `default-src 'none'`, transcript text escaped with
@@ -326,7 +326,7 @@ Each milestone below is one session's work, ending with tests and a commit.
   that changed the file. A header line says what the history can't show:
   the user's own edits, and whether a change is still in the file. Markdown
   export (Cmd+E) lists the prompts and diffs. Checked by eye.
-  **Built, waiting on a check by eye** (130 tests): `WakeFileHistory`
+  **Done, checked by eye** (130 tests): `WakeFileHistory`
   (Core) inherits `WakeTimeline`, whose page helpers (`Block` with optional
   preview limits, `ToolStats`, `TimeHTML`, `StyleSheet`, `ScriptSource`,
   `NewAnchor`, `LocalTime`) are now Protected. `AddSession` splits a parsed
