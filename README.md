@@ -89,7 +89,10 @@ double-click one to jump to it in its timeline.
 ### Why long sessions cost more
 
 Every response sends the whole context again, so a long session keeps paying
-for its early turns. Wake estimates that cost for each turn (shown as
+for its early turns. At the end of a long session, even "commit the changes"
+can cost around 50 cents at API prices (or that much of your plan's usage
+limit), because it carries everything before it. Running `/clear` before small
+chores like that avoids it. Wake estimates that cost for each turn (shown as
 **≈ carried**) in the sessions list, the Usage window and on each prompt. A
 timeline opens with a curve of the context size per response, with compactions
 marked. Click a point to jump to that turn.
