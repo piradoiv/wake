@@ -5,7 +5,7 @@
 <h1 align="center">Wake</h1>
 
 <p align="center">
-  <b>See what your coding agent really did, and where your tokens went.</b>
+  <b>Find out where your coding agent's tokens went, and what would have sent less.</b>
 </p>
 
 <p align="center">
@@ -16,24 +16,25 @@
   <sub>Free and open source · Signed and notarized · Never goes online</sub>
 </p>
 
-<img width="1412" height="792" alt="Wake's main window listing Claude Code sessions by project with their duration, tokens and cost, in front of the Usage window with cost per day" src="https://github.com/user-attachments/assets/ec7936c9-c0e4-4f44-8da6-bf98df0d54ea" />
+<img width="992" height="870" alt="The Usage window grouping a week of tool calls by intent, with the most expensive shell commands listed below and a tip on how to send less" src="https://github.com/user-attachments/assets/ad4fbe65-bd7e-473c-87ab-bd2f0295370a" />
 
-Claude Code keeps a full transcript of every session on your Mac, and almost
-nobody reads them. Wake opens them up. Replay any session step by step, find
-the command your agent ran last Tuesday, and see exactly which reads, searches
-and commands filled your context.
+Hit your usage limit by lunch, or got a bigger bill than you expected? Claude
+Code keeps a full transcript of every session on your Mac, and Wake reads them
+for you. It shows which reads, searches and commands filled your context, why
+long sessions cost more than they look, and what to change. You can also replay
+any session step by step and find the command your agent ran last Tuesday.
 
 ## Why you'll like it
 
-- **Replay any session.** Prompts, answers, commands and diffs in one
-  timeline, with subagents nested where they ran.
-- **Find anything.** Search every prompt, answer and command output across
-  all your projects at once.
 - **Learn why a session got expensive.** Every reply re-sends the whole
   conversation, so a long session pays for its first turns again and again.
   Wake shows you where that started, and which calls cost you the most.
 - **Hand the fix back to your agent.** Export a Markdown checklist of what
   would have sent less, ready to paste into an issue or a prompt.
+- **Replay any session.** Prompts, answers, commands and diffs in one
+  timeline, with subagents nested where they ran.
+- **Find anything.** Search every prompt, answer and command output across
+  all your projects at once.
 - **Watch sessions live** while your agent is still working.
 
 **Your transcripts never leave your Mac.** Wake only reads them. It doesn't
@@ -57,6 +58,8 @@ Wake runs on macOS. Windows and Linux versions are planned.
 Sessions are grouped by agent and project, with when they started, how long
 they took, their title, tokens and estimated cost. Sessions that hold only a
 slash command such as `/clear` are hidden unless you ask for them.
+
+<img width="1412" height="792" alt="Wake's main window listing Claude Code sessions by project with their duration, tokens and cost, in front of the Usage window with cost per day" src="https://github.com/user-attachments/assets/ec7936c9-c0e4-4f44-8da6-bf98df0d54ea" />
 
 ### A timeline for each session
 
@@ -82,8 +85,6 @@ file, searching, listing, editing, browsing the web or running commands. Each
 group comes with a tip on what would send less. Files read again in the same
 session are counted apart. Pick a row to see its most expensive calls, and
 double-click one to jump to it in its timeline.
-
-<img width="992" height="870" alt="The Usage window grouping a week of tool calls by intent, with the most expensive shell commands listed below and a tip on how to send less" src="https://github.com/user-attachments/assets/ad4fbe65-bd7e-473c-87ab-bd2f0295370a" />
 
 ### Why long sessions cost more
 
@@ -115,6 +116,14 @@ Wake checks for new and growing sessions every few seconds and marks the ones
 an agent is writing to with a "Live" badge. An open timeline offers to reload
 when its session changes, so it never moves under you. Turn this off with
 View → Watch for Changes.
+
+## How Wake compares
+
+Token counters such as [ccusage](https://github.com/ryoppippi/ccusage) tell
+you how many tokens you used. Transcript viewers show you what was said. Wake
+does both, and adds the why: which kinds of calls filled the context, how much
+each turn carried from the turns before it, and what would have sent less. It's
+a native Mac app that only reads your transcripts and never goes online.
 
 ## Principles
 
