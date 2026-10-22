@@ -442,6 +442,7 @@ machine to inspect, and the console companion.
 | Changes come only from **edit and write tool calls**, not shell commands. | `sed -i`, `mv` or a script's writes can't be read reliably from a command's shape. |
 | **Line blame matches by text**, not by replaying patches: the latest change that added a line with the same text claims it, nearest position first, and the page says it's a guess. | Transcripts hold patches, not file states, and the user's own edits are invisible, so a replay would break at the first gap. Text matching degrades one line at a time. |
 | The blame is a **tab in the history page**, not a native control. | No window uses a segmented control or tab panel yet, and a mark's jump to its change stays inside the page. |
+| macOS builds are **ARM 64-bit only** (Apple silicon), `MacBuildArchitecture=3` in the project file. | Chosen by the maintainer. Rosetta ends after macOS 27, and since September 2026 the Mac App Store takes arm64-only apps that need macOS 13 or later. |
 | Long blocks and persisted output are **fetched on demand** with `executeInXojoSync`, not embedded. | Keeps the page small for 10 MB transcripts. Persisted output is read only when asked for, capped at 4 MB. |
 
 ## Working notes and gotchas
