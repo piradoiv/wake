@@ -285,12 +285,12 @@ Protected Class WakeFileNode
 
 	#tag Enum, Name = Columns, Type = Integer, Flags = &h0
 		Name
-		  Edits
 		  Sessions
-		  Lines
 		  Reads
-		  LastChanged
-		Tokens
+		  Edits
+		  Lines
+		  Tokens
+		LastChanged
 	#tag EndEnum
 
 	#tag Enum, Name = Kinds, Type = Integer, Flags = &h0

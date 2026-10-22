@@ -437,7 +437,7 @@ Begin DesktopWindow MainWindow
       AllowRowReordering=   False
       Bold            =   False
       ColumnCount     =   7
-      ColumnWidths    =   "*,52,64,84,52,124,76"
+      ColumnWidths    =   "*,64,52,52,84,76,124"
       DefaultRowHeight=   22
       DropIndicatorVisible=   False
       Enabled         =   True
@@ -648,12 +648,12 @@ End
 		  
 		  Var cells() As String
 		  cells.Add(label)
-		  cells.Add(WakeFormat.Count(node.Edits))
 		  cells.Add(WakeFormat.Count(node.SessionCount))
-		  cells.Add(LinesText(node.LinesAdded, node.LinesRemoved))
 		  cells.Add(If(node.Reads > 0, WakeFormat.Count(node.Reads), ""))
-		  cells.Add(If(node.LastChanged Is Nil, "", FormatTime(node.LastChanged)))
+		  cells.Add(WakeFormat.Count(node.Edits))
+		  cells.Add(LinesText(node.LinesAdded, node.LinesRemoved))
 		  cells.Add(If(node.Tokens > 0, WakeFormat.Tokens(node.Tokens), ""))
+		  cells.Add(If(node.LastChanged Is Nil, "", FormatTime(node.LastChanged)))
 		  
 		  If node.IsFolder Then
 		    FilesList.AddExpandableRow(cells)
@@ -1960,25 +1960,25 @@ End
 	#tag Constant, Name = kColumnTokens, Type = Double, Dynamic = False, Default = \"4", Scope = Private
 	#tag EndConstant
 
-	#tag Constant, Name = kFileColumnChanged, Type = Double, Dynamic = False, Default = \"5", Scope = Private
+	#tag Constant, Name = kFileColumnChanged, Type = Double, Dynamic = False, Default = \"6", Scope = Private
 	#tag EndConstant
 
-	#tag Constant, Name = kFileColumnEdits, Type = Double, Dynamic = False, Default = \"1", Scope = Private
+	#tag Constant, Name = kFileColumnEdits, Type = Double, Dynamic = False, Default = \"3", Scope = Private
 	#tag EndConstant
 
-	#tag Constant, Name = kFileColumnLines, Type = Double, Dynamic = False, Default = \"3", Scope = Private
+	#tag Constant, Name = kFileColumnLines, Type = Double, Dynamic = False, Default = \"4", Scope = Private
 	#tag EndConstant
 
 	#tag Constant, Name = kFileColumnName, Type = Double, Dynamic = False, Default = \"0", Scope = Private
 	#tag EndConstant
 
-	#tag Constant, Name = kFileColumnReads, Type = Double, Dynamic = False, Default = \"4", Scope = Private
+	#tag Constant, Name = kFileColumnReads, Type = Double, Dynamic = False, Default = \"2", Scope = Private
 	#tag EndConstant
 
-	#tag Constant, Name = kFileColumnSessions, Type = Double, Dynamic = False, Default = \"2", Scope = Private
+	#tag Constant, Name = kFileColumnSessions, Type = Double, Dynamic = False, Default = \"1", Scope = Private
 	#tag EndConstant
 
-	#tag Constant, Name = kFileColumnTokens, Type = Double, Dynamic = False, Default = \"6", Scope = Private
+	#tag Constant, Name = kFileColumnTokens, Type = Double, Dynamic = False, Default = \"5", Scope = Private
 	#tag EndConstant
 
 	#tag Constant, Name = kHitColumnKind, Type = Double, Dynamic = False, Default = \"1", Scope = Private
