@@ -724,6 +724,37 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Function DrawLinesText(g As Graphics, text As String, x As Integer, y As Integer) As Boolean
+		  // Draws a cell that starts with a LinesText count: the added lines in green, the removed in
+		  // red and the rest in the list's colour, cut with an ellipsis when it doesn't fit. Returns
+		  // False, so the list draws the text itself, when the cell doesn't start with a count.
+		  If Not text.BeginsWith("+") Or Not IsNumeric(text.Middle(1, 1)) Then Return False
+		  Var minus As Integer = text.IndexOf(" −")
+		  If minus < 0 Then Return False
+		  Var finish As Integer = text.IndexOf(minus + 2, " ")
+		  If finish < 0 Then finish = text.Length
+
+		  Var textColor As Color = g.DrawingColor
+		  Var pieces() As String = Array(text.Left(minus), text.Middle(minus, finish - minus), text.Middle(finish))
+		  Var tints() As Color = Array(WakeGlanceTiles.kGreen, WakeGlanceTiles.kRed)
+		  Var drawAt As Double = x
+		  For i As Integer = 0 To pieces.LastIndex
+		    If pieces(i) = "" Or drawAt >= g.Width Then Exit
+		    If i <= tints.LastIndex Then
+		      g.DrawingColor = If(Color.IsDarkMode, tints(i), WakeGlanceTiles.Shade(tints(i)))
+		    Else
+		      g.DrawingColor = textColor
+		    End If
+		    g.DrawText(pieces(i), drawAt, y, g.Width - drawAt, True)
+		    drawAt = drawAt + g.TextWidth(pieces(i))
+		  Next
+
+		  g.DrawingColor = textColor
+		  Return True
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function FileProjectLabel(node As WakeFileNode) As String
 		  For Each p As WakeProjectInfo In mProjects
 		    If p.ID = node.ProjectID Then Return ProjectLabel(p)
@@ -2116,6 +2147,13 @@ End
 #tag EndEvents
 #tag Events DetailList
 	#tag Event
+		Function PaintCellText(g As Graphics, row As Integer, column As Integer, x As Integer, y As Integer) As Boolean
+		  // Line counts, of a file and of each change, in green and red.
+		  If row > Me.LastRowIndex Or Me.RowSelectedAt(row) Then Return False
+		  Return DrawLinesText(g, Me.CellTextAt(row, column), x, y)
+		End Function
+	#tag EndEvent
+	#tag Event
 		Function MouseDown(x As Integer, y As Integer) As Boolean
 		  // The details are only for reading, so clicks don't select rows. A changed file switches to
 		  // the Files view with it selected, and a file's change lets the click through, so a double
@@ -2326,14 +2364,15 @@ End
 	#tag EndEvent
 	#tag Event
 		Function PaintCellText(g As Graphics, row As Integer, column As Integer, x As Integer, y As Integer) As Boolean
-		  // Files no longer on disk are drawn dimmed.
-		  #Pragma Unused column
-		  #Pragma Unused x
-		  #Pragma Unused y
+		  // Files no longer on disk are drawn dimmed, and the others' line counts in green and red.
 		  If row > Me.LastRowIndex Or Me.RowSelectedAt(row) Then Return False
-		  
+
 		  Var node As WakeFileNode = WakeFileNode(Me.RowTagAt(row).ObjectValue)
-		  If node <> Nil And IsMissing(node) Then g.DrawingColor = WakeGlanceTiles.SecondaryTextColor
+		  If node <> Nil And IsMissing(node) Then
+		    g.DrawingColor = WakeGlanceTiles.SecondaryTextColor
+		    Return False
+		  End If
+		  If column = kFileColumnLines Then Return DrawLinesText(g, Me.CellTextAt(row, column), x, y)
 		  Return False
 		End Function
 	#tag EndEvent

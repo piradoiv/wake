@@ -219,7 +219,10 @@ Inherits DesktopCanvas
 	#tag Constant, Name = kPurple, Type = Color, Dynamic = False, Default = \"&cAF52DE", Scope = Public
 	#tag EndConstant
 
-	#tag Constant, Name = kTeal, Type = Color, Dynamic = False, Default = \"&c30B0C7", Scope = Public
+	#tag Constant, Name = kRed, Type = Color, Dynamic = False, Default = \"&cFF3B30", Scope = Public
+	#tag EndConstant
+
+	#tag Constant, Name = kTeal,Type = Color, Dynamic = False, Default = \"&c30B0C7", Scope = Public
 	#tag EndConstant
 
 	#tag Constant, Name = kTileHeight, Type = Double, Dynamic = False, Default = \"70", Scope = Private
