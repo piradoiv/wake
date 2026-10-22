@@ -29,7 +29,7 @@ Protected Class WakeIndex
 		  
 		  mDB.BeginTransaction
 		  Try
-		    For Each name As String In Array("events_fts", "events", "turns", "tool_usage", "usage", "session_models", "sessions", "projects", "files", "meta")
+		    For Each name As String In Array("events_fts", "events", "file_changes", "turns", "tool_usage", "usage", "session_models", "sessions", "projects", "files", "meta")
 		      mDB.ExecuteSQL("DROP TABLE IF EXISTS " + name)
 		    Next
 		    
@@ -98,7 +98,54 @@ Protected Class WakeIndex
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
-		Private Sub InsertSession(fileID As Integer, parentID As Variant, projectID As Integer, session As WakeSession)
+		Private Sub InsertFileChange(sessionID As Integer, e As WakeEvent, folder As String, promptSequence As Variant)
+		  // Only edit and write tools count, and only when they didn't fail. A shell command's
+		  // changes can't be read from its shape.
+		  If e.Kind <> WakeEvent.Kinds.FileEdit Or e.ChangeAction = "" Or e.ResultIsError Then Return
+		  
+		  Var target As String = e.ResolvedTargetPath(folder)
+		  If target = "" Then Return
+		  
+		  Var lines As Pair = e.ChangedLineCounts
+		  mDB.ExecuteSQL("INSERT INTO file_changes (session_id, seq, prompt_seq, timestamp, target, path, action, " + _
+		  "lines_added, lines_removed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", _
+		  sessionID, e.Sequence, promptSequence, TimeValue(e.Timestamp), target, WakeCore.RelativePath(target, folder), _
+		  e.ChangeAction, lines.Left.IntegerValue, lines.Right.IntegerValue)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub InsertFileChanges(session As WakeSession, sessionIDs As Dictionary)
+		  // One row per edit or write a session and its subagents made. A subagent's changes take the
+		  // prompt of the turn that started it, and paths are relative to the top-level session's folder.
+		  Var folder As String = session.ProjectPath
+		  Var placed As New Dictionary
+		  Var promptSequence As Variant
+		  
+		  For Each e As WakeEvent In session.Events
+		    If e.Kind = WakeEvent.Kinds.UserPrompt Then promptSequence = e.Sequence
+		    InsertFileChange(sessionIDs.Value(session).IntegerValue, e, folder, promptSequence)
+		    
+		    If e.Subagent <> Nil And sessionIDs.HasKey(e.Subagent) And Not placed.HasKey(e.Subagent) Then
+		      placed.Value(e.Subagent) = True
+		      For Each child As WakeEvent In e.Subagent.Events
+		        InsertFileChange(sessionIDs.Value(e.Subagent).IntegerValue, child, folder, promptSequence)
+		      Next
+		    End If
+		  Next
+		  
+		  // A subagent no tool call started has no prompt.
+		  For Each subagent As WakeSession In session.Subagents
+		    If placed.HasKey(subagent) Or Not sessionIDs.HasKey(subagent) Then Continue
+		    For Each child As WakeEvent In subagent.Events
+		      InsertFileChange(sessionIDs.Value(subagent).IntegerValue, child, folder, Nil)
+		    Next
+		  Next
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub InsertSession(fileID As Integer, parentID As Variant, projectID As Integer, session As WakeSession, sessionIDs As Dictionary)
 		  Var total As WakeTokenUsage = session.TotalUsage
 		  Var own As WakeTokenUsage = session.Usage
 		  
@@ -123,6 +170,7 @@ Protected Class WakeIndex
 		  session.StartingContextTokens, session.CarriedTokens)
 		  
 		  Var sessionID As Integer = mDB.LastRowID
+		  sessionIDs.Value(session) = sessionID
 		  
 		  For Each model As Variant In session.UsageByModel.Keys
 		    Var usage As WakeTokenUsage = WakeTokenUsage(session.UsageByModel.Value(model).ObjectValue)
@@ -145,7 +193,7 @@ Protected Class WakeIndex
 		  InsertTurns(sessionID, session)
 		  
 		  For Each child As WakeSession In session.Subagents
-		    InsertSession(fileID, sessionID, projectID, child)
+		    InsertSession(fileID, sessionID, projectID, child, sessionIDs)
 		  Next
 		End Sub
 	#tag EndMethod
@@ -368,6 +416,16 @@ Protected Class WakeIndex
 		  "context_tokens INTEGER NOT NULL, turn_tokens INTEGER NOT NULL, carried_tokens INTEGER NOT NULL)")
 		  s.Add("CREATE INDEX turns_session ON turns (session_id, seq)")
 		  
+		  // One row per edit or write tool call that didn't fail, subagents included. prompt_seq is the
+		  // top-level session's prompt whose turn made it, also for a subagent's change. target is the
+		  // resolved path, as in tool_usage, and path is relative to the project folder, or absolute
+		  // outside it. action is a WakeEvent.kChange value.
+		  s.Add("CREATE TABLE file_changes (session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE, " + _
+		  "seq INTEGER NOT NULL, prompt_seq INTEGER, timestamp REAL, target TEXT NOT NULL, path TEXT NOT NULL, " + _
+		  "action TEXT NOT NULL, lines_added INTEGER NOT NULL, lines_removed INTEGER NOT NULL)")
+		  s.Add("CREATE INDEX file_changes_session ON file_changes (session_id)")
+		  s.Add("CREATE INDEX file_changes_target ON file_changes (target)")
+		  
 		  // The rowid of each search row is the id of its event.
 		  s.Add("CREATE VIRTUAL TABLE events_fts USING fts5(body, tokenize = 'unicode61 remove_diacritics 2')")
 		  s.Add("CREATE TRIGGER events_fts_delete AFTER DELETE ON events BEGIN " + _
@@ -422,7 +480,10 @@ Protected Class WakeIndex
 		    report.FileError, report.MalformedLines, report.UnknownRecordCount, report.UnknownBlockCount, report.Summary)
 		    Var fileID As Integer = mDB.LastRowID
 		    
-		    InsertSession(fileID, Nil, ProjectID(session.AgentID, projectPath, isFallback), session)
+		    // Each session's row id, so file changes can name the subagent that made them.
+		    Var sessionIDs As New Dictionary
+		    InsertSession(fileID, Nil, ProjectID(session.AgentID, projectPath, isFallback), session, sessionIDs)
+		    InsertFileChanges(session, sessionIDs)
 		    
 		    mDB.CommitTransaction
 		  Catch err As DatabaseException
@@ -474,7 +535,7 @@ Protected Class WakeIndex
 	#tag Constant, Name = kMaxSearchTextLength, Type = Double, Dynamic = False, Default = \"65536", Scope = Public
 	#tag EndConstant
 
-	#tag Constant, Name = kSchemaVersion, Type = Double, Dynamic = False, Default = \"12", Scope = Public
+	#tag Constant, Name = kSchemaVersion, Type = Double, Dynamic = False, Default = \"13", Scope = Public
 	#tag EndConstant
 
 

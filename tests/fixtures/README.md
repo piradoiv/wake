@@ -56,3 +56,11 @@ Session 9 lives in its own root too. Only `WakeNowhereTests` indexes it.
 | N | Project folder     | What it covers | Expected |
 |---|--------------------|----------------|----------|
 | 9 | `-Users-dev-notes` | Reads of `src/parser.c` (edited later), `README.md` (`cat`, named only in the answer), `src/util.h` (a later `grep` names only `util.hpp`), `src/lexer.c` twice, `docs/notes.md` (named in an `Agent` prompt) and `src/old.c` (named only after a compaction, in a second turn), a screenshot whose result is an image block, and `/tmp/agent/b0fixture9.txt`, outside the project, named only in an earlier tool result. | Led nowhere: `util.h`, both `lexer.c` reads and `old.c`, so 4 of 9 reads. The screenshot and the saved output are never flagged. |
+
+## File changes (`claude-code/changes/`)
+
+Session 10 lives in its own root too. Only `WakeFileChangesTests` indexes it.
+
+| N  | Project folder    | What it covers | Expected |
+|----|-------------------|----------------|----------|
+| 10 | `-Users-dev-shop` | Turn 1 (10:00 UTC): Read of `src/app/price.py`, Write creating `src/app/format.py`, Edit of `price.py` with `structuredPatch`, and an `Agent` call whose subagent (`agent-a0fixture000010`) edits `README.md`. Turn 2 (11:00 UTC): Write replacing `format.py` (`type: update`), a failed Edit of `price.py`, `sed -i` on `price.py`, and a Write creating `/Users/dev/notes/shop.md`, outside the project. | 4 changed files, 5 changes: `format.py` 2 (+4 −1), `price.py` 1 (+2 −1, 1 read), `README.md` 1 (+2, subagent, turn 1's prompt), `shop.md` 1 (+1, outside). The failed edit and `sed -i` don't count. From 10:30 on: `format.py` (1) and `shop.md`. |

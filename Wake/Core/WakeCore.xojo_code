@@ -214,6 +214,22 @@ Protected Module WakeCore
 		End Function
 	#tag EndMethod
 
+	#tag Method, Flags = &h0
+		Function RelativePath(path As String, folder As String) As String
+		  // path relative to folder, or path unchanged when it isn't inside folder.
+		  If folder = "" Then Return path
+		  
+		  For Each separator As String In Array("/", "\")
+		    Var prefix As String = If(folder.EndsWith(separator), folder, folder + separator)
+		    If path.Length > prefix.Length And path.BeginsWith(prefix, ComparisonOptions.CaseSensitive) Then
+		      Return path.Middle(prefix.Length)
+		    End If
+		  Next
+		  
+		  Return path
+		End Function
+	#tag EndMethod
+
 	#tag Method, Flags = &h21
 		Private Function IsDigit(character As String) As Boolean
 		  Return character >= "0" And character <= "9" And character.Length = 1

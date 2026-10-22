@@ -291,6 +291,15 @@ Each milestone below is one session's work, ending with tests and a commit.
   one switches to the Files view with it selected. Fixture: a session that
   creates, edits and rewrites files, one inside and one outside its folder,
   one with a subagent edit. Checked by eye.
+  **Core done** (schema 13, 122 tests): the parser sets
+  `WakeEvent.ChangeAction` (`kChangeCreate`, `kChangeEdit`, `kChangeWrite`),
+  `ChangedLineCounts` counts the patch, failed calls don't count.
+  `file_changes` keeps `target` (resolved, as in `tool_usage`) beside the
+  relative `path`. `WakeCatalog.ChangedFiles(agent, project, from, session)`
+  returns `WakeChangedFile`s, `FileChanges(project, target, from)` returns
+  `WakeFileChangeInfo`s, and `WakeFileNode.Build` makes the tree (`Sort`
+  keeps Outside last). Fixture session 10 is in `claude-code/changes/`.
+  Left: the main window (view switch, tree, detail pane, "Files changed").
 
 - [ ] **25. File history.** A `FileHistoryWindow`, one per file, shows
   every change agents made to a file across sessions, oldest first: a page

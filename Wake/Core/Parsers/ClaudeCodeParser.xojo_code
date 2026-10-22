@@ -49,6 +49,11 @@ Implements IAgentParser
 		  Var hunks() As Variant = WakeCore.JSONArray(details, "structuredPatch")
 		  If hunks.Count > 0 Then e.Patch = PatchFromHunks(hunks)
 		  If e.FilePath = "" Then e.FilePath = WakeCore.JSONString(details, "filePath")
+		  
+		  // A Write reports whether it created the file or replaced one.
+		  If e.ChangeAction = WakeEvent.kChangeWrite And WakeCore.JSONString(details, "type") = "create" Then
+		    e.ChangeAction = WakeEvent.kChangeCreate
+		  End If
 
 		  Var agentID As String = WakeCore.JSONString(details, "agentId")
 		  If agentID <> "" Then e.SubagentID = agentID
@@ -426,11 +431,13 @@ Implements IAgentParser
 
 		  Case "Edit"
 		    e = session.AddEvent(WakeEvent.Kinds.FileEdit, timestamp)
+		    e.ChangeAction = WakeEvent.kChangeEdit
 		    e.FilePath = WakeCore.JSONString(toolInput, "file_path")
 		    e.Patch = PatchFromStrings(WakeCore.JSONString(toolInput, "old_string"), WakeCore.JSONString(toolInput, "new_string"))
 
 		  Case "MultiEdit"
 		    e = session.AddEvent(WakeEvent.Kinds.FileEdit, timestamp)
+		    e.ChangeAction = WakeEvent.kChangeEdit
 		    e.FilePath = WakeCore.JSONString(toolInput, "file_path")
 		    Var parts() As String
 		    For Each item As Variant In WakeCore.JSONArray(toolInput, "edits")
@@ -442,11 +449,13 @@ Implements IAgentParser
 		  Case "Write"
 		    // Until the result says otherwise, show the whole content as added.
 		    e = session.AddEvent(WakeEvent.Kinds.FileEdit, timestamp)
+		    e.ChangeAction = WakeEvent.kChangeWrite
 		    e.FilePath = WakeCore.JSONString(toolInput, "file_path")
 		    e.Patch = PatchFromStrings("", WakeCore.JSONString(toolInput, "content"))
 
 		  Case "NotebookEdit"
 		    e = session.AddEvent(WakeEvent.Kinds.FileEdit, timestamp)
+		    e.ChangeAction = WakeEvent.kChangeEdit
 		    e.FilePath = WakeCore.JSONString(toolInput, "notebook_path")
 		    e.Patch = PatchFromStrings("", WakeCore.JSONString(toolInput, "new_source"))
 

@@ -186,6 +186,13 @@ Error event and don't count its usage.
 | `WebFetch` | `url`, `code`, `bytes`, `durationMs`, `result`.                     |
 | MCP tools  | Usually a list of `{type, text}` blocks.                            |
 
+A failed call's `tool_result` has `is_error: true`, and its `toolUseResult`
+is a plain string such as `"Error: String to replace not found in file."`.
+In real data, Write results were `create` 222 times and `update` 15 times.
+Wake's file changes count only edit and write calls that didn't fail: Edit,
+MultiEdit and NotebookEdit are edits, a Write is a create or a write
+(replacing the file) by its result's `type`.
+
 `structuredPatch` is a list of unified-diff hunks:
 
 ```json

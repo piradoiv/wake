@@ -28,6 +28,27 @@ Protected Class WakeEvent
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function ChangedLineCounts() As Pair
+		  // The lines a file change added and removed, from its patch, as added : removed. A Write
+		  // that created a file has its whole content as added lines.
+		  Var added, removed As Integer
+		  If Patch = "" Then Return added : removed
+		  
+		  For Each patchLine As String In Patch.Split(&u0A)
+		    If patchLine.BeginsWith("@@") Then Continue
+		    Var marker As String = patchLine.Left(1)
+		    If marker = "+" Then
+		      added = added + 1
+		    ElseIf marker = "-" Then
+		      removed = removed + 1
+		    End If
+		  Next
+		  
+		  Return added : removed
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function FileType() As String
 		  // The extension of the file a tool call worked on, such as ".xojo_code", or "".
 		  Return ExtensionOf(TargetPath)
@@ -306,6 +327,10 @@ Protected Class WakeEvent
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
+		ChangeAction As String
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
 		Command As String
 	#tag EndProperty
 
@@ -448,6 +473,16 @@ Protected Class WakeEvent
 	#tag Property, Flags = &h0
 		TurnUsage As WakeUsageGroup
 	#tag EndProperty
+
+
+	#tag Constant, Name = kChangeCreate, Type = String, Dynamic = False, Default = \"create", Scope = Public
+	#tag EndConstant
+
+	#tag Constant, Name = kChangeEdit, Type = String, Dynamic = False, Default = \"edit", Scope = Public
+	#tag EndConstant
+
+	#tag Constant, Name = kChangeWrite, Type = String, Dynamic = False, Default = \"write", Scope = Public
+	#tag EndConstant
 
 
 	#tag Enum, Name = Kinds, Type = Integer, Flags = &h0

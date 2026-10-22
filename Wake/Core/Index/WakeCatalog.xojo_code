@@ -1,10 +1,175 @@
 #tag Class
 Protected Class WakeCatalog
 	#tag Method, Flags = &h0
+		Function ChangedFiles(agentID As String, projectID As Integer, fromTime As DateTime = Nil, sessionID As Integer = 0) As WakeChangedFile()
+		  // The files that edit and write tool calls changed, per project, from fromTime on (by the
+		  // change's own time). Subagent changes count toward the session that started the subagent.
+		  // An empty agentID means every agent, projectID 0 every project but the hidden ones, and a
+		  // sessionID limits it to one top-level session. Each file counts its reads and the ≈ tokens of
+		  // every tool call on it, over the same sessions and period. Raises DatabaseException.
+		  Var values() As Variant
+		  Var clauses() As String = ChangeClauses(agentID, projectID, fromTime, sessionID, "fc.timestamp", values)
+		  
+		  Var source As String = " FROM file_changes fc JOIN sessions us ON us.id = fc.session_id " + _
+		  "JOIN sessions ts ON ts.id = coalesce(us.parent_id, us.id) JOIN projects p ON p.id = ts.project_id " + _
+		  "WHERE " + String.FromArray(clauses, " AND ")
+		  
+		  Var rs As RowSet = mIndex.Database.SelectSQL("SELECT ts.project_id, max(p.path) AS project_path, " + _
+		  "max(ts.agent) AS agent, fc.target, max(fc.path) AS path, count(*) AS edits, sum(fc.lines_added) AS added, " + _
+		  "sum(fc.lines_removed) AS removed, max(fc.timestamp) AS last_time, group_concat(DISTINCT ts.id) AS session_ids" + _
+		  source + " GROUP BY ts.project_id, fc.target ORDER BY ts.project_id, max(fc.path)", values)
+		  
+		  Var result() As WakeChangedFile
+		  Var byKey As Dictionary = WakeCore.NewCaseSensitiveDictionary
+		  For Each row As DatabaseRow In rs
+		    Var f As New WakeChangedFile
+		    f.ProjectID = row.Column("project_id").IntegerValue
+		    f.ProjectPath = row.Column("project_path").StringValue
+		    f.AgentID = row.Column("agent").StringValue
+		    f.TargetPath = row.Column("target").StringValue
+		    f.Path = row.Column("path").StringValue
+		    f.IsOutside = (f.Path = f.TargetPath)
+		    f.Edits = row.Column("edits").IntegerValue
+		    f.LinesAdded = row.Column("added").IntegerValue
+		    f.LinesRemoved = row.Column("removed").IntegerValue
+		    f.LastChanged = TimeFrom(row.Column("last_time"))
+		    For Each id As String In row.Column("session_ids").StringValue.Split(",")
+		      f.SessionIDs.Add(id.ToInteger)
+		    Next
+		    result.Add(f)
+		    byKey.Value(f.ProjectID.ToString + ":" + f.TargetPath) = f
+		  Next
+		  
+		  If result.Count = 0 Then Return result
+		  
+		  // Reads and tokens of the tool calls on those files, in the same sessions and period.
+		  Var toolValues() As Variant
+		  Var toolClauses() As String = ChangeClauses(agentID, projectID, fromTime, sessionID, "t.timestamp", toolValues)
+		  toolClauses.Add("t.target IN (SELECT target" + source + ")")
+		  For Each v As Variant In values
+		    toolValues.Add(v)
+		  Next
+		  
+		  Var isRead As String = "t.pattern IN ('" + WakeCallPattern.kKeyLineRange + "', '" + _
+		  WakeCallPattern.kKeySection + "', '" + WakeCallPattern.kKeyWholeFile + "')"
+		  
+		  rs = mIndex.Database.SelectSQL("SELECT ts.project_id, t.target, sum(t.is_first * (" + isRead + ")) AS reads, " + _
+		  "sum(t.added_tokens + t.carried_tokens) AS tokens FROM tool_usage t JOIN sessions us ON us.id = t.session_id " + _
+		  "JOIN sessions ts ON ts.id = coalesce(us.parent_id, us.id) WHERE " + String.FromArray(toolClauses, " AND ") + _
+		  " GROUP BY ts.project_id, t.target", toolValues)
+		  
+		  For Each row As DatabaseRow In rs
+		    Var fileKey As String = row.Column("project_id").StringValue + ":" + row.Column("target").StringValue
+		    Var f As WakeChangedFile = WakeChangedFile(byKey.Lookup(fileKey, Nil).ObjectValue)
+		    If f Is Nil Then Continue
+		    f.Reads = row.Column("reads").IntegerValue
+		    f.Tokens = row.Column("tokens").Int64Value
+		  Next
+		  
+		  Return result
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function ChangeClauses(agentID As String, projectID As Integer, fromTime As DateTime, sessionID As Integer, timeColumn As String, values() As Variant) As String()
+		  // The conditions ChangedFiles and FileChanges share, on the top-level session ts and the
+		  // session us that made the change, adding their values to values.
+		  Var clauses() As String
+		  clauses.Add("1 = 1")
+		  
+		  If agentID <> "" Then
+		    clauses.Add("ts.agent = ?")
+		    values.Add(agentID)
+		  End If
+		  
+		  If projectID <> 0 Then
+		    clauses.Add("ts.project_id = ?")
+		    values.Add(projectID)
+		  Else
+		    Var hidden As String = HiddenProjectsClause("ts.project_id")
+		    If hidden <> "" Then clauses.Add(hidden)
+		  End If
+		  
+		  If sessionID <> 0 Then
+		    clauses.Add("ts.id = ?")
+		    values.Add(sessionID)
+		  End If
+		  
+		  If fromTime <> Nil Then
+		    clauses.Add("coalesce(" + timeColumn + ", us.start_time) >= ?")
+		    values.Add(fromTime.SecondsFrom1970)
+		  End If
+		  
+		  Return clauses
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub Constructor(index As WakeIndex)
 		  // Read-only queries for browsing. index must be open, on the caller's own connection.
 		  mIndex = index
 		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function FileChanges(projectID As Integer, targetPath As String, fromTime As DateTime = Nil) As WakeFileChangeInfo()
+		  // The changes made to one file of a project from fromTime on, newest first, each with its
+		  // top-level session and the prompt of the turn that made it. Raises DatabaseException.
+		  Var values() As Variant
+		  Var clauses() As String = ChangeClauses("", projectID, fromTime, 0, "fc.timestamp", values)
+		  clauses.Add("fc.target = ?")
+		  values.Add(targetPath)
+		  
+		  Var rs As RowSet = mIndex.Database.SelectSQL("SELECT fc.*, us.uid AS event_uid, us.parent_id IS NOT NULL AS in_subagent, " + _
+		  "ts.id AS top_id, (SELECT e.summary FROM events e WHERE e.session_id = ts.id AND e.seq = fc.prompt_seq LIMIT 1) AS prompt " + _
+		  "FROM file_changes fc JOIN sessions us ON us.id = fc.session_id JOIN sessions ts ON ts.id = coalesce(us.parent_id, us.id) " + _
+		  "WHERE " + String.FromArray(clauses, " AND ") + " ORDER BY fc.timestamp IS NULL, fc.timestamp DESC, ts.id DESC, fc.seq DESC", values)
+		  
+		  Var result() As WakeFileChangeInfo
+		  Var topIDs() As Integer
+		  Var topIDMarks() As String
+		  Var sessionValues() As Variant
+		  
+		  For Each row As DatabaseRow In rs
+		    Var c As New WakeFileChangeInfo
+		    c.Sequence = row.Column("seq").IntegerValue
+		    c.PromptSequence = If(row.Column("prompt_seq").Value.IsNull, -1, row.Column("prompt_seq").IntegerValue)
+		    c.Prompt = row.Column("prompt").StringValue
+		    c.Timestamp = TimeFrom(row.Column("timestamp"))
+		    c.TargetPath = row.Column("target").StringValue
+		    c.Path = row.Column("path").StringValue
+		    c.Action = row.Column("action").StringValue
+		    c.LinesAdded = row.Column("lines_added").IntegerValue
+		    c.LinesRemoved = row.Column("lines_removed").IntegerValue
+		    c.EventSessionUID = row.Column("event_uid").StringValue
+		    c.InSubagent = row.Column("in_subagent").BooleanValue
+		    
+		    // Session is filled in below, once per session. Until then it holds only the id.
+		    Var topID As Integer = row.Column("top_id").IntegerValue
+		    c.Session = New WakeSessionInfo
+		    c.Session.ID = topID
+		    If topIDs.IndexOf(topID) < 0 Then
+		      topIDs.Add(topID)
+		      topIDMarks.Add("?")
+		      sessionValues.Add(topID)
+		    End If
+		    
+		    result.Add(c)
+		  Next
+		  
+		  If result.Count = 0 Then Return result
+		  
+		  Var sessions As New Dictionary
+		  For Each s As WakeSessionInfo In ReadSessions("s.id IN (" + String.FromArray(topIDMarks, ", ") + ")", sessionValues, "s.id")
+		    sessions.Value(s.ID) = s
+		  Next
+		  
+		  For Each c As WakeFileChangeInfo In result
+		    c.Session = WakeSessionInfo(sessions.Lookup(c.Session.ID, c.Session).ObjectValue)
+		  Next
+		  
+		  Return result
+		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
