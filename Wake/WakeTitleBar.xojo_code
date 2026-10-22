@@ -11,22 +11,13 @@ Protected Module WakeTitleBar
 		  // closing it quits Wake.
 		  #If TargetMacOS
 		    Declare Function NSClassFromString Lib "Foundation" (name As CFStringRef) As Ptr
-		    Declare Function NSSelectorFromString Lib "Foundation" (name As CFStringRef) As Ptr
 		    Declare Function Alloc Lib "Foundation" Selector "alloc" (cls As Ptr) As Ptr
 		    Declare Function InitWithItemIdentifier Lib "AppKit" Selector "initWithItemIdentifier:" (item As Ptr, identifier As CFStringRef) As Ptr
 		    Declare Sub SetSearchField Lib "AppKit" Selector "setSearchField:" (item As Ptr, field As Ptr)
 		    Declare Function Toolbar Lib "AppKit" Selector "toolbar" (window As Ptr) As Ptr
-		    Declare Function Delegate_ Lib "AppKit" Selector "delegate" (toolbar As Ptr) As Ptr
 		    Declare Function Items Lib "AppKit" Selector "items" (toolbar As Ptr) As Ptr
 		    Declare Function ItemCount Lib "Foundation" Selector "count" (nsArray As Ptr) As UInteger
 		    Declare Sub InsertItem Lib "AppKit" Selector "insertItemWithItemIdentifier:atIndex:" (toolbar As Ptr, identifier As CFStringRef, index As Integer)
-		    Declare Function objc_getClass Lib "/usr/lib/libobjc.A.dylib" (name As CString) As Ptr
-		    Declare Function objc_allocateClassPair Lib "/usr/lib/libobjc.A.dylib" (superclass As Ptr, name As CString, extraBytes As UInteger) As Ptr
-		    Declare Sub objc_registerClassPair Lib "/usr/lib/libobjc.A.dylib" (cls As Ptr)
-		    Declare Function class_addMethod Lib "/usr/lib/libobjc.A.dylib" (cls As Ptr, sel As Ptr, imp As Ptr, types As CString) As Boolean
-		    Declare Function class_getName Lib "/usr/lib/libobjc.A.dylib" (cls As Ptr) As CString
-		    Declare Function object_getClass Lib "/usr/lib/libobjc.A.dylib" (obj As Ptr) As Ptr
-		    Declare Function object_setClass Lib "/usr/lib/libobjc.A.dylib" (obj As Ptr, cls As Ptr) As Ptr
 
 		    Var searchClass As Ptr = NSClassFromString("NSSearchToolbarItem")
 		    If searchClass = Nil Then Return
@@ -34,24 +25,7 @@ Protected Module WakeTitleBar
 		    If bar = Nil Then Return
 		    If mSearchItems Is Nil Then mSearchItems = New Dictionary
 		    If mSearchItems.HasKey(Integer(bar)) Then Return
-		    Var xojoDelegate As Ptr = Delegate_(bar)
-		    If xojoDelegate = Nil Then Return
-
-		    // One subclass per delegate class, named after it, made the first time it's needed.
-		    Var original As Ptr = object_getClass(xojoDelegate)
-		    Var originalName As String = class_getName(original)
-		    If Not originalName.BeginsWith(kDelegatePrefix) Then
-		      Var subclassName As String = kDelegatePrefix + originalName
-		      Var subclass As Ptr = objc_getClass(subclassName)
-		      If subclass = Nil Then
-		        subclass = objc_allocateClassPair(original, subclassName, 0)
-		        If subclass = Nil Then Return
-		        Call class_addMethod(subclass, NSSelectorFromString("toolbar:itemForItemIdentifier:willBeInsertedIntoToolbar:"), _
-		        AddressOf ItemForIdentifier, "@@:@@c")
-		        objc_registerClassPair(subclass)
-		      End If
-		      Call object_setClass(xojoDelegate, subclass)
-		    End If
+		    If Not UseDelegateSubclass(bar) Then Return
 
 		    // The item is kept here, so the delegate can hand it to the toolbar.
 		    Var item As Ptr = InitWithItemIdentifier(Alloc(searchClass), kSearchItemIdentifier)
@@ -61,6 +35,83 @@ Protected Module WakeTitleBar
 		  #Else
 		    #Pragma Unused w
 		    #Pragma Unused field
+		  #EndIf
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub AddViewSwitch(w As DesktopWindow, symbols() As String, labels() As String, tooltips() As String)
+		  // Adds a switch between views at the start of the window's toolbar: AppKit's grouped item, one
+		  // pill with a segment per symbol, the selected one in the accent colour, as in Mail. Xojo's
+		  // toolbar has no such item, so it comes from the same delegate subclass as the search item,
+		  // which is also its target. A choice calls the window's ViewSwitchChosen. Call it once the window
+		  // is up. It does nothing before macOS 11 or off macOS.
+		  #If TargetMacOS
+		    Declare Function NSClassFromString Lib "Foundation" (name As CFStringRef) As Ptr
+		    Declare Function NSSelectorFromString Lib "Foundation" (name As CFStringRef) As Ptr
+		    Declare Function Toolbar Lib "AppKit" Selector "toolbar" (window As Ptr) As Ptr
+		    Declare Function Delegate_ Lib "AppKit" Selector "delegate" (toolbar As Ptr) As Ptr
+		    Declare Sub InsertItem Lib "AppKit" Selector "insertItemWithItemIdentifier:atIndex:" (toolbar As Ptr, identifier As CFStringRef, index As Integer)
+		    Declare Function ImageWithSymbol Lib "AppKit" Selector "imageWithSystemSymbolName:accessibilityDescription:" (cls As Ptr, name As CFStringRef, description As CFStringRef) As Ptr
+		    Declare Function StringWithUTF8 Lib "Foundation" Selector "stringWithUTF8String:" (cls As Ptr, value As CString) As Ptr
+		    Declare Function ArrayWithObjects Lib "Foundation" Selector "arrayWithObjects:count:" (cls As Ptr, objects As Ptr, count As UInteger) As Ptr
+		    Declare Function GroupWithItems Lib "AppKit" Selector "groupWithItemIdentifier:images:selectionMode:labels:target:action:" (cls As Ptr, identifier As CFStringRef, images As Ptr, mode As Integer, labels As Ptr, target As Ptr, action As Ptr) As Ptr
+		    Declare Function Retain Lib "Foundation" Selector "retain" (obj As Ptr) As Ptr
+		    Declare Function Subitems Lib "AppKit" Selector "subitems" (group As Ptr) As Ptr
+		    Declare Function ItemCount Lib "Foundation" Selector "count" (nsArray As Ptr) As UInteger
+		    Declare Function ObjectAtIndex Lib "Foundation" Selector "objectAtIndex:" (nsArray As Ptr, index As UInteger) As Ptr
+		    Declare Sub SetToolTip Lib "AppKit" Selector "setToolTip:" (item As Ptr, value As CFStringRef)
+		    Declare Sub SetAutovalidates Lib "AppKit" Selector "setAutovalidates:" (item As Ptr, value As Boolean)
+		    Declare Sub SetEnabled Lib "AppKit" Selector "setEnabled:" (item As Ptr, value As Boolean)
+
+		    Const kSelectOne = 0
+
+		    Var groupClass As Ptr = NSClassFromString("NSToolbarItemGroup")
+		    Var imageClass As Ptr = NSClassFromString("NSImage")
+		    If groupClass = Nil Or imageClass = Nil Or symbols.Count = 0 Then Return
+		    Var bar As Ptr = Toolbar(w.Handle)
+		    If bar = Nil Then Return
+		    If mViewSwitches Is Nil Then mViewSwitches = New Dictionary
+		    If mViewSwitches.HasKey(Integer(bar)) Then Return
+		    If Not UseDelegateSubclass(bar) Then Return
+
+		    Var images As New MemoryBlock(8 * symbols.Count)
+		    Var names As New MemoryBlock(8 * symbols.Count)
+		    For i As Integer = 0 To symbols.LastIndex
+		      Var image As Ptr = ImageWithSymbol(imageClass, symbols(i), labels(i))
+		      If image = Nil Then Return
+		      images.Ptr(i * 8) = image
+		      names.Ptr(i * 8) = StringWithUTF8(NSClassFromString("NSString"), labels(i))
+		    Next
+		    Var arrayClass As Ptr = NSClassFromString("NSArray")
+
+		    // The group is autoreleased, so it's retained for the life of the app, keyed by its toolbar.
+		    Var group As Ptr = GroupWithItems(groupClass, kViewSwitchIdentifier, ArrayWithObjects(arrayClass, images, symbols.Count), _
+		    kSelectOne, ArrayWithObjects(arrayClass, names, symbols.Count), Delegate_(bar), NSSelectorFromString(kViewSwitchAction))
+		    If group = Nil Then Return
+		    group = Retain(group)
+
+		    // Its target is Xojo's delegate, which disables items it doesn't know when the toolbar
+		    // validates them, so the group and its segments stay enabled and skip validation.
+		    SetAutovalidates(group, False)
+		    SetEnabled(group, True)
+		    Var parts As Ptr = Subitems(group)
+		    For i As Integer = 0 To ItemCount(parts) - 1
+		      Var part As Ptr = ObjectAtIndex(parts, i)
+		      SetAutovalidates(part, False)
+		      SetEnabled(part, True)
+		      If i <= tooltips.LastIndex Then SetToolTip(part, tooltips(i))
+		    Next
+
+		    mViewSwitches.Value(Integer(bar)) = group
+		    If mViewSwitchWindows Is Nil Then mViewSwitchWindows = New Dictionary
+		    mViewSwitchWindows.Value(Integer(group)) = New WeakRef(w)
+		    InsertItem(bar, kViewSwitchIdentifier, 0)
+		  #Else
+		    #Pragma Unused w
+		    #Pragma Unused symbols
+		    #Pragma Unused labels
+		    #Pragma Unused tooltips
 		  #EndIf
 		End Sub
 	#tag EndMethod
@@ -144,7 +195,8 @@ Protected Module WakeTitleBar
 	#tag Method, Flags = &h21
 		Private Function ItemForIdentifier(delegateObj As Ptr, sel As Ptr, toolbar As Ptr, identifier As Ptr, willInsert As Boolean) As Ptr
 		  // The delegate subclass's toolbar:itemForItemIdentifier:willBeInsertedIntoToolbar:. It returns
-		  // the toolbar's search item for its identifier, and asks Xojo's own delegate for anything else.
+		  // the toolbar's search item and view switch for their identifiers, and asks Xojo's own
+		  // delegate for anything else.
 		  #If TargetMacOS
 		    Declare Function IsEqualToString Lib "Foundation" Selector "isEqualToString:" (value As Ptr, other As CFStringRef) As Boolean
 		    Declare Function object_getClass Lib "/usr/lib/libobjc.A.dylib" (obj As Ptr) As Ptr
@@ -154,6 +206,10 @@ Protected Module WakeTitleBar
 		    If identifier <> Nil And IsEqualToString(identifier, kSearchItemIdentifier) _
 		      And mSearchItems <> Nil And mSearchItems.HasKey(Integer(toolbar)) Then
 		      Return mSearchItems.Value(Integer(toolbar))
+		    End If
+		    If identifier <> Nil And IsEqualToString(identifier, kViewSwitchIdentifier) _
+		      And mViewSwitches <> Nil And mViewSwitches.HasKey(Integer(toolbar)) Then
+		      Return mViewSwitches.Value(Integer(toolbar))
 		    End If
 
 		    // objc_super: the receiver, then the class whose superclass's method to run.
@@ -218,6 +274,24 @@ Protected Module WakeTitleBar
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub SelectViewSwitch(w As DesktopWindow, index As Integer)
+		  // Selects a segment of the window's view switch, if it has one.
+		  #If TargetMacOS
+		    Declare Function Toolbar Lib "AppKit" Selector "toolbar" (window As Ptr) As Ptr
+		    Declare Sub SetSelectedIndex Lib "AppKit" Selector "setSelectedIndex:" (group As Ptr, index As Integer)
+
+		    If mViewSwitches Is Nil Then Return
+		    Var bar As Ptr = Toolbar(w.Handle)
+		    If bar = Nil Or Not mViewSwitches.HasKey(Integer(bar)) Then Return
+		    SetSelectedIndex(mViewSwitches.Value(Integer(bar)), index)
+		  #Else
+		    #Pragma Unused w
+		    #Pragma Unused index
+		  #EndIf
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub StyleToolbarItems(w As DesktopWindow)
 		  // Makes the window's Xojo toolbar items look like those of Apple's apps: bordered, so macOS 26
 		  // draws them in a Liquid Glass capsule, with a round hover. Xojo may redraw an item when its
@@ -246,10 +320,11 @@ Protected Module WakeTitleBar
 		    Var list As Ptr = Items(bar)
 		    Var available As Integer = ItemCount(list)
 		    For index As Integer = 0 To available - 1
-		      // Spaces have no view, and the search item draws its own capsule.
+		      // Spaces have no view, and the search item and the view switch draw their own capsules.
 		      Var item As Ptr = ObjectAtIndex(list, index)
 		      Var itemView As Ptr = View(item)
-		      If itemView = Nil Or IsEqualToString(ItemIdentifier(item), kSearchItemIdentifier) Then Continue
+		      If itemView = Nil Or IsEqualToString(ItemIdentifier(item), kSearchItemIdentifier) _
+		        Or IsEqualToString(ItemIdentifier(item), kViewSwitchIdentifier) Then Continue
 
 		      If RespondsToSelector(item, NSSelectorFromString("setBordered:")) Then SetBordered(item, True)
 
@@ -314,9 +389,81 @@ Protected Module WakeTitleBar
 		End Sub
 	#tag EndMethod
 
+	#tag Method, Flags = &h21
+		Private Function UseDelegateSubclass(bar As Ptr) As Boolean
+		  // Gives the toolbar's delegate, Xojo's own, a subclass made at runtime that answers for the
+		  // search item and the view switch and takes the switch's action. One subclass per delegate
+		  // class, named after it, made the first time it's needed. False when that can't be done.
+		  #If TargetMacOS
+		    Declare Function NSSelectorFromString Lib "Foundation" (name As CFStringRef) As Ptr
+		    Declare Function Delegate_ Lib "AppKit" Selector "delegate" (toolbar As Ptr) As Ptr
+		    Declare Function objc_getClass Lib "/usr/lib/libobjc.A.dylib" (name As CString) As Ptr
+		    Declare Function objc_allocateClassPair Lib "/usr/lib/libobjc.A.dylib" (superclass As Ptr, name As CString, extraBytes As UInteger) As Ptr
+		    Declare Sub objc_registerClassPair Lib "/usr/lib/libobjc.A.dylib" (cls As Ptr)
+		    Declare Function class_addMethod Lib "/usr/lib/libobjc.A.dylib" (cls As Ptr, sel As Ptr, imp As Ptr, types As CString) As Boolean
+		    Declare Function class_getName Lib "/usr/lib/libobjc.A.dylib" (cls As Ptr) As CString
+		    Declare Function object_getClass Lib "/usr/lib/libobjc.A.dylib" (obj As Ptr) As Ptr
+		    Declare Function object_setClass Lib "/usr/lib/libobjc.A.dylib" (obj As Ptr, cls As Ptr) As Ptr
+
+		    Var xojoDelegate As Ptr = Delegate_(bar)
+		    If xojoDelegate = Nil Then Return False
+
+		    Var original As Ptr = object_getClass(xojoDelegate)
+		    Var originalName As String = class_getName(original)
+		    If originalName.BeginsWith(kDelegatePrefix) Then Return True
+
+		    Var subclassName As String = kDelegatePrefix + originalName
+		    Var subclass As Ptr = objc_getClass(subclassName)
+		    If subclass = Nil Then
+		      subclass = objc_allocateClassPair(original, subclassName, 0)
+		      If subclass = Nil Then Return False
+		      Call class_addMethod(subclass, NSSelectorFromString("toolbar:itemForItemIdentifier:willBeInsertedIntoToolbar:"), _
+		      AddressOf ItemForIdentifier, "@@:@@c")
+		      Call class_addMethod(subclass, NSSelectorFromString(kViewSwitchAction), AddressOf ViewSwitchChanged, "v@:@")
+		      objc_registerClassPair(subclass)
+		    End If
+		    Call object_setClass(xojoDelegate, subclass)
+		    Return True
+		  #Else
+		    #Pragma Unused bar
+		    Return False
+		  #EndIf
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub ViewSwitchChanged(delegateObj As Ptr, sel As Ptr, sender As Ptr)
+		  // The view switch's action, on the delegate subclass. It tells the switch's window which
+		  // segment is now selected. Only the main window has a switch.
+		  #Pragma Unused delegateObj
+		  #Pragma Unused sel
+		  #If TargetMacOS
+		    Declare Function SelectedIndex Lib "AppKit" Selector "selectedIndex" (group As Ptr) As Integer
+
+		    If mViewSwitchWindows Is Nil Then Return
+		    For Each key As Variant In mViewSwitchWindows.Keys
+		      Var group As Ptr = Ptr(key.IntegerValue)
+		      If sender <> Nil And sender <> group Then Continue
+		      Var owner As Object = WeakRef(mViewSwitchWindows.Value(key).ObjectValue).Value
+		      If owner IsA MainWindow Then MainWindow(owner).ViewSwitchChosen(SelectedIndex(group))
+		    Next
+		  #Else
+		    #Pragma Unused sender
+		  #EndIf
+		End Sub
+	#tag EndMethod
+
 
 	#tag Property, Flags = &h21
 		Private mSearchItems As Dictionary
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mViewSwitches As Dictionary
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mViewSwitchWindows As Dictionary
 	#tag EndProperty
 
 
@@ -324,6 +471,12 @@ Protected Module WakeTitleBar
 	#tag EndConstant
 
 	#tag Constant, Name = kSearchItemIdentifier, Type = String, Dynamic = False, Default = \"WakeSearch", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kViewSwitchAction, Type = String, Dynamic = False, Default = \"wakeViewSwitchChanged:", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kViewSwitchIdentifier, Type = String, Dynamic = False, Default = \"WakeViewSwitch", Scope = Private
 	#tag EndConstant
 
 

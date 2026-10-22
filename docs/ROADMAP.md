@@ -262,7 +262,7 @@ Each milestone below is one session's work, ending with tests and a commit.
   `DesktopTable` gotcha). Dark mode worked. Pick this up again once Xojo
   can make the list transparent in both appearances. Skip it while blocked.
 
-- [ ] **24. Files view.** The main window gets a second view beside the
+- [x] **24. Files view.** The main window gets a second view beside the
   sessions list: the files agents changed, for the source-list selection.
   A Sessions/Files switch sits in the toolbar on macOS (a real toolbar
   item, see Decisions) and in View → Sessions (Cmd+1) / Files (Cmd+2) on
@@ -299,13 +299,14 @@ Each milestone below is one session's work, ending with tests and a commit.
   returns `WakeChangedFile`s, `FileChanges(project, target, from)` returns
   `WakeFileChangeInfo`s, and `WakeFileNode.Build` makes the tree (`Sort`
   keeps Outside last). Fixture session 10 is in `claude-code/changes/`.
-  **UI written, not yet checked by eye:** `FilesList` (sorted by
+  **UI, checked by eye:** `FilesList` (sorted by
   `WakeFileNode.Sort` from `ColumnHeaderPressed`, children added in
   `RowExpanded`, last folder opened first), `ShowFileDetail`, "Files
   changed" in a session's details (a click goes to the file), View →
   Sessions/Files, and `WakeCatalog.Sessions` takes the period.
-  `DesktopToolbar` has no segmented item, so the switch is two toggle
-  buttons. Double-clicking a file does nothing until milestone 25. On real
+  `DesktopToolbar` has no segmented item, so the switch is AppKit's
+  `NSToolbarItemGroup` (`WakeTitleBar.AddViewSwitch`), made by the same
+  delegate subclass as the search item. Double-clicking a file does nothing until milestone 25. On real
   data (126 transcripts) 567 changes to 265 files, 118 of those files
   outside their project; 222 creates and 15 rewrites, as many as the Write
   results.
@@ -493,7 +494,10 @@ machine to inspect, and the console companion.
   bar 66 points instead of 52; icons only fixes it. Bordered neighbours share
   one glass capsule; a space between them gives capsules of different sizes.
   Divided capsules (Mail's) need an `NSToolbarItemGroup`, which only the
-  delegate can make.
+  delegate can make (`AddViewSwitch`). Its target is Xojo's delegate, which
+  disables items it doesn't know on validation, so the group and its
+  subitems need `autovalidates` off and `enabled` on, or they're grey and
+  dead. Their own capsule must be skipped by `StyleToolbarItems`.
 - **`DesktopTable` on macOS** is a `XOJCanvasView` holding an `NSScrollView`
   (`DLB2PassThruScrollView`, document view `DLB2FlippedDocView`); it isn't an
   `NSTableView`. Xojo draws the rows on the outer `XOJCanvasView` itself, so a

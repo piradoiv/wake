@@ -1426,27 +1426,6 @@ End
 		    flexible.ButtonStyle = DesktopToolbarButton.ButtonStyles.FlexibleSpace
 		    MainToolbar.AddButton(flexible)
 		    
-		    // DesktopToolbar has no segmented item, so the Sessions/Files switch is two toggle buttons,
-		    // before the filters.
-		    mSessionsItem = New DesktopToolbarButton
-		    mSessionsItem.ButtonStyle = DesktopToolbarButton.ButtonStyles.ToggleButton
-		    mSessionsItem.Caption = "Sessions"
-		    mSessionsItem.Tooltip = "Sessions (⌘1)"
-		    mSessionsItem.Symbol = "list.bullet"
-		    MainToolbar.AddButtonAt(0, mSessionsItem)
-		    
-		    mFilesItem = New DesktopToolbarButton
-		    mFilesItem.ButtonStyle = DesktopToolbarButton.ButtonStyles.ToggleButton
-		    mFilesItem.Caption = "Files"
-		    mFilesItem.Tooltip = "Files (⌘2)"
-		    mFilesItem.Symbol = "doc.on.doc"
-		    MainToolbar.AddButtonAt(1, mFilesItem)
-		    
-		    Var gap As New DesktopToolbarButton
-		    gap.ButtonStyle = DesktopToolbarButton.ButtonStyles.Space
-		    MainToolbar.AddButtonAt(2, gap)
-		    SyncViewItems
-		    
 		    MainToolbar.Style = DesktopToolbar.Styles.IconOnly
 		    mKindItem.Symbol = "line.3.horizontal.decrease"
 		    mDateItem.Symbol = "calendar"
@@ -1759,10 +1738,8 @@ End
 
 	#tag Method, Flags = &h21
 		Private Sub SyncViewItems()
-		  // The toolbar's Sessions and Files buttons show which view is up.
-		  If mSessionsItem Is Nil Or mFilesItem Is Nil Then Return
-		  mSessionsItem.Pressed = Not mShowFiles
-		  mFilesItem.Pressed = mShowFiles
+		  // The toolbar's view switch shows which view is up.
+		  WakeTitleBar.SelectViewSwitch(Self, If(mShowFiles, 1, 0))
 		End Sub
 	#tag EndMethod
 
@@ -1783,6 +1760,10 @@ End
 		  // Xojo sets its own toolbar style when the window first shows, so Opening runs this twice:
 		  // at once, and again right after the window is up, when the toolbar can take the search field.
 		  WakeTitleBar.Unify(Self)
+		  // DesktopToolbar has no segmented item, so the Sessions/Files switch is AppKit's own group.
+		  WakeTitleBar.AddViewSwitch(Self, Array("list.bullet", "doc.on.doc"), Array("Sessions", "Files"), _
+		  Array("Sessions (⌘1)", "Files (⌘2)"))
+		  SyncViewItems
 		  WakeTitleBar.AddSearchItem(Self, SearchField)
 		  SyncToolbar
 		  LayOutTitleBar
@@ -1807,6 +1788,13 @@ End
 		  End If
 		  If mIndexNote <> "" Then parts.Add(mIndexNote)
 		  StatusLabel.Text = String.FromArray(parts, " · ")
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub ViewSwitchChosen(index As Integer)
+		  // Called by the toolbar's view switch: 0 for Sessions, 1 for Files.
+		  SetFilesView(index = 1)
 		End Sub
 	#tag EndMethod
 
@@ -1848,10 +1836,6 @@ End
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
-		Private mFilesItem As DesktopToolbarButton
-	#tag EndProperty
-
-	#tag Property, Flags = &h21
 		Private mHitSessionCount As Integer
 	#tag EndProperty
 
@@ -1889,10 +1873,6 @@ End
 
 	#tag Property, Flags = &h21
 		Private mProjects() As WakeProjectInfo
-	#tag EndProperty
-
-	#tag Property, Flags = &h21
-		Private mSessionsItem As DesktopToolbarButton
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
@@ -2354,15 +2334,6 @@ End
 	#tag EndEvent
 #tag EndEvents
 #tag Events MainToolbar
-	#tag Event
-		Sub Pressed(item As DesktopToolbarItem)
-		  If item Is mSessionsItem Then
-		    SetFilesView(False)
-		  ElseIf item Is mFilesItem Then
-		    SetFilesView(True)
-		  End If
-		End Sub
-	#tag EndEvent
 	#tag Event
 		Sub MenuItemSelected(item As DesktopToolbarItem, selectedItem As DesktopMenuItem)
 		  // Choosing from a toolbar menu selects that row in its popup, which runs the search again.
