@@ -47,14 +47,14 @@ Protected Class WakeTimeline
 		  // Each event gets an anchor, so a search hit can scroll to it with wakeGoTo.
 		  Var uid As String = If(session.IsSubagent And session.SubagentID <> "", session.SubagentID, session.ID)
 		  Var lastModel As String
-
+		  
 		  For Each e As WakeEvent In session.Events
 		    // A thin line opens each response, with its usage. The model is named when it changes.
 		    If e.Response <> Nil And e.Response.FirstSequence = e.Sequence Then
 		      AddResponse(out, e.Response, e.Response.Model <> lastModel)
 		      lastModel = e.Response.Model
 		    End If
-
+		    
 		    Var anchor As String = NewAnchor(uid, e.Sequence)
 		    out.Add("<div class=""ev"" id=""" + anchor + """>")
 		    AddEvent(out, e)
@@ -79,11 +79,11 @@ Protected Class WakeTimeline
 		  If response.Seconds >= 0 Then parts.Add(WakeFormat.Seconds(response.Seconds))
 		  parts.Add(WakeFormat.Tokens(response.ContextTokens) + " in")
 		  parts.Add(WakeFormat.Tokens(u.OutputTokens) + " out")
-
+		  
 		  Var detail As String = "Input " + WakeFormat.Count(u.InputTokens) + ", cache write " + WakeFormat.Count(u.CacheWriteTokens) + _
 		  ", cache read " + WakeFormat.Count(u.CacheReadTokens) + ", output " + WakeFormat.Count(u.OutputTokens)
 		  If response.StartsNewContext Then detail = detail + ". The context shrank here, so it was probably compacted."
-
+		  
 		  Var usage As New WakeUsageGroup
 		  usage.Add(response.Model, u)
 		  out.Add("<div class=""resp"">" + Stats(parts, usage, detail) + "</div>")
@@ -214,13 +214,13 @@ Protected Class WakeTimeline
 		  Var preview() As String
 		  Var used As Integer
 		  Var truncated As Boolean
-
+		  
 		  For Each textLine As String In lines
 		    If preview.Count >= maxLines Or used >= maxCharacters Then
 		      truncated = True
 		      Exit
 		    End If
-
+		    
 		    Var shown As String = textLine
 		    If used + shown.Length > maxCharacters Then
 		      shown = shown.Left(maxCharacters - used) + WakeFormat.kEllipsis
@@ -245,11 +245,21 @@ Protected Class WakeTimeline
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub Constructor(session As WakeSession)
+		  mSession = session
+		  mAnchors = WakeCore.NewCaseSensitiveDictionary
+		  mCosts = WakeCore.NewCaseSensitiveDictionary
+		  mBlocks = WakeCore.NewCaseSensitiveDictionary
+		  mPersisted = WakeCore.NewCaseSensitiveDictionary
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function CostsJSON(prices As WakePriceTable) As String
 		  // The cost of every stat on the page, as a JSON object of element id to text, for the page's
 		  // wakeSetCosts. The page never depends on prices, so a price change doesn't reload it.
 		  Call HTML
-
+		  
 		  Var result As New Dictionary
 		  For Each key As Variant In mCosts.Keys
 		    Var text As String
@@ -259,19 +269,9 @@ Protected Class WakeTimeline
 		    End If
 		    result.Value(key.StringValue) = text
 		  Next
-
+		  
 		  Return GenerateJSON(result)
 		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h0
-		Sub Constructor(session As WakeSession)
-		  mSession = session
-		  mAnchors = WakeCore.NewCaseSensitiveDictionary
-		  mCosts = WakeCore.NewCaseSensitiveDictionary
-		  mBlocks = WakeCore.NewCaseSensitiveDictionary
-		  mPersisted = WakeCore.NewCaseSensitiveDictionary
-		End Sub
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
@@ -401,17 +401,17 @@ Protected Class WakeTimeline
 		End Function
 	#tag EndMethod
 
-	#tag Method, Flags = &h0
-		Shared Function Load(agentID As String, filePath As String) As WakeTimeline
-		  // Parses a transcript for display. Never raises: a missing file or agent shows as a note.
-		  Return New WakeTimeline(WakeCore.LoadSession(agentID, filePath))
-		End Function
-	#tag EndMethod
-
 	#tag Method, Flags = &h1
 		Protected Function KnownAnchor(sessionUID As String, sequence As Integer) As String
 		  // An anchor NewAnchor has made so far, without rendering the page, for use while rendering.
 		  Return mAnchors.Lookup(sessionUID + "/" + sequence.ToString, "").StringValue
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Shared Function Load(agentID As String, filePath As String) As WakeTimeline
+		  // Parses a transcript for display. Never raises: a missing file or agent shows as a note.
+		  Return New WakeTimeline(WakeCore.LoadSession(agentID, filePath))
 		End Function
 	#tag EndMethod
 
@@ -567,14 +567,14 @@ Protected Class WakeTimeline
 		Private Function Stats(parts() As String, usage As WakeUsageGroup, detail As String) As String
 		  // Right-aligned figures. The cost is left empty and filled in by wakeSetCosts.
 		  Var html As String = EscapeHTML(String.FromArray(parts, " · "))
-
+		  
 		  If usage <> Nil And Not usage.Total.IsEmpty Then
 		    mNextCost = mNextCost + 1
 		    Var id As String = "c" + mNextCost.ToString
 		    mCosts.Value(id) = usage
 		    html = html + "<span class=""cost" + If(parts.Count = 0, " alone", "") + """ id=""" + id + """></span>"
 		  End If
-
+		  
 		  If html = "" Then Return ""
 		  Var title As String = If(detail <> "", " title=""" + EscapeHTML(detail) + """", "")
 		  Return "<span class=""stats""" + title + ">" + html + "</span>"
@@ -692,7 +692,7 @@ Protected Class WakeTimeline
 		  If e.ResultSeconds >= 0 Then parts.Add(WakeFormat.Seconds(e.ResultSeconds))
 		  If e.AddedTokens > 0 Then parts.Add("≈" + WakeFormat.Tokens(e.AddedTokens) + " added")
 		  If e.CarriedTokens > 0 Then parts.Add("≈" + WakeFormat.Tokens(e.CarriedTokens) + " re-read")
-
+		  
 		  Var usage As New WakeUsageGroup
 		  For Each group As WakeUsageGroup In Array(e.AddedUsage, e.CarriedUsage)
 		    If group Is Nil Then Continue
@@ -700,14 +700,14 @@ Protected Class WakeTimeline
 		      usage.Add(key.StringValue, WakeTokenUsage(group.ByModel.Value(key).ObjectValue))
 		    Next
 		  Next
-
+		  
 		  Var detail As String
 		  If e.AddedTokens > 0 Then
 		    Var times As Int64 = e.CarriedTokens \ e.AddedTokens
 		    detail = "About " + WakeFormat.Count(e.AddedTokens) + " tokens added to the context, read again by " + _
 		    If(times = 1, "1 later response", WakeFormat.Count(times) + " later responses") + ". Estimated from the growth of the context."
 		  End If
-
+		  
 		  Return Stats(parts, usage, detail)
 		End Function
 	#tag EndMethod
@@ -716,14 +716,14 @@ Protected Class WakeTimeline
 		Private Function TurnStats(e As WakeEvent) As String
 		  // Everything the prompt led to, up to the next prompt, subagents included.
 		  If e.TurnUsage Is Nil Then Return ""
-
+		  
 		  Var parts() As String
 		  If e.TurnActiveMs > 0 Then parts.Add(WakeFormat.Seconds(e.TurnActiveMs / 1000) + " active")
 		  If e.TurnResponses > 0 Then parts.Add(If(e.TurnResponses = 1, "1 response", WakeFormat.Count(e.TurnResponses) + " responses"))
 		  Var total As WakeTokenUsage = e.TurnUsage.Total
 		  If Not total.IsEmpty Then parts.Add(WakeFormat.Tokens(total.Total) + " tokens")
 		  If e.TurnCarriedTokens > 0 Then parts.Add("≈" + WakeFormat.Tokens(e.TurnCarriedTokens) + " carried")
-
+		  
 		  Var detail As String = "This turn, up to the next prompt"
 		  If e.TurnCarriedTokens > 0 Then
 		    detail = detail + ". About " + WakeFormat.Count(e.TurnCarriedTokens) + " of its tokens re-sent context from " + _
@@ -784,5 +784,47 @@ Protected Class WakeTimeline
 	#tag EndConstant
 
 
+	#tag ViewBehavior
+		#tag ViewProperty
+			Name="Name"
+			Visible=true
+			Group="ID"
+			InitialValue=""
+			Type="String"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Index"
+			Visible=true
+			Group="ID"
+			InitialValue="-2147483648"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Super"
+			Visible=true
+			Group="ID"
+			InitialValue=""
+			Type="String"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Left"
+			Visible=true
+			Group="Position"
+			InitialValue="0"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Top"
+			Visible=true
+			Group="Position"
+			InitialValue="0"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+	#tag EndViewBehavior
 End Class
 #tag EndClass

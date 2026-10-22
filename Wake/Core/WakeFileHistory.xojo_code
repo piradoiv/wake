@@ -124,33 +124,6 @@ Inherits WakeTimeline
 		End Function
 	#tag EndMethod
 
-	#tag Method, Flags = &h21
-		Private Sub AddSessionHead(out() As String, first As Integer)
-		  // A session's title and start, with its changes. Pressing it opens the session's timeline at
-		  // the first change.
-		  Var info As WakeSessionInfo = mTurns(first).Info
-		  Var changes As Integer
-		  Var target As WakeHistoryEntry
-		  For i As Integer = first To mTurns.LastIndex
-		    If Not (mTurns(i).Info Is info) Then Exit
-		    changes = changes + mTurns(i).ChangeCount
-		    If target Is Nil Or (target.IsRead And mTurns(i).ChangeCount > 0) Then target = mTurns(i).FirstChange
-		  Next
-		  
-		  Var facts() As String
-		  If info.StartTime <> Nil Then facts.Add(LocalTime(info.StartTime).ToString(DateTime.FormatStyles.Medium, DateTime.FormatStyles.Short))
-		  facts.Add(If(changes = 1, "1 change", WakeFormat.Count(changes) + " changes"))
-		  
-		  Var opener As String
-		  If target <> Nil Then
-		    opener = " onclick=""wakeOpen('" + NewLink(info, target) + "')"" title=""Open the session's timeline at its first change"""
-		  End If
-		  
-		  out.Add("<div class=""session""><div class=""session-head""" + opener + "><span class=""title"">" + _
-		  EscapeHTML(info.DisplayTitle) + "</span><span class=""muted"">" + EscapeHTML(String.FromArray(facts, " · ")) + "</span></div>")
-		End Sub
-	#tag EndMethod
-
 	#tag Method, Flags = &h0
 		Sub AddSession(info As WakeSessionInfo, session As WakeSession)
 		  // Adds the turns of a parsed session that changed or read the file, placed among the other
@@ -199,6 +172,33 @@ Inherits WakeTimeline
 		    mTurns.AddAt(position, turn)
 		    position = position + 1
 		  Next
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub AddSessionHead(out() As String, first As Integer)
+		  // A session's title and start, with its changes. Pressing it opens the session's timeline at
+		  // the first change.
+		  Var info As WakeSessionInfo = mTurns(first).Info
+		  Var changes As Integer
+		  Var target As WakeHistoryEntry
+		  For i As Integer = first To mTurns.LastIndex
+		    If Not (mTurns(i).Info Is info) Then Exit
+		    changes = changes + mTurns(i).ChangeCount
+		    If target Is Nil Or (target.IsRead And mTurns(i).ChangeCount > 0) Then target = mTurns(i).FirstChange
+		  Next
+		  
+		  Var facts() As String
+		  If info.StartTime <> Nil Then facts.Add(LocalTime(info.StartTime).ToString(DateTime.FormatStyles.Medium, DateTime.FormatStyles.Short))
+		  facts.Add(If(changes = 1, "1 change", WakeFormat.Count(changes) + " changes"))
+		  
+		  Var opener As String
+		  If target <> Nil Then
+		    opener = " onclick=""wakeOpen('" + NewLink(info, target) + "')"" title=""Open the session's timeline at its first change"""
+		  End If
+		  
+		  out.Add("<div class=""session""><div class=""session-head""" + opener + "><span class=""title"">" + _
+		  EscapeHTML(info.DisplayTitle) + "</span><span class=""muted"">" + EscapeHTML(String.FromArray(facts, " · ")) + "</span></div>")
 		End Sub
 	#tag EndMethod
 
@@ -382,45 +382,6 @@ Inherits WakeTimeline
 		End Function
 	#tag EndMethod
 
-	#tag Method, Flags = &h0
-		Function HTML() As String
-		  // The same kind of page as the timeline: self-contained, no remote resources, transcript text
-		  // escaped, costs filled in by wakeSetCosts after load. Reads are hidden until wakeShowReads,
-		  // and the blame until wakeTab('blame').
-		  If mPage <> "" Then Return mPage
-		  mLinks = WakeCore.NewCaseSensitiveDictionary
-
-		  Var out() As String
-		  out.Add("<!DOCTYPE html><html><head><meta charset=""utf-8"">")
-		  out.Add("<meta http-equiv=""Content-Security-Policy"" content=""default-src 'none'; style-src 'unsafe-inline'; " + _
-		  "script-src 'unsafe-inline'; img-src data:"">")
-		  out.Add("<style>" + StyleSheet + &u0A + HistoryStyleSheet + "</style>")
-		  out.Add("<script>" + ScriptSource + &u0A + HistoryScript + "</script>")
-		  out.Add("</head><body class=""hide-reads"">")
-		  AddHeader(out)
-		  out.Add("<div id=""history-view""><div class=""note"">" + EscapeHTML(LimitsText) + "</div>")
-		  
-		  Var current As WakeSessionInfo
-		  For i As Integer = 0 To mTurns.LastIndex
-		    If Not (mTurns(i).Info Is current) Then
-		      If current <> Nil Then out.Add("</div>")
-		      current = mTurns(i).Info
-		      AddSessionHead(out, i)
-		    End If
-		    AddTurnHTML(out, mTurns(i))
-		  Next
-		  If current <> Nil Then out.Add("</div>")
-		  
-		  If mTurns.Count = 0 Then out.Add("<p class=""muted"">No changes to this file were found in the transcripts.</p>")
-		  out.Add("</div>")
-		  AddBlame(out)
-		  out.Add("</body></html>")
-		  
-		  mPage = String.FromArray(out, &u0A)
-		  Return mPage
-		End Function
-	#tag EndMethod
-
 	#tag Method, Flags = &h21
 		Private Function HistoryScript() As String
 		  Var js() As String
@@ -484,6 +445,45 @@ Inherits WakeTimeline
 		  css.Add("td.ln { text-align: right; color: var(--muted); user-select: none; }")
 		  css.Add("td.src { white-space: pre-wrap; overflow-wrap: anywhere; }")
 		  Return String.FromArray(css, &u0A)
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function HTML() As String
+		  // The same kind of page as the timeline: self-contained, no remote resources, transcript text
+		  // escaped, costs filled in by wakeSetCosts after load. Reads are hidden until wakeShowReads,
+		  // and the blame until wakeTab('blame').
+		  If mPage <> "" Then Return mPage
+		  mLinks = WakeCore.NewCaseSensitiveDictionary
+		  
+		  Var out() As String
+		  out.Add("<!DOCTYPE html><html><head><meta charset=""utf-8"">")
+		  out.Add("<meta http-equiv=""Content-Security-Policy"" content=""default-src 'none'; style-src 'unsafe-inline'; " + _
+		  "script-src 'unsafe-inline'; img-src data:"">")
+		  out.Add("<style>" + StyleSheet + &u0A + HistoryStyleSheet + "</style>")
+		  out.Add("<script>" + ScriptSource + &u0A + HistoryScript + "</script>")
+		  out.Add("</head><body class=""hide-reads"">")
+		  AddHeader(out)
+		  out.Add("<div id=""history-view""><div class=""note"">" + EscapeHTML(LimitsText) + "</div>")
+		  
+		  Var current As WakeSessionInfo
+		  For i As Integer = 0 To mTurns.LastIndex
+		    If Not (mTurns(i).Info Is current) Then
+		      If current <> Nil Then out.Add("</div>")
+		      current = mTurns(i).Info
+		      AddSessionHead(out, i)
+		    End If
+		    AddTurnHTML(out, mTurns(i))
+		  Next
+		  If current <> Nil Then out.Add("</div>")
+		  
+		  If mTurns.Count = 0 Then out.Add("<p class=""muted"">No changes to this file were found in the transcripts.</p>")
+		  out.Add("</div>")
+		  AddBlame(out)
+		  out.Add("</body></html>")
+		  
+		  mPage = String.FromArray(out, &u0A)
+		  Return mPage
 		End Function
 	#tag EndMethod
 
