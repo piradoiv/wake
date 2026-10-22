@@ -514,9 +514,10 @@ Protected Class WakeCatalog
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
-		Function Sessions(agentID As String, projectID As Integer, includeCommandOnly As Boolean = False) As WakeSessionInfo()
+		Function Sessions(agentID As String, projectID As Integer, includeCommandOnly As Boolean = False, fromTime As DateTime = Nil) As WakeSessionInfo()
 		  // Top-level sessions, newest first. An empty agentID means every agent, and projectID 0
-		  // means every project but the hidden ones. Raises DatabaseException.
+		  // means every project but the hidden ones. fromTime keeps the sessions that started from
+		  // then on. Raises DatabaseException.
 		  Var clauses() As String
 		  Var values() As Variant
 		  clauses.Add("s.parent_id IS NULL")
@@ -535,6 +536,11 @@ Protected Class WakeCatalog
 		  End If
 		  
 		  If Not includeCommandOnly Then clauses.Add("s.command_only = 0")
+		  
+		  If fromTime <> Nil Then
+		    clauses.Add("s.start_time >= ?")
+		    values.Add(fromTime.SecondsFrom1970)
+		  End If
 		  
 		  Return ReadSessions(String.FromArray(clauses, " AND "), values, "s.start_time IS NULL, s.start_time DESC, s.id DESC")
 		End Function

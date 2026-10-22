@@ -202,6 +202,39 @@ Begin Menu MainMenuBar
       AutoEnabled = True
       AutoEnable = True
       Visible = True
+      Begin DesktopMenuItem ViewSessions
+         SpecialMenu = 0
+         Index = -2147483648
+         Text = "&Sessions"
+         Symbol = ""
+         ShortcutKey = "1"
+         Shortcut = "Cmd+1"
+         MenuModifier = True
+         AutoEnabled = True
+         AutoEnable = True
+         Visible = True
+      End
+      Begin DesktopMenuItem ViewFiles
+         SpecialMenu = 0
+         Index = -2147483648
+         Text = "&Files"
+         Symbol = ""
+         ShortcutKey = "2"
+         Shortcut = "Cmd+2"
+         MenuModifier = True
+         AutoEnabled = True
+         AutoEnable = True
+         Visible = True
+      End
+      Begin DesktopMenuItem ViewSeparator0
+         SpecialMenu = 0
+         Index = -2147483648
+         Text = "-"
+         Symbol = ""
+         AutoEnabled = True
+         AutoEnable = True
+         Visible = True
+      End
       Begin DesktopMenuItem ViewHideProject
          SpecialMenu = 0
          Index = -2147483648

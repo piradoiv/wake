@@ -178,6 +178,11 @@ Inherits TestGroup
 		  Var sessionCount As Integer = sessions.Count
 		  Assert.AreEqual(1, sessionCount)
 		  If sessionCount = 0 Then Return
+		  sessions = mCatalog.Sessions("", 0, False, since)
+		  sessionCount = sessions.Count
+		  Assert.AreEqual(0, sessionCount, "sessions go by their start")
+
+		  sessions = mCatalog.Sessions("", 0)
 		  files = mCatalog.ChangedFiles("", 0, Nil, sessions(0).ID)
 		  Var count As Integer = files.Count
 		  Assert.AreEqual(4, count)

@@ -419,6 +419,53 @@ Begin DesktopWindow MainWindow
       Visible         =   False
       Width           =   662
    End
+   Begin DesktopTable FilesList
+      AllowAutoDeactivate=   True
+      AllowAutoHideScrollbars=   True
+      AllowColumnReordering=   False
+      AllowExpandableRows=   True
+      AllowFocusRing  =   False
+      AllowResizableColumns=   True
+      AllowResizableRows=   False
+      AllowRowDragging=   False
+      AllowRowReordering=   False
+      Bold            =   False
+      ColumnCount     =   7
+      ColumnWidths    =   "*,52,64,84,52,124,76"
+      DefaultRowHeight=   22
+      DropIndicatorVisible=   False
+      Enabled         =   True
+      FontName        =   "System"
+      FontSize        =   0.0
+      FontUnit        =   0
+      GridLineStyle   =   0
+      HasBorder       =   True
+      HasColumnHeader =   True
+      HasHorizontalScrollbar=   False
+      HasVerticalScrollbar=   True
+      Height          =   653
+      Index           =   -2147483648
+      InitialValue    =   ""
+      Italic          =   False
+      Left            =   219
+      LockBottom      =   True
+      LockedInPosition=   False
+      LockLeft        =   True
+      LockRight       =   True
+      LockTop         =   True
+      RequiresSelection=   False
+      RowSelectionType=   0
+      Scope           =   2
+      TabIndex        =   8
+      TabPanelIndex   =   0
+      TabStop         =   True
+      Tooltip         =   ""
+      Top             =   35
+      Transparent     =   False
+      Underline       =   False
+      Visible         =   False
+      Width           =   662
+   End
    Begin MainWindowToolbar MainToolbar
       Enabled         =   True
       Index           =   -2147483648
@@ -450,6 +497,8 @@ End
 		  ViewHideProject.Text = If(project <> Nil And project.IsHidden, "Un&hide Project", "&Hide Project")
 		  ViewShowHiddenProjects.Enabled = mShowHidden Or App.HiddenProjects.Count > 0
 		  ViewShowHiddenProjects.HasCheckMark = mShowHidden
+		  ViewSessions.HasCheckMark = Not mShowFiles
+		  ViewFiles.HasCheckMark = mShowFiles
 		End Sub
 	#tag EndEvent
 
@@ -518,8 +567,22 @@ End
 	#tag EndMenuHandler
 
 	#tag MenuHandler
+		Function ViewFiles() As Boolean Handles ViewFiles.Action
+		  SetFilesView(True)
+		  Return True
+		End Function
+	#tag EndMenuHandler
+
+	#tag MenuHandler
 		Function ViewHideProject() As Boolean Handles ViewHideProject.Action
 		  ToggleHidden(SelectedProject)
+		  Return True
+		End Function
+	#tag EndMenuHandler
+
+	#tag MenuHandler
+		Function ViewSessions() As Boolean Handles ViewSessions.Action
+		  SetFilesView(False)
 		  Return True
 		End Function
 	#tag EndMenuHandler
@@ -571,6 +634,57 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Sub AddFileRow(node As WakeFileNode)
+		  // A row for a project, folder or file of the Files view. Inside RowExpanded it becomes a child
+		  // of the row being expanded.
+		  Var label As String = node.Name
+		  If node.Kind = WakeFileNode.Kinds.Project Then label = FileProjectLabel(node)
+		  
+		  Var cells() As String
+		  cells.Add(label)
+		  cells.Add(WakeFormat.Count(node.Edits))
+		  cells.Add(WakeFormat.Count(node.SessionCount))
+		  cells.Add(LinesText(node.LinesAdded, node.LinesRemoved))
+		  cells.Add(If(node.Reads > 0, WakeFormat.Count(node.Reads), ""))
+		  cells.Add(If(node.LastChanged Is Nil, "", FormatTime(node.LastChanged)))
+		  cells.Add(If(node.Tokens > 0, WakeFormat.Tokens(node.Tokens), ""))
+		  
+		  If node.IsFolder Then
+		    FilesList.AddExpandableRow(cells)
+		  Else
+		    FilesList.AddRow(cells)
+		  End If
+		  
+		  Var row As Integer = FilesList.LastAddedRowIndex
+		  FilesList.RowTagAt(row) = node
+		  FilesList.CellBoldAt(row, kFileColumnName) = (node.Kind = WakeFileNode.Kinds.Project)
+		  If node.File Is Nil Then
+		    FilesList.CellTooltipAt(row, kFileColumnName) = node.Path
+		  ElseIf IsMissing(node) Then
+		    FilesList.CellTooltipAt(row, kFileColumnName) = node.File.TargetPath + " (no longer on disk)"
+		  Else
+		    FilesList.CellTooltipAt(row, kFileColumnName) = node.File.TargetPath
+		  End If
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub AddFileRows(nodes() As WakeFileNode)
+		  // Adds rows for nodes, then opens the folders among them the reader didn't close. The last
+		  // folder opens first, so opening one doesn't move the rows of those before it.
+		  Var rows() As Integer
+		  For Each node As WakeFileNode In nodes
+		    AddFileRow(node)
+		    rows.Add(FilesList.LastAddedRowIndex)
+		  Next
+		  
+		  For i As Integer = rows.LastIndex DownTo 0
+		    If nodes(i).IsFolder And mCollapsedFolders.IndexOf(NodeKey(nodes(i))) < 0 Then FilesList.RowExpandedAt(rows(i)) = True
+		  Next
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function AgentName(agentID As String) As String
 		  Var parser As IAgentParser = AgentRegistry.ParserFor(agentID)
 		  If parser Is Nil Then Return agentID
@@ -600,6 +714,15 @@ End
 		  g.DrawingColor = Color.White
 		  g.DrawText(label, x + 5, top + (badgeHeight - g.TextHeight) / 2 + g.FontAscent)
 		  Return badgeWidth
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function FileProjectLabel(node As WakeFileNode) As String
+		  For Each p As WakeProjectInfo In mProjects
+		    If p.ID = node.ProjectID Then Return ProjectLabel(p)
+		  Next
+		  Return WakeFormat.ProjectName(node.ProjectPath)
 		End Function
 	#tag EndMethod
 
@@ -671,8 +794,22 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Function IsMissing(node As WakeFileNode) As Boolean
+		  Return node.File <> Nil And mMissingFiles <> Nil And mMissingFiles.HasKey(node.File.TargetPath)
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function IsSearching() As Boolean
 		  Return SearchField.Text.Trim <> ""
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function KeyFor(projectID As Integer, kind As WakeFileNode.Kinds, path As String) As String
+		  // What keeps a row of the Files view selected, or a folder closed, across reloads.
+		  Var kindNumber As Integer = Integer(kind)
+		  Return projectID.ToString + ":" + kindNumber.ToString + ":" + path
 		End Function
 	#tag EndMethod
 
@@ -684,7 +821,7 @@ End
 		  Var bar As Integer = WakeTitleBar.Height(Self)
 		  If bar = 0 Then Return
 		  
-		  Var lists() As DesktopTable = Array(SourceList, SessionsList, HitsList)
+		  Var lists() As DesktopTable = Array(SourceList, SessionsList, HitsList, FilesList)
 		  For Each list As DesktopTable In lists
 		    Var bottom As Integer = list.Top + list.Height
 		    list.Top = bar - 1
@@ -695,6 +832,70 @@ End
 		  GlanceTiles.Top = bar
 		  DetailList.Top = GlanceTiles.Top + GlanceTiles.Height
 		  DetailList.Height = detailBottom - DetailList.Top
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function LinesText(added As Int64, removed As Int64) As String
+		  Return "+" + WakeFormat.Count(added) + " −" + WakeFormat.Count(removed)
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub LoadFiles()
+		  // Fills the Files view with the files agents changed for the selected agent or project in the
+		  // chosen period, keeping the selected row and which folders are closed. A file asked for from
+		  // a session's details is shown and selected instead.
+		  Var wanted As String = mPendingFileKey
+		  mPendingFileKey = ""
+		  Var previous As WakeFileNode = SelectedFileNode
+		  If wanted = "" And previous <> Nil Then wanted = NodeKey(previous)
+		  
+		  mLoading = True
+		  FilesList.RemoveAllRows
+		  DetailList.RemoveAllRows
+		  mFileTrees.RemoveAll
+		  mMissingFiles = WakeCore.NewCaseSensitiveDictionary
+		  mFileCount = 0
+		  Var sessionIDs As New Dictionary
+		  
+		  Var source As WakeProjectInfo = SelectedSource
+		  If source <> Nil And mCatalog <> Nil Then
+		    Try
+		      Var files() As WakeChangedFile = mCatalog.ChangedFiles(source.AgentID, source.ID, PeriodStart)
+		      For Each f As WakeChangedFile In files
+		        // Only whether the file is there: nothing is read from it.
+		        If Not f.ExistsOnDisk Then mMissingFiles.Value(f.TargetPath) = True
+		        For Each id As Integer In f.SessionIDs
+		          sessionIDs.Value(id) = True
+		        Next
+		      Next
+		      mFileCount = files.Count
+		      mFileTrees = WakeFileNode.Build(files)
+		    Catch err As DatabaseException
+		      mIndexNote = "Could not read the index: " + err.Message
+		    End Try
+		  End If
+		  mFileSessionCount = sessionIDs.KeyCount
+		  
+		  For Each tree As WakeFileNode In mFileTrees
+		    tree.Sort(mFileSortColumn, mFileSortAscending)
+		    If wanted <> "" Then Call RevealNode(tree, wanted)
+		  Next
+		  AddFileRows(mFileTrees)
+		  
+		  If wanted <> "" Then
+		    For row As Integer = 0 To FilesList.LastRowIndex
+		      If NodeKey(WakeFileNode(FilesList.RowTagAt(row).ObjectValue)) = wanted Then
+		        FilesList.SelectedRowIndex = row
+		        Exit
+		      End If
+		    Next
+		  End If
+		  mLoading = False
+		  
+		  ShowFileDetail(SelectedFileNode)
+		  UpdateStatus
 		End Sub
 	#tag EndMethod
 
@@ -727,12 +928,7 @@ End
 		      query.Kinds = KindPopup.RowTagAt(KindPopup.SelectedRowIndex).StringValue.Split(",")
 		    End If
 		    
-		    If DatePopup.SelectedRowIndex > 0 Then
-		      Var days As Integer = DatePopup.RowTagAt(DatePopup.SelectedRowIndex).IntegerValue
-		      Var now As DateTime = DateTime.Now
-		      Var midnight As New DateTime(now.Year, now.Month, now.Day)
-		      query.FromTime = midnight.SubtractInterval(0, 0, days - 1)
-		    End If
+		    query.FromTime = PeriodStart
 		    
 		    Try
 		      hits = mCatalog.Search(query)
@@ -787,7 +983,7 @@ End
 		  Var usageBySession As Dictionary = WakeCore.NewCaseSensitiveDictionary
 		  If source <> Nil And mCatalog <> Nil Then
 		    Try
-		      sessions = mCatalog.Sessions(source.AgentID, source.ID, ShowCommandsCheckBox.Value)
+		      sessions = mCatalog.Sessions(source.AgentID, source.ID, ShowCommandsCheckBox.Value, PeriodStart)
 		      For Each g As WakeUsageGroup In mCatalog.Usage(WakeCatalog.UsageGroupings.Session, Nil, source.AgentID, source.ID)
 		        usageBySession.Value(g.Key) = g
 		      Next
@@ -871,6 +1067,12 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Function NodeKey(node As WakeFileNode) As String
+		  Return KeyFor(node.ProjectID, node.Kind, node.Path)
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function OpenCatalog() As Boolean
 		  If mCatalog <> Nil Then Return True
 		  
@@ -895,25 +1097,47 @@ End
 
 	#tag Method, Flags = &h21
 		Private Sub OpenTimeline()
-		  // Opens the selected session's timeline, or brings its window to the front if it is open.
-		  // For a search hit, the timeline scrolls to the matching event.
+		  // Opens the selected session's timeline. For a search hit, it scrolls to the matching event.
 		  Var info As WakeSessionInfo = SelectedSession
 		  If info Is Nil Then Return
 		  Var hit As WakeSearchHit = SelectedHit
-		  
+		  If hit Is Nil Then
+		    OpenTimelineAt(info, "", -1)
+		  Else
+		    OpenTimelineAt(info, hit.EventSessionUID, hit.Sequence)
+		  End If
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub OpenTimelineAt(info As WakeSessionInfo, sessionUID As String, sequence As Integer)
+		  // Opens a session's timeline, or brings its window to the front if it is open, and scrolls it
+		  // to an event of the session or one of its subagents unless sequence is -1.
 		  For i As Integer = 0 To App.WindowCount - 1
 		    Var existing As DesktopWindow = App.WindowAt(i)
 		    If existing IsA SessionWindow And SessionWindow(existing).FilePath = info.FilePath Then
 		      existing.Show
-		      If hit <> Nil Then SessionWindow(existing).ShowEvent(hit.EventSessionUID, hit.Sequence)
+		      If sequence >= 0 Then SessionWindow(existing).ShowEvent(sessionUID, sequence)
 		      Return
 		    End If
 		  Next
 		  
 		  Var timelineWindow As New SessionWindow
 		  timelineWindow.ShowSession(info)
-		  If hit <> Nil Then timelineWindow.ShowEvent(hit.EventSessionUID, hit.Sequence)
+		  If sequence >= 0 Then timelineWindow.ShowEvent(sessionUID, sequence)
 		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function PeriodStart() As DateTime
+		  // The start of the period chosen in the date menu, or Nil for any time. Each period row's
+		  // tag is its length in days, counted back from the end of today.
+		  If DatePopup.SelectedRowIndex <= 0 Then Return Nil
+		  Var days As Integer = DatePopup.RowTagAt(DatePopup.SelectedRowIndex).IntegerValue
+		  Var now As DateTime = DateTime.Now
+		  Var midnight As New DateTime(now.Year, now.Month, now.Day)
+		  Return midnight.SubtractInterval(0, 0, days - 1)
+		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
@@ -959,6 +1183,7 @@ End
 		  Var sourceScroll As Integer = SourceList.ScrollPosition
 		  Var sessionsScroll As Integer = SessionsList.ScrollPosition
 		  Var hitsScroll As Integer = HitsList.ScrollPosition
+		  Var filesScroll As Integer = FilesList.ScrollPosition
 		  Var detailScroll As Integer = DetailList.ScrollPosition
 		  
 		  If Not OpenCatalog Then
@@ -1020,8 +1245,26 @@ End
 		  SourceList.ScrollPosition = sourceScroll
 		  SessionsList.ScrollPosition = sessionsScroll
 		  HitsList.ScrollPosition = hitsScroll
+		  FilesList.ScrollPosition = filesScroll
 		  DetailList.ScrollPosition = detailScroll
 		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function RevealNode(node As WakeFileNode, key As String) As Boolean
+		  // Opens every folder on the way to the node with that key, and says whether it was found.
+		  If NodeKey(node) = key Then Return True
+		  
+		  For Each child As WakeFileNode In node.Children
+		    If RevealNode(child, key) Then
+		      Var closed As Integer = mCollapsedFolders.IndexOf(NodeKey(node))
+		      If closed >= 0 Then mCollapsedFolders.RemoveAt(closed)
+		      Return True
+		    End If
+		  Next
+		  
+		  Return False
+		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
@@ -1029,6 +1272,13 @@ End
 		  // Called a moment after the last keystroke, so typing doesn't query the index on every key.
 		  ShowResults
 		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function SelectedFileNode() As WakeFileNode
+		  If Not FilesList.Visible Or FilesList.SelectedRowIndex < 0 Then Return Nil
+		  Return WakeFileNode(FilesList.RowTagAt(FilesList.SelectedRowIndex).ObjectValue)
+		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
@@ -1056,7 +1306,7 @@ End
 		    Return hit.Session
 		  End If
 		  
-		  If SessionsList.SelectedRowIndex < 0 Then Return Nil
+		  If Not SessionsList.Visible Or SessionsList.SelectedRowIndex < 0 Then Return Nil
 		  Return WakeSessionInfo(SessionsList.RowTagAt(SessionsList.SelectedRowIndex).ObjectValue)
 		End Function
 	#tag EndMethod
@@ -1073,6 +1323,17 @@ End
 		  If SourceList.SelectedRowIndex < 0 Then Return Nil
 		  Return WakeProjectInfo(SourceList.RowTagAt(SourceList.SelectedRowIndex).ObjectValue)
 		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub SetFilesView(showFiles As Boolean)
+		  // Switches between the Sessions and Files views. Search hits take the place of either, so a
+		  // switch clears the search.
+		  mShowFiles = showFiles
+		  SyncViewItems
+		  If IsSearching Then SearchField.Text = ""
+		  ShowResults
+		End Sub
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
@@ -1097,6 +1358,20 @@ End
 		  HitsList.ColumnHeaderAt(kHitColumnMatch) = "Match"
 		  HitsList.ColumnHeaderAt(kHitColumnSession) = "Session"
 		  
+		  FilesList.ColumnHeaderAt(kFileColumnName) = "Name"
+		  FilesList.ColumnHeaderAt(kFileColumnEdits) = "Edits"
+		  FilesList.ColumnHeaderAt(kFileColumnSessions) = "Sessions"
+		  FilesList.ColumnHeaderAt(kFileColumnLines) = "+/−"
+		  FilesList.ColumnHeaderAt(kFileColumnReads) = "Reads"
+		  FilesList.ColumnHeaderAt(kFileColumnChanged) = "Last changed"
+		  FilesList.ColumnHeaderAt(kFileColumnTokens) = "≈ Tokens"
+		  FilesList.ColumnAlignmentAt(kFileColumnEdits) = DesktopTable.Alignments.Right
+		  FilesList.ColumnAlignmentAt(kFileColumnSessions) = DesktopTable.Alignments.Right
+		  FilesList.ColumnAlignmentAt(kFileColumnLines) = DesktopTable.Alignments.Right
+		  FilesList.ColumnAlignmentAt(kFileColumnReads) = DesktopTable.Alignments.Right
+		  FilesList.ColumnAlignmentAt(kFileColumnTokens) = DesktopTable.Alignments.Right
+		  FilesList.ColumnSortDirectionAt(kFileColumnName) = DesktopTable.SortDirections.Ascending
+		  
 		  // Each kind row's tag lists the event kinds it searches, as the index names them.
 		  mLoading = True
 		  KindPopup.AddRow("All events")
@@ -1119,6 +1394,7 @@ End
 		  KindPopup.SelectedRowIndex = 0
 		  
 		  // Each period row's tag is its length in days, counted back from the end of today.
+		  // The period filters search hits, sessions (by their start) and file changes (by their own time).
 		  DatePopup.AddRow("Any time")
 		  DatePopup.AddRow("Today")
 		  DatePopup.RowTagAt(DatePopup.LastAddedRowIndex) = 1
@@ -1149,6 +1425,27 @@ End
 		    Var flexible As New DesktopToolbarButton
 		    flexible.ButtonStyle = DesktopToolbarButton.ButtonStyles.FlexibleSpace
 		    MainToolbar.AddButton(flexible)
+		    
+		    // DesktopToolbar has no segmented item, so the Sessions/Files switch is two toggle buttons,
+		    // before the filters.
+		    mSessionsItem = New DesktopToolbarButton
+		    mSessionsItem.ButtonStyle = DesktopToolbarButton.ButtonStyles.ToggleButton
+		    mSessionsItem.Caption = "Sessions"
+		    mSessionsItem.Tooltip = "Sessions (⌘1)"
+		    mSessionsItem.Symbol = "list.bullet"
+		    MainToolbar.AddButtonAt(0, mSessionsItem)
+		    
+		    mFilesItem = New DesktopToolbarButton
+		    mFilesItem.ButtonStyle = DesktopToolbarButton.ButtonStyles.ToggleButton
+		    mFilesItem.Caption = "Files"
+		    mFilesItem.Tooltip = "Files (⌘2)"
+		    mFilesItem.Symbol = "doc.on.doc"
+		    MainToolbar.AddButtonAt(1, mFilesItem)
+		    
+		    Var gap As New DesktopToolbarButton
+		    gap.ButtonStyle = DesktopToolbarButton.ButtonStyles.Space
+		    MainToolbar.AddButtonAt(2, gap)
+		    SyncViewItems
 		    
 		    MainToolbar.Style = DesktopToolbar.Styles.IconOnly
 		    mKindItem.Symbol = "line.3.horizontal.decrease"
@@ -1191,11 +1488,13 @@ End
 		  Var s As WakeSessionInfo
 		  Var subagents() As WakeSessionInfo
 		  Var usage As WakeUsageGroup
+		  Var changed() As WakeChangedFile
 		  Try
 		    s = mCatalog.Session(info.ID)
 		    If s <> Nil Then
 		      subagents = mCatalog.Subagents(s.ID)
 		      usage = mCatalog.SessionUsage(s.ID)
+		      changed = mCatalog.ChangedFiles(s.AgentID, s.ProjectID, Nil, s.ID)
 		    End If
 		  Catch err As DatabaseException
 		    ShowSourceGlance
@@ -1260,10 +1559,82 @@ End
 		    Next
 		  End If
 		  
+		  If changed.Count > 0 Then
+		    AddDetailHeading("Files changed")
+		    For Each f As WakeChangedFile In changed
+		      DetailList.AddRow(LinesText(f.LinesAdded, f.LinesRemoved), f.Path)
+		      Var row As Integer = DetailList.LastAddedRowIndex
+		      DetailList.RowTagAt(row) = f
+		      DetailList.CellTooltipAt(row, 1) = f.TargetPath + &u0A + "Click to show it in the Files view"
+		    Next
+		  End If
+		  
 		  AddDetailHeading("Source")
 		  If s.IsPartial Then AddDetail("Partially parsed", s.ParseNote)
 		  AddDetail("File", s.FilePath)
 		  AddDetail("Timeline", If(hit <> Nil, "Double-click the match or press ⌘O", "Double-click the session or press ⌘O"))
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub ShowFileDetail(node As WakeFileNode)
+		  // The figures of the selected file, folder or project, and a file's changes, newest first.
+		  // Double-clicking a change opens its session's timeline at that edit.
+		  DetailList.RemoveAllRows
+		  ShowSourceGlance
+		  If mCatalog Is Nil Then Return
+		  If node Is Nil Then
+		    If FilesList.RowCount > 0 Then AddDetail("", "Select a file to see its changes.")
+		    Return
+		  End If
+		  
+		  Select Case node.Kind
+		  Case WakeFileNode.Kinds.Project
+		    AddDetailHeading("Project")
+		    AddDetail("Path", node.ProjectPath)
+		  Case WakeFileNode.Kinds.Outside
+		    AddDetailHeading(WakeFileNode.kOutsideName)
+		    AddDetail("", "Files changed outside " + node.ProjectPath)
+		  Case WakeFileNode.Kinds.Folder
+		    AddDetailHeading("Folder")
+		    AddDetail("Path", node.Path)
+		  Else
+		    AddDetailHeading("File")
+		    AddDetail("Path", node.File.TargetPath)
+		    If IsMissing(node) Then AddDetail("On disk", "No longer there")
+		  End Select
+		  
+		  AddDetail("Edits", WakeFormat.Count(node.Edits))
+		  AddDetail("Sessions", WakeFormat.Count(node.SessionCount))
+		  AddDetail("Lines", LinesText(node.LinesAdded, node.LinesRemoved))
+		  AddDetail("Reads", WakeFormat.Count(node.Reads))
+		  AddDetail("Last changed", FormatTime(node.LastChanged))
+		  If node.Tokens > 0 Then AddDetail("≈ Tokens", WakeFormat.Count(node.Tokens))
+		  If node.File Is Nil Then Return
+		  
+		  Var changes() As WakeFileChangeInfo
+		  Try
+		    changes = mCatalog.FileChanges(node.ProjectID, node.File.TargetPath, PeriodStart)
+		  Catch err As DatabaseException
+		    AddDetail("Error", "Could not read the index: " + err.Message)
+		    Return
+		  End Try
+		  
+		  AddDetailHeading("Changes")
+		  For Each c As WakeFileChangeInfo In changes
+		    Var where As String = c.Session.DisplayTitle + If(c.InSubagent, " (subagent)", "")
+		    Var entry As String = LinesText(c.LinesAdded, c.LinesRemoved) + " · " + where
+		    If c.Prompt <> "" Then entry = entry + " · " + WakeFormat.OneLine(c.Prompt, 200)
+		    DetailList.AddRow(FormatTime(c.Timestamp), entry)
+		    
+		    Var row As Integer = DetailList.LastAddedRowIndex
+		    DetailList.RowTagAt(row) = c
+		    Var verb As String = "Edited"
+		    If c.Action = WakeEvent.kChangeCreate Then verb = "Created"
+		    If c.Action = WakeEvent.kChangeWrite Then verb = "Rewritten"
+		    DetailList.CellTooltipAt(row, 1) = verb + " in " + where + &u0A + WakeFormat.OneLine(c.Prompt, 500)
+		  Next
+		  AddDetail("Timeline", "Double-click a change to open it")
 		End Sub
 	#tag EndMethod
 
@@ -1276,20 +1647,31 @@ End
 
 	#tag Method, Flags = &h21
 		Private Sub ShowResults()
-		  // Search hits while there is search text, otherwise the sessions of the selected source.
+		  // Search hits while there is search text, otherwise the sessions or changed files of the
+		  // selected source.
 		  Timer.CancelCallLater(AddressOf RunSearch)
 		  
 		  Var searching As Boolean = IsSearching
 		  HitsList.Visible = searching
-		  SessionsList.Visible = Not searching
+		  SessionsList.Visible = Not searching And Not mShowFiles
+		  FilesList.Visible = Not searching And mShowFiles
 		  
 		  LoadSourceTotals
 		  If searching Then
 		    LoadHits
+		  ElseIf mShowFiles Then
+		    HitsList.RemoveAllRows
+		    LoadFiles
 		  Else
 		    HitsList.RemoveAllRows
 		    LoadSessions
 		  End If
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub ShowFilesView()
+		  SetFilesView(True)
 		End Sub
 	#tag EndMethod
 
@@ -1343,11 +1725,44 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Sub SortFiles(column As Integer)
+		  // Sorts the Files view by a column at every level. Pressing the same heading again reverses
+		  // the order. Names go A to Z first, figures largest first. The columns are in the order of
+		  // WakeFileNode.Columns.
+		  Var key As WakeFileNode.Columns = WakeFileNode.Columns(column)
+		  If key = mFileSortColumn Then
+		    mFileSortAscending = Not mFileSortAscending
+		  Else
+		    mFileSortColumn = key
+		    mFileSortAscending = (key = WakeFileNode.Columns.Name)
+		  End If
+		  
+		  For i As Integer = 0 To FilesList.ColumnCount - 1
+		    FilesList.ColumnSortDirectionAt(i) = DesktopTable.SortDirections.None
+		  Next
+		  FilesList.ColumnSortDirectionAt(column) = If(mFileSortAscending, DesktopTable.SortDirections.Ascending, DesktopTable.SortDirections.Descending)
+		  
+		  Var scroll As Integer = FilesList.ScrollPosition
+		  LoadFiles
+		  FilesList.ScrollPosition = scroll
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Sub SyncToolbar()
 		  // Mirrors the kind and date popups in their toolbar menus.
 		  WakeTitleBar.MirrorPopup(mKindItem, KindPopup)
 		  WakeTitleBar.MirrorPopup(mDateItem, DatePopup)
 		  WakeTitleBar.StyleToolbarItems(Self)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub SyncViewItems()
+		  // The toolbar's Sessions and Files buttons show which view is up.
+		  If mSessionsItem Is Nil Or mFilesItem Is Nil Then Return
+		  mSessionsItem.Pressed = Not mShowFiles
+		  mFilesItem.Pressed = mShowFiles
 		End Sub
 	#tag EndMethod
 
@@ -1381,6 +1796,12 @@ End
 		    Var matches As String = If(HitsList.RowCount = 1, "1 match", WakeFormat.Count(HitsList.RowCount) + " matches")
 		    parts.Add(matches + " in " + If(mHitSessionCount = 1, "1 session", WakeFormat.Count(mHitSessionCount) + " sessions"))
 		    If HitsList.RowCount >= kMaxHits Then parts.Add("showing the best " + WakeFormat.Count(kMaxHits))
+		  ElseIf mCatalog <> Nil And FilesList.Visible Then
+		    parts.Add(If(mFileCount = 1, "1 file", WakeFormat.Count(mFileCount) + " files") + " changed in " + _
+		    If(mFileSessionCount = 1, "1 session", WakeFormat.Count(mFileSessionCount) + " sessions"))
+		    If mMissingFiles <> Nil And mMissingFiles.KeyCount > 0 Then
+		      parts.Add(WakeFormat.Count(mMissingFiles.KeyCount) + " no longer on disk")
+		    End If
 		  ElseIf mCatalog <> Nil Then
 		    parts.Add(If(SessionsList.RowCount = 1, "1 session", SessionsList.RowCount.ToString + " sessions"))
 		  End If
@@ -1399,7 +1820,35 @@ End
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
+		Private mCollapsedFolders() As String
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
 		Private mDateItem As DesktopToolbarButton
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mFileCount As Integer
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mFileSessionCount As Integer
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mFileSortAscending As Boolean = True
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mFileSortColumn As WakeFileNode.Columns
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mFileTrees() As WakeFileNode
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mFilesItem As DesktopToolbarButton
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
@@ -1431,7 +1880,23 @@ End
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
+		Private mMissingFiles As Dictionary
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mPendingFileKey As String
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
 		Private mProjects() As WakeProjectInfo
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mSessionsItem As DesktopToolbarButton
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mShowFiles As Boolean
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
@@ -1477,6 +1942,27 @@ End
 	#tag EndConstant
 
 	#tag Constant, Name = kColumnTokens, Type = Double, Dynamic = False, Default = \"4", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kFileColumnChanged, Type = Double, Dynamic = False, Default = \"5", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kFileColumnEdits, Type = Double, Dynamic = False, Default = \"1", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kFileColumnLines, Type = Double, Dynamic = False, Default = \"3", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kFileColumnName, Type = Double, Dynamic = False, Default = \"0", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kFileColumnReads, Type = Double, Dynamic = False, Default = \"4", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kFileColumnSessions, Type = Double, Dynamic = False, Default = \"2", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kFileColumnTokens, Type = Double, Dynamic = False, Default = \"6", Scope = Private
 	#tag EndConstant
 
 	#tag Constant, Name = kHitColumnKind, Type = Double, Dynamic = False, Default = \"1", Scope = Private
@@ -1646,11 +2132,34 @@ End
 #tag Events DetailList
 	#tag Event
 		Function MouseDown(x As Integer, y As Integer) As Boolean
-		  // The details are only for reading, so clicks don't select rows.
-		  #Pragma Unused x
-		  #Pragma Unused y
-		  Return True
+		  // The details are only for reading, so clicks don't select rows. A changed file switches to
+		  // the Files view with it selected, and a file's change lets the click through, so a double
+		  // click can open its timeline.
+		  Var row As Integer = Me.RowFromXY(x, y)
+		  If row < 0 Or row > Me.LastRowIndex Then Return True
+		  
+		  Var tag As Variant = Me.RowTagAt(row)
+		  If tag.ObjectValue IsA WakeChangedFile Then
+		    Var f As WakeChangedFile = WakeChangedFile(tag.ObjectValue)
+		    mPendingFileKey = KeyFor(f.ProjectID, WakeFileNode.Kinds.File, f.Path)
+		    // Not while the list handles its own click.
+		    Timer.CallLater(0, AddressOf ShowFilesView)
+		    Return True
+		  End If
+		  
+		  Return Not (tag.ObjectValue IsA WakeFileChangeInfo)
 		End Function
+	#tag EndEvent
+	#tag Event
+		Sub DoublePressed(row As Integer, column As Integer)
+		  #Pragma Unused column
+		  If row < 0 Or row > Me.LastRowIndex Then Return
+		  
+		  Var tag As Variant = Me.RowTagAt(row)
+		  If Not (tag.ObjectValue IsA WakeFileChangeInfo) Then Return
+		  Var c As WakeFileChangeInfo = WakeFileChangeInfo(tag.ObjectValue)
+		  OpenTimelineAt(c.Session, c.EventSessionUID, c.Sequence)
+		End Sub
 	#tag EndEvent
 	#tag Event
 		Sub SelectionChanged()
@@ -1712,7 +2221,7 @@ End
 	#tag Event
 		Sub SelectionChanged(item As DesktopMenuItem)
 		  #Pragma Unused item
-		  If Not mLoading And IsSearching Then ShowResults
+		  If Not mLoading Then ShowResults
 		End Sub
 	#tag EndEvent
 #tag EndEvents
@@ -1800,7 +2309,60 @@ End
 		End Function
 	#tag EndEvent
 #tag EndEvents
+#tag Events FilesList
+	#tag Event
+		Sub RowExpanded(row As Integer)
+		  // Children of a project or folder, in the current sort order.
+		  Var node As WakeFileNode = WakeFileNode(Me.RowTagAt(row).ObjectValue)
+		  If node Is Nil Then Return
+		  Var closed As Integer = mCollapsedFolders.IndexOf(NodeKey(node))
+		  If closed >= 0 Then mCollapsedFolders.RemoveAt(closed)
+		  AddFileRows(node.Children)
+		End Sub
+	#tag EndEvent
+	#tag Event
+		Sub RowCollapsed(row As Integer)
+		  // Remembered so that reloading the list keeps the folder closed.
+		  Var node As WakeFileNode = WakeFileNode(Me.RowTagAt(row).ObjectValue)
+		  If node <> Nil And mCollapsedFolders.IndexOf(NodeKey(node)) < 0 Then mCollapsedFolders.Add(NodeKey(node))
+		End Sub
+	#tag EndEvent
+	#tag Event
+		Sub SelectionChanged()
+		  If Not mLoading Then ShowFileDetail(SelectedFileNode)
+		End Sub
+	#tag EndEvent
+	#tag Event
+		Function PaintCellText(g As Graphics, row As Integer, column As Integer, x As Integer, y As Integer) As Boolean
+		  // Files no longer on disk are drawn dimmed.
+		  #Pragma Unused column
+		  #Pragma Unused x
+		  #Pragma Unused y
+		  If row > Me.LastRowIndex Or Me.RowSelectedAt(row) Then Return False
+		  
+		  Var node As WakeFileNode = WakeFileNode(Me.RowTagAt(row).ObjectValue)
+		  If node <> Nil And IsMissing(node) Then g.DrawingColor = WakeGlanceTiles.SecondaryTextColor
+		  Return False
+		End Function
+	#tag EndEvent
+	#tag Event
+		Function ColumnHeaderPressed(column As Integer) As Boolean
+		  // The tree is sorted by WakeFileNode at every level, so the list's own sort is skipped.
+		  SortFiles(column)
+		  Return True
+		End Function
+	#tag EndEvent
+#tag EndEvents
 #tag Events MainToolbar
+	#tag Event
+		Sub Pressed(item As DesktopToolbarItem)
+		  If item Is mSessionsItem Then
+		    SetFilesView(False)
+		  ElseIf item Is mFilesItem Then
+		    SetFilesView(True)
+		  End If
+		End Sub
+	#tag EndEvent
 	#tag Event
 		Sub MenuItemSelected(item As DesktopToolbarItem, selectedItem As DesktopMenuItem)
 		  // Choosing from a toolbar menu selects that row in its popup, which runs the search again.

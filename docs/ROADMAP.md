@@ -299,7 +299,16 @@ Each milestone below is one session's work, ending with tests and a commit.
   returns `WakeChangedFile`s, `FileChanges(project, target, from)` returns
   `WakeFileChangeInfo`s, and `WakeFileNode.Build` makes the tree (`Sort`
   keeps Outside last). Fixture session 10 is in `claude-code/changes/`.
-  Left: the main window (view switch, tree, detail pane, "Files changed").
+  **UI written, not yet checked by eye:** `FilesList` (sorted by
+  `WakeFileNode.Sort` from `ColumnHeaderPressed`, children added in
+  `RowExpanded`, last folder opened first), `ShowFileDetail`, "Files
+  changed" in a session's details (a click goes to the file), View →
+  Sessions/Files, and `WakeCatalog.Sessions` takes the period.
+  `DesktopToolbar` has no segmented item, so the switch is two toggle
+  buttons. Double-clicking a file does nothing until milestone 25. On real
+  data (126 transcripts) 567 changes to 265 files, 118 of those files
+  outside their project; 222 creates and 15 rewrites, as many as the Write
+  results.
 
 - [ ] **25. File history.** A `FileHistoryWindow`, one per file, shows
   every change agents made to a file across sessions, oldest first: a page
