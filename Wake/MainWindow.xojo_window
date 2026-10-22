@@ -733,7 +733,7 @@ End
 		  If minus < 0 Then Return False
 		  Var finish As Integer = text.IndexOf(minus + 2, " ")
 		  If finish < 0 Then finish = text.Length
-
+		  
 		  Var textColor As Color = g.DrawingColor
 		  Var pieces() As String = Array(text.Left(minus), text.Middle(minus, finish - minus), text.Middle(finish))
 		  Var tints() As Color = Array(WakeGlanceTiles.kGreen, WakeGlanceTiles.kRed)
@@ -748,7 +748,7 @@ End
 		    g.DrawText(pieces(i), drawAt, y, g.Width - drawAt, True)
 		    drawAt = drawAt + g.TextWidth(pieces(i))
 		  Next
-
+		  
 		  g.DrawingColor = textColor
 		  Return True
 		End Function
@@ -2366,7 +2366,7 @@ End
 		Function PaintCellText(g As Graphics, row As Integer, column As Integer, x As Integer, y As Integer) As Boolean
 		  // Files no longer on disk are drawn dimmed, and the others' line counts in green and red.
 		  If row > Me.LastRowIndex Or Me.RowSelectedAt(row) Then Return False
-
+		  
 		  Var node As WakeFileNode = WakeFileNode(Me.RowTagAt(row).ObjectValue)
 		  If node <> Nil And IsMissing(node) Then
 		    g.DrawingColor = WakeGlanceTiles.SecondaryTextColor
