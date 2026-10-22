@@ -208,9 +208,14 @@ End
 	#tag EndEvent
 	#tag Event
 		Function JavaScriptRequest(method As String, parameters() as Variant) As String
-		  // The page calls executeInXojoSync to expand a long block, and to open a session's timeline
-		  // from a header. The window opens once the call has returned.
+		  // The page calls executeInXojoSync to expand a long block, to open a session's timeline
+		  // from a header, and when it switches tabs. The window opens once the call has returned.
 		  If mHistory Is Nil Or parameters.Count = 0 Then Return ""
+		  If method = "tab" Then
+		    // Reads are part of the history only.
+		    ShowReadsCheckBox.Enabled = parameters(0).StringValue = "history"
+		    Return ""
+		  End If
 		  If method = "open" Then
 		    mPendingLink = mHistory.ChangeFor(parameters(0).StringValue)
 		    Timer.CallLater(0, AddressOf OpenPendingLink)

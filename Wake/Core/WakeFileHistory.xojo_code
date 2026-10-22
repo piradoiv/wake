@@ -14,6 +14,59 @@ Inherits WakeTimeline
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Sub AddBlame(out() As String)
+		  // The file as it is now, a mark at the start of each run of lines credited to one change.
+		  // Pressing a mark shows that change in the history. Call after the history is rendered, so
+		  // its changes have anchors.
+		  out.Add("<div id=""blame-view""><div class=""note"">" + EscapeHTML(BlameLimitsText) + "</div>")
+		  If Not mHasFileText Then
+		    out.Add("<p class=""muted"">" + EscapeHTML(mFileNote) + "</p></div>")
+		    Return
+		  End If
+		  
+		  Var changes() As WakeHistoryEntry
+		  Var turns() As WakeHistoryTurn
+		  BlameChanges(changes, turns)
+		  Var fileLines() As String = WakeBlame.Lines(mFileText)
+		  Var owners() As Integer = BlameOwners(changes)
+		  
+		  Var credited As Integer
+		  Var used As New Dictionary
+		  For Each owner As Integer In owners
+		    If owner < 0 Then Continue
+		    credited = credited + 1
+		    used.Value(owner) = True
+		  Next
+		  out.Add("<div class=""facts"">" + EscapeHTML(WakeFormat.Count(credited) + " of " + _
+		  If(fileLines.Count = 1, "1 line", WakeFormat.Count(fileLines.Count) + " lines") + " match an agent change, from " + _
+		  WakeFormat.Count(used.KeyCount) + " of " + If(changes.Count = 1, "1 change", WakeFormat.Count(changes.Count) + " changes")) + "</div>")
+		  
+		  out.Add("<table class=""blame""><colgroup><col class=""c-mark""><col class=""c-ln""><col></colgroup>")
+		  Var previous As Integer = -2
+		  Var shaded As Boolean
+		  For i As Integer = 0 To fileLines.LastIndex
+		    Var owner As Integer = owners(i)
+		    Var mark As String
+		    Var rowClass As String
+		    If owner <> previous Then
+		      shaded = Not shaded
+		      previous = owner
+		      rowClass = " start"
+		      If owner < 0 Then
+		        mark = "<span class=""none"" title=""" + EscapeHTML(UnaccountedText) + """>" + EscapeHTML(UnaccountedText) + "</span>"
+		      Else
+		        mark = MarkHTML(changes(owner), turns(owner))
+		      End If
+		    End If
+		    Var lineNumber As Integer = i + 1
+		    out.Add("<tr class=""" + If(shaded, "odd", "even") + rowClass + """><td class=""mark"">" + mark + "</td><td class=""ln"">" + _
+		    lineNumber.ToString + "</td><td class=""src"">" + EscapeHTML(fileLines(i)) + "</td></tr>")
+		  Next
+		  out.Add("</table></div>")
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Sub AddEntry(out() As String, entry As WakeHistoryEntry)
 		  // A change shows its diff, open. A read is one line, shown only when the page shows reads.
 		  Var e As WakeEvent = entry.ToolEvent
@@ -47,7 +100,8 @@ Inherits WakeTimeline
 		  out.Add("<div class=""file-head""><div class=""name"">" + EscapeHTML(FileName) + "</div>" + _
 		  "<div class=""path muted"">" + EscapeHTML(mTargetPath) + "</div>" + _
 		  "<div class=""facts"">" + EscapeHTML(FactsText) + "</div></div>")
-		  out.Add("<div class=""note"">" + EscapeHTML(LimitsText) + "</div>")
+		  out.Add("<div class=""tabs""><button id=""tab-history"" class=""tab on"" onclick=""wakeTab('history')"">History</button>" + _
+		  "<button id=""tab-blame"" class=""tab"" onclick=""wakeTab('blame')"" title=""The file as it is now, each line with the change that likely wrote it"">Blame</button></div>")
 		End Sub
 	#tag EndMethod
 
@@ -219,6 +273,53 @@ Inherits WakeTimeline
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function Blame() As WakeHistoryEntry()
+		  // For each line of the file as it is now, the change it is credited to, or Nil. Empty when
+		  // the file couldn't be read.
+		  Var result() As WakeHistoryEntry
+		  If Not mHasFileText Then Return result
+		  
+		  Var changes() As WakeHistoryEntry
+		  Var turns() As WakeHistoryTurn
+		  BlameChanges(changes, turns)
+		  For Each owner As Integer In BlameOwners(changes)
+		    result.Add(If(owner < 0, Nil, changes(owner)))
+		  Next
+		  Return result
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub BlameChanges(changes() As WakeHistoryEntry, turns() As WakeHistoryTurn)
+		  // The file's changes, oldest first, each with its turn.
+		  For Each turn As WakeHistoryTurn In mTurns
+		    For Each entry As WakeHistoryEntry In turn.Entries
+		      If entry.IsRead Then Continue
+		      changes.Add(entry)
+		      turns.Add(turn)
+		    Next
+		  Next
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function BlameLimitsText() As String
+		  Return "The file as it is on disk now. Each line is credited to the latest agent change that added a line with the same text, " + _
+		  "nearest position first. It's a guess: lines that moved, repeat or were typed again can point at the wrong change."
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function BlameOwners(changes() As WakeHistoryEntry) As Integer()
+		  Var blame As New WakeBlame
+		  For Each entry As WakeHistoryEntry In changes
+		    blame.AddChange(entry.ToolEvent.Patch, entry.ToolEvent.ChangeAction)
+		  Next
+		  Return blame.Blame(mFileText)
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function ChangeCount() As Integer
 		  Var total As Integer
 		  For Each turn As WakeHistoryTurn In mTurns
@@ -284,7 +385,8 @@ Inherits WakeTimeline
 	#tag Method, Flags = &h0
 		Function HTML() As String
 		  // The same kind of page as the timeline: self-contained, no remote resources, transcript text
-		  // escaped, costs filled in by wakeSetCosts after load. Reads are hidden until wakeShowReads.
+		  // escaped, costs filled in by wakeSetCosts after load. Reads are hidden until wakeShowReads,
+		  // and the blame until wakeTab('blame').
 		  If mPage <> "" Then Return mPage
 		  mLinks = WakeCore.NewCaseSensitiveDictionary
 
@@ -296,6 +398,7 @@ Inherits WakeTimeline
 		  out.Add("<script>" + ScriptSource + &u0A + HistoryScript + "</script>")
 		  out.Add("</head><body class=""hide-reads"">")
 		  AddHeader(out)
+		  out.Add("<div id=""history-view""><div class=""note"">" + EscapeHTML(LimitsText) + "</div>")
 		  
 		  Var current As WakeSessionInfo
 		  For i As Integer = 0 To mTurns.LastIndex
@@ -309,6 +412,8 @@ Inherits WakeTimeline
 		  If current <> Nil Then out.Add("</div>")
 		  
 		  If mTurns.Count = 0 Then out.Add("<p class=""muted"">No changes to this file were found in the transcripts.</p>")
+		  out.Add("</div>")
+		  AddBlame(out)
 		  out.Add("</body></html>")
 		  
 		  mPage = String.FromArray(out, &u0A)
@@ -324,6 +429,21 @@ Inherits WakeTimeline
 		  js.Add("}")
 		  js.Add("function wakeOpen(id) {")
 		  js.Add("  if (typeof executeInXojoSync === 'function') executeInXojoSync('open', id);")
+		  js.Add("}")
+		  js.Add("var wakeScroll = { history: 0, blame: 0 };")
+		  js.Add("function wakeTab(name) {")
+		  js.Add("  var current = document.body.classList.contains('show-blame') ? 'blame' : 'history';")
+		  js.Add("  if (current === name) return;")
+		  js.Add("  wakeScroll[current] = window.scrollY;")
+		  js.Add("  document.body.classList.toggle('show-blame', name === 'blame');")
+		  js.Add("  document.getElementById('tab-history').classList.toggle('on', name === 'history');")
+		  js.Add("  document.getElementById('tab-blame').classList.toggle('on', name === 'blame');")
+		  js.Add("  window.scrollTo(0, wakeScroll[name]);")
+		  js.Add("  if (typeof executeInXojoSync === 'function') executeInXojoSync('tab', name);")
+		  js.Add("}")
+		  js.Add("function wakeJump(id) {")
+		  js.Add("  wakeTab('history');")
+		  js.Add("  wakeGoTo(id);")
 		  js.Add("}")
 		  Return String.FromArray(js, &u0A)
 		End Function
@@ -346,6 +466,23 @@ Inherits WakeTimeline
 		  css.Add(".turn { padding: 4px 0 8px; }")
 		  css.Add(".read .line { color: var(--muted); }")
 		  css.Add(".hide-reads .read, .hide-reads .turn.reads-only { display: none; }")
+		  css.Add(".tabs { display: flex; margin: 12px 0 0; border-bottom: 1px solid var(--line); }")
+		  css.Add(".tabs .tab { margin: 0 4px -1px 0; padding: 3px 14px; font-size: 13px; border-radius: 6px 6px 0 0; background: none; }")
+		  css.Add(".tabs .tab.on { background: var(--bg); border-bottom-color: var(--bg); font-weight: 600; }")
+		  css.Add("#blame-view, .show-blame #history-view { display: none; }")
+		  css.Add(".show-blame #blame-view { display: block; }")
+		  css.Add("#blame-view .facts { margin: 0 0 8px; color: var(--muted); }")
+		  css.Add("table.blame { width: 100%; table-layout: fixed; border-collapse: collapse; font: 12px/1.45 ui-monospace, Menlo, monospace; }")
+		  css.Add("col.c-mark { width: 240px; } col.c-ln { width: 56px; }")
+		  css.Add("table.blame td { padding: 0 8px; height: 1.45em; vertical-align: top; }")
+		  css.Add("table.blame tr.odd { background: var(--card); }")
+		  css.Add("table.blame tr.start td { border-top: 1px solid var(--line); }")
+		  css.Add("td.mark { white-space: nowrap; overflow: hidden; text-overflow: ellipsis;")
+		  css.Add("  font: 11px/1.6 -apple-system, BlinkMacSystemFont, ""Segoe UI"", sans-serif; }")
+		  css.Add("td.mark .none { color: var(--muted); }")
+		  css.Add("button.mark { margin: 0; padding: 0 6px; font-size: 11px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }")
+		  css.Add("td.ln { text-align: right; color: var(--muted); user-select: none; }")
+		  css.Add("td.src { white-space: pre-wrap; overflow-wrap: anywhere; }")
 		  Return String.FromArray(css, &u0A)
 		End Function
 	#tag EndMethod
@@ -358,8 +495,8 @@ Inherits WakeTimeline
 
 	#tag Method, Flags = &h0
 		Shared Function Load(targetPath As String, displayPath As String, changes() As WakeFileChangeInfo) As WakeFileHistory
-		  // Re-parses only the sessions that changed the file, each once and read-only. changes are
-		  // the file's changes as WakeCatalog.FileChanges returns them.
+		  // Re-parses only the sessions that changed the file, each once and read-only, and reads the
+		  // file for the blame. changes are the file's changes as WakeCatalog.FileChanges returns them.
 		  Var history As New WakeFileHistory(targetPath, displayPath)
 		  Var loaded As New Dictionary
 		  For Each c As WakeFileChangeInfo In changes
@@ -367,6 +504,7 @@ Inherits WakeTimeline
 		    loaded.Value(c.Session.ID) = True
 		    history.AddSession(c.Session, WakeCore.LoadSession(c.Session.AgentID, c.Session.FilePath))
 		  Next
+		  history.ReadFileOnDisk
 		  Return history
 		End Function
 	#tag EndMethod
@@ -428,6 +566,24 @@ Inherits WakeTimeline
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Function MarkHTML(entry As WakeHistoryEntry, turn As WakeHistoryTurn) As String
+		  // A blame mark: when the change was made and how. Its tooltip names the session and the
+		  // prompt, and pressing it shows the change in the history.
+		  Var e As WakeEvent = entry.ToolEvent
+		  Var when As String = WakeFormat.kUnknown
+		  If e.Timestamp <> Nil Then when = LocalTime(e.Timestamp).ToString(DateTime.FormatStyles.Short, DateTime.FormatStyles.Short)
+		  
+		  Var tip() As String
+		  tip.Add(turn.Info.DisplayTitle)
+		  If turn.Prompt <> Nil Then tip.Add("You: " + WakeFormat.OneLine(turn.Prompt.Text, 160))
+		  tip.Add(e.ToolName + ", " + ActionLabel(e.ChangeAction) + If(entry.InSubagent, " by a subagent", ""))
+		  
+		  Return "<button class=""mark"" onclick=""wakeJump('" + KnownAnchor(entry.SessionUID, e.Sequence) + "')"" title=""" + _
+		  EscapeHTML(String.FromArray(tip, &u0A)) + """>" + EscapeHTML(when + " · " + ActionLabel(e.ChangeAction)) + "</button>"
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function NewLink(info As WakeSessionInfo, entry As WakeHistoryEntry) As String
 		  // An id for wakeOpen that ChangeFor turns back into the session and event to show.
 		  Var c As New WakeFileChangeInfo
@@ -453,6 +609,41 @@ Inherits WakeTimeline
 		  Next
 		  Return total
 		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub ReadFileOnDisk()
+		  // Reads the file as it is now, read-only, for the blame. A file that is missing, too large
+		  // or not text gets a note instead.
+		  mPage = ""
+		  mHasFileText = False
+		  mFileText = ""
+		  
+		  Try
+		    Var f As New FolderItem(mTargetPath, FolderItem.PathModes.Native)
+		    If Not f.Exists Or f.IsFolder Then
+		      mFileNote = "There is no file at this path now."
+		      Return
+		    End If
+		    If f.Length > kBlameLimit Then
+		      mFileNote = "The file is larger than " + WakeFormat.Bytes(kBlameLimit) + ", too large to blame."
+		      Return
+		    End If
+		    
+		    Var stream As BinaryStream = BinaryStream.Open(f, False)
+		    Var data As String = stream.Read(stream.Length)
+		    stream.Close
+		    If data.IndexOfBytes(String.ChrByte(0)) >= 0 Or Not Encodings.UTF8.IsValidData(data) Then
+		      mFileNote = "The file isn't UTF-8 text, so it can't be blamed."
+		      Return
+		    End If
+		    UseFileText(data.DefineEncoding(Encodings.UTF8))
+		  Catch err As IOException
+		    mFileNote = "The file could not be read: " + err.Message
+		  Catch err As UnsupportedFormatException
+		    mFileNote = "There is no file at this path now."
+		  End Try
+		End Sub
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
@@ -503,9 +694,37 @@ Inherits WakeTimeline
 		End Function
 	#tag EndMethod
 
+	#tag Method, Flags = &h21
+		Private Function UnaccountedText() As String
+		  Return "not from an agent edit, or changed since"
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub UseFileText(text As String)
+		  // The file's text for the blame, in place of reading it from disk.
+		  mPage = ""
+		  mFileText = text
+		  mHasFileText = True
+		  mFileNote = ""
+		End Sub
+	#tag EndMethod
+
 
 	#tag Property, Flags = &h21
 		Private mDisplayPath As String
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mFileNote As String
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mFileText As String
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mHasFileText As Boolean
 	#tag EndProperty
 
 	#tag Property, Flags = &h21
@@ -524,6 +743,9 @@ Inherits WakeTimeline
 		Private mTurns() As WakeHistoryTurn
 	#tag EndProperty
 
+
+	#tag Constant, Name = kBlameLimit, Type = Double, Dynamic = False, Default = \"524288", Scope = Private
+	#tag EndConstant
 
 	#tag Constant, Name = kPromptCharacters, Type = Double, Dynamic = False, Default = \"1200", Scope = Private
 	#tag EndConstant

@@ -348,6 +348,18 @@ Each milestone below is one session's work, ending with tests and a commit.
   that change in the history. Lines no change accounts for read "not from
   an agent edit, or changed since". Stays a heuristic and says so. Tests
   for moved lines, repeated lines and edits that later edits overwrote.
+  **Built, waiting on a check by eye** (138 tests): `WakeBlame` (Core)
+  takes each change's patch oldest first. Removed lines cancel the nearest
+  live line an earlier change added with that text; a create, or a write
+  with no hunks, cancels everything. Positions come from hunk headers (or
+  the line number for a whole-file write), and a patch built from the tool
+  input drops the lines its old and new text share. `Blame` lets the latest
+  change claim first, each added line one file line. `WakeFileHistory`
+  reads the file in `Load` (`ReadFileOnDisk`, 512 KB cap, no NUL bytes,
+  valid UTF-8; `UseFileText` for tests) and puts both views in one page,
+  switched by in-page tabs (`wakeTab`, chosen over a native control). A
+  mark calls `wakeJump(anchor)`; `wakeTab` tells the window, which greys
+  out "Show reads" on Blame.
 
 After v0.1: Codex CLI and Gemini CLI parsers, once real sessions exist on a
 machine to inspect, and the console companion.
@@ -401,6 +413,8 @@ machine to inspect, and the console companion.
 | Changed files are a **second view in the main window** (Sessions/Files), not a window of their own, and a file's full history **opens in its own window**. | The view shares the source list, date filter and detail pane. A history needs the width for diffs, as the timeline does. |
 | A file's history shows **what agents changed and why** (the prompt and the answer around each edit). It is built from transcripts only, never from git or the user's own edits. | Transcripts are the only source Wake reads. The view says so, because a change in the history may no longer be in the file. |
 | Changes come only from **edit and write tool calls**, not shell commands. | `sed -i`, `mv` or a script's writes can't be read reliably from a command's shape. |
+| **Line blame matches by text**, not by replaying patches: the latest change that added a line with the same text claims it, nearest position first, and the page says it's a guess. | Transcripts hold patches, not file states, and the user's own edits are invisible, so a replay would break at the first gap. Text matching degrades one line at a time. |
+| The blame is a **tab in the history page**, not a native control. | No window uses a segmented control or tab panel yet, and a mark's jump to its change stays inside the page. |
 | Long blocks and persisted output are **fetched on demand** with `executeInXojoSync`, not embedded. | Keeps the page small for 10 MB transcripts. Persisted output is read only when asked for, capped at 4 MB. |
 
 ## Working notes and gotchas
@@ -449,6 +463,9 @@ machine to inspect, and the console companion.
   it with `ditto -c -k --keepParent`. A Mac App Store build would need the
   sandbox, which hides `~/.claude`: the user would have to pick the folder,
   and Wake would keep a security-scoped bookmark to it.
+- **`WakeTimeline.Anchor` renders the page first**, so calling it while
+  the page renders recurses into a stack overflow. Use the Protected
+  `KnownAnchor` there.
 - **`Assert.AreEqual(n, someArray.Count)` is ambiguous.** Assign the count to
   an `Integer` variable first.
 - **`(expression).ToString` doesn't parse.** Assign to a variable first.

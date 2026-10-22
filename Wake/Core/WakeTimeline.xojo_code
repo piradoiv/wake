@@ -199,7 +199,7 @@ Protected Class WakeTimeline
 		  // The element id of an event in the page, or "" if there is no such event. sessionUID is the
 		  // session's or subagent's uid, as the index stores it.
 		  Call HTML
-		  Return mAnchors.Lookup(sessionUID + "/" + sequence.ToString, "").StringValue
+		  Return KnownAnchor(sessionUID, sequence)
 		End Function
 	#tag EndMethod
 
@@ -405,6 +405,13 @@ Protected Class WakeTimeline
 		Shared Function Load(agentID As String, filePath As String) As WakeTimeline
 		  // Parses a transcript for display. Never raises: a missing file or agent shows as a note.
 		  Return New WakeTimeline(WakeCore.LoadSession(agentID, filePath))
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h1
+		Protected Function KnownAnchor(sessionUID As String, sequence As Integer) As String
+		  // An anchor NewAnchor has made so far, without rendering the page, for use while rendering.
+		  Return mAnchors.Lookup(sessionUID + "/" + sequence.ToString, "").StringValue
 		End Function
 	#tag EndMethod
 

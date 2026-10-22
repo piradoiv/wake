@@ -12,6 +12,67 @@ Inherits TestGroup
 		End Function
 	#tag EndMethod
 
+	#tag Method, Flags = &h0
+		Sub BlameTest()
+		  // format.py as both sessions left it, with a line added by hand: the first line is the
+		  // create's, the return line the rewrite's (the create's was replaced), and the rounding
+		  // line, removed in session 11, credits nothing.
+		  Var history As WakeFileHistory = BothSessions
+		  history.UseFileText("def fmt(x):" + &u0A + "    return f""{x:.2f}""" + &u0A + "# mine <b>" + &u0A + "    x = round(x, 2)" + &u0A)
+		  Var owners() As WakeHistoryEntry = history.Blame
+		  Var count As Integer = owners.Count
+		  Assert.AreEqual(4, count)
+		  If count <> 4 Then Return
+		  
+		  Assert.IsNotNil(owners(0))
+		  Assert.IsNotNil(owners(1))
+		  If owners(0) <> Nil Then Assert.AreEqual("create", owners(0).ToolEvent.ChangeAction)
+		  If owners(1) <> Nil Then Assert.AreEqual("write", owners(1).ToolEvent.ChangeAction)
+		  Assert.IsNil(owners(2), "typed by hand")
+		  Assert.IsNil(owners(3), "removed by a later edit")
+		  
+		  // Marks jump to the change's anchor in the history, and the file's text is escaped.
+		  Var html As String = history.HTML
+		  Assert.IsTrue(html.IndexOf("id=""blame-view""") >= 0)
+		  Assert.IsTrue(html.IndexOf("wakeJump('" + history.Anchor(owners(1).SessionUID, owners(1).ToolEvent.Sequence) + "')") >= 0)
+		  Assert.IsTrue(html.IndexOf("not from an agent edit, or changed since") >= 0)
+		  Assert.IsTrue(html.IndexOf("<td class=""src"">    return f&quot;{x:.2f}&quot;</td>") >= 0)
+		  Assert.IsTrue(html.IndexOf("# mine &lt;b&gt;") >= 0)
+		  Assert.IsTrue(html.IndexOf("2 of 4 lines match an agent change, from 2 of 3 changes") >= 0)
+		  Assert.IsTrue(html.IndexOf("It's a guess") >= 0 Or html.IndexOf("It&#39;s a guess") >= 0)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub BlameFileTest()
+		  // The file is read from disk, read-only; a missing or binary file gets a note, not a blame.
+		  Var scratch As FolderItem = TestSupport.NewScratchFolder
+		  Var f As FolderItem = scratch.Child("format.py")
+		  Var output As TextOutputStream = TextOutputStream.Create(f)
+		  output.Write("def fmt(x):" + &u0A)
+		  output.Close
+		  
+		  Var history As New WakeFileHistory(f.NativePath, "")
+		  history.ReadFileOnDisk
+		  Var count As Integer = history.Blame.Count
+		  Assert.AreEqual(1, count)
+		  
+		  Var stream As BinaryStream = BinaryStream.Create(f, True)
+		  stream.Write("a" + String.ChrByte(0) + "b")
+		  stream.Close
+		  history.ReadFileOnDisk
+		  count = history.Blame.Count
+		  Assert.AreEqual(0, count)
+		  Assert.IsTrue(history.HTML.IndexOf("isn&#39;t UTF-8 text") >= 0)
+		  
+		  Var missing As New WakeFileHistory(scratch.NativePath + "/gone.py", "")
+		  missing.ReadFileOnDisk
+		  Assert.IsTrue(missing.HTML.IndexOf("There is no file at this path now.") >= 0)
+		  
+		  TestSupport.RemoveScratchFolder(scratch)
+		End Sub
+	#tag EndMethod
+
 	#tag Method, Flags = &h21
 		Private Function BothSessions() As WakeFileHistory
 		  // format.py's history from session 11 (2 September) and session 10 (30 August), added in
