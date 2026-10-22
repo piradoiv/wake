@@ -16,7 +16,7 @@
   <sub>Free and open source · Signed and notarized · Never goes online</sub>
 </p>
 
-<img width="992" height="870" alt="The Usage window grouping a week of tool calls by intent, with the most expensive shell commands listed below and a tip on how to send less" src="https://github.com/user-attachments/assets/ad4fbe65-bd7e-473c-87ab-bd2f0295370a" />
+<img width="992" height="870" alt="The Usage window grouping a week of tool calls by intent, with the most expensive shell commands listed below and a tip on how to send less" src="https://github.com/user-attachments/assets/f006306c-222a-4d27-8a9e-0eaebf87e54a" />
 
 Hit your usage limit by lunch, or got a bigger bill than you expected? Claude
 Code keeps a full transcript of every session on your Mac, and Wake reads them
