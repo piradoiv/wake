@@ -7,14 +7,14 @@ Inherits TestGroup
 		  // separate connection.
 		  mScratch = TestSupport.NewScratchFolder
 		  TestSupport.CopyFolder(TestSupport.FixturesFolder("claude-code").Child("changes"), mScratch.Child("changes"))
-
+		  
 		  Var writer As New WakeIndex(mScratch.Child("index.sqlite"))
 		  writer.Open
 		  Var indexer As New WakeIndexer(writer)
 		  indexer.AddRoot(New WakeIndexRoot("claude-code", mScratch.Child("changes")))
 		  Call indexer.Run
 		  writer.Close
-
+		  
 		  mIndex = New WakeIndex(mScratch.Child("index.sqlite"))
 		  mIndex.Open
 		  mCatalog = New WakeCatalog(mIndex)
@@ -38,7 +38,7 @@ Inherits TestGroup
 		  Var session As WakeSession = TestSupport.ParseClaudeFixture(10, "-Users-dev-shop", "changes")
 		  Assert.IsNotNil(session)
 		  If session Is Nil Then Return
-
+		  
 		  Var actions() As String
 		  Var lines() As String
 		  For Each e As WakeEvent In session.Events
@@ -47,10 +47,10 @@ Inherits TestGroup
 		    Var counts As Pair = e.ChangedLineCounts
 		    lines.Add("+" + counts.Left.StringValue + "-" + counts.Right.StringValue)
 		  Next
-
+		  
 		  Assert.AreEqual("create edit write edit create", String.FromArray(actions, " "))
 		  Assert.AreEqual("+2-0 +2-1 +2-1 +1-1 +1-0", String.FromArray(lines, " "))
-
+		  
 		  Var subagentActions() As String
 		  For Each e As WakeEvent In session.Subagents(0).Events
 		    If e.ChangeAction <> "" Then subagentActions.Add(e.ChangeAction)
@@ -64,7 +64,7 @@ Inherits TestGroup
 		  Var files() As WakeChangedFile = mCatalog.ChangedFiles("", 0)
 		  Var count As Integer = files.Count
 		  Assert.AreEqual(4, count, "the failed edit and the sed -i don't count")
-
+		  
 		  Var formatFile As WakeChangedFile = FindFile(files, "src/app/format.py")
 		  Assert.IsNotNil(formatFile)
 		  If formatFile <> Nil Then
@@ -83,7 +83,7 @@ Inherits TestGroup
 		    If formatFile.LastChanged <> Nil Then Assert.AreEqual(written.SecondsFrom1970, formatFile.LastChanged.SecondsFrom1970)
 		    Assert.IsFalse(formatFile.ExistsOnDisk)
 		  End If
-
+		  
 		  Var price As WakeChangedFile = FindFile(files, "src/app/price.py")
 		  Assert.IsNotNil(price)
 		  If price <> Nil Then
@@ -92,11 +92,11 @@ Inherits TestGroup
 		    Assert.AreEqual(1, price.LinesRemoved)
 		    Assert.AreEqual(1, price.Reads)
 		  End If
-
+		  
 		  Var readme As WakeChangedFile = FindFile(files, "README.md")
 		  Assert.IsNotNil(readme, "a subagent's edit")
 		  If readme <> Nil Then Assert.AreEqual(2, readme.LinesAdded)
-
+		  
 		  Var notes As WakeChangedFile = FindFile(files, "/Users/dev/notes/shop.md")
 		  Assert.IsNotNil(notes)
 		  If notes <> Nil Then
@@ -122,7 +122,7 @@ Inherits TestGroup
 		  Var formatFile As WakeChangedFile = FindFile(files, "src/app/format.py")
 		  Assert.IsNotNil(formatFile)
 		  If formatFile Is Nil Then Return
-
+		  
 		  Var changes() As WakeFileChangeInfo = mCatalog.FileChanges(formatFile.ProjectID, formatFile.TargetPath)
 		  Var count As Integer = changes.Count
 		  Assert.AreEqual(2, count)
@@ -134,7 +134,7 @@ Inherits TestGroup
 		    Assert.AreEqual("Add a price formatter", changes(1).Session.Title)
 		    Assert.IsFalse(changes(1).InSubagent)
 		  End If
-
+		  
 		  Var readme As WakeChangedFile = FindFile(files, "README.md")
 		  If readme Is Nil Then Return
 		  changes = mCatalog.FileChanges(readme.ProjectID, readme.TargetPath)
@@ -170,10 +170,10 @@ Inherits TestGroup
 		  Next
 		  paths.Sort
 		  Assert.AreEqual("/Users/dev/notes/shop.md src/app/format.py", String.FromArray(paths, " "))
-
+		  
 		  Var formatFile As WakeChangedFile = FindFile(files, "src/app/format.py")
 		  If formatFile <> Nil Then Assert.AreEqual(1, formatFile.Edits)
-
+		  
 		  Var sessions() As WakeSessionInfo = mCatalog.Sessions("", 0)
 		  Var sessionCount As Integer = sessions.Count
 		  Assert.AreEqual(1, sessionCount)
@@ -181,12 +181,12 @@ Inherits TestGroup
 		  sessions = mCatalog.Sessions("", 0, False, since)
 		  sessionCount = sessions.Count
 		  Assert.AreEqual(0, sessionCount, "sessions go by their start")
-
+		  
 		  sessions = mCatalog.Sessions("", 0)
 		  files = mCatalog.ChangedFiles("", 0, Nil, sessions(0).ID)
 		  Var count As Integer = files.Count
 		  Assert.AreEqual(4, count)
-
+		  
 		  files = mCatalog.ChangedFiles("claude-code", sessions(0).ProjectID, Nil, sessions(0).ID + 1000)
 		  count = files.Count
 		  Assert.AreEqual(0, count)
@@ -210,7 +210,7 @@ Inherits TestGroup
 		  Var count As Integer = projects.Count
 		  Assert.AreEqual(1, count)
 		  If count = 0 Then Return
-
+		  
 		  Var project As WakeFileNode = projects(0)
 		  Assert.IsTrue(project.Kind = WakeFileNode.Kinds.Project)
 		  Assert.AreEqual("/Users/dev/shop", project.Name)
@@ -220,20 +220,20 @@ Inherits TestGroup
 		  Assert.AreEqual(1, project.Reads)
 		  Assert.AreEqual(1, project.SessionCount)
 		  Assert.AreEqual("README.md src/app " + WakeFileNode.kOutsideName, ChildNames(project), "src and app collapse; outside comes last")
-
+		  
 		  Var appFolder As WakeFileNode = project.Children(1)
 		  Assert.IsTrue(appFolder.Kind = WakeFileNode.Kinds.Folder)
 		  Assert.AreEqual("src/app", appFolder.Path)
 		  Assert.AreEqual("format.py price.py", ChildNames(appFolder))
 		  Assert.AreEqual(3, appFolder.Edits)
 		  Assert.AreEqual(6, appFolder.LinesAdded)
-
+		  
 		  Var outside As WakeFileNode = project.Children(2)
 		  Assert.IsTrue(outside.Kind = WakeFileNode.Kinds.Outside)
 		  Assert.AreEqual("/Users/dev/notes", ChildNames(outside))
 		  Assert.AreEqual("shop.md", ChildNames(outside.Children(0)))
 		  Assert.AreEqual("/Users/dev/notes/shop.md", outside.Children(0).Children(0).Path)
-
+		  
 		  // By edits, most first: src/app (3) before README.md (1); outside stays last.
 		  project.Sort(WakeFileNode.Columns.Edits, False)
 		  Assert.AreEqual("src/app README.md " + WakeFileNode.kOutsideName, ChildNames(project))

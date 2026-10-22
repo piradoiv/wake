@@ -1,5 +1,39 @@
 #tag Class
 Protected Class WakeCatalog
+	#tag Method, Flags = &h21
+		Private Function ChangeClauses(agentID As String, projectID As Integer, fromTime As DateTime, sessionID As Integer, timeColumn As String, values() As Variant) As String()
+		  // The conditions ChangedFiles and FileChanges share, on the top-level session ts and the
+		  // session us that made the change, adding their values to values.
+		  Var clauses() As String
+		  clauses.Add("1 = 1")
+		  
+		  If agentID <> "" Then
+		    clauses.Add("ts.agent = ?")
+		    values.Add(agentID)
+		  End If
+		  
+		  If projectID <> 0 Then
+		    clauses.Add("ts.project_id = ?")
+		    values.Add(projectID)
+		  Else
+		    Var hidden As String = HiddenProjectsClause("ts.project_id")
+		    If hidden <> "" Then clauses.Add(hidden)
+		  End If
+		  
+		  If sessionID <> 0 Then
+		    clauses.Add("ts.id = ?")
+		    values.Add(sessionID)
+		  End If
+		  
+		  If fromTime <> Nil Then
+		    clauses.Add("coalesce(" + timeColumn + ", us.start_time) >= ?")
+		    values.Add(fromTime.SecondsFrom1970)
+		  End If
+		  
+		  Return clauses
+		End Function
+	#tag EndMethod
+
 	#tag Method, Flags = &h0
 		Function ChangedFiles(agentID As String, projectID As Integer, fromTime As DateTime = Nil, sessionID As Integer = 0) As WakeChangedFile()
 		  // The files that edit and write tool calls changed, per project, from fromTime on (by the
@@ -67,40 +101,6 @@ Protected Class WakeCatalog
 		  Next
 		  
 		  Return result
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function ChangeClauses(agentID As String, projectID As Integer, fromTime As DateTime, sessionID As Integer, timeColumn As String, values() As Variant) As String()
-		  // The conditions ChangedFiles and FileChanges share, on the top-level session ts and the
-		  // session us that made the change, adding their values to values.
-		  Var clauses() As String
-		  clauses.Add("1 = 1")
-		  
-		  If agentID <> "" Then
-		    clauses.Add("ts.agent = ?")
-		    values.Add(agentID)
-		  End If
-		  
-		  If projectID <> 0 Then
-		    clauses.Add("ts.project_id = ?")
-		    values.Add(projectID)
-		  Else
-		    Var hidden As String = HiddenProjectsClause("ts.project_id")
-		    If hidden <> "" Then clauses.Add(hidden)
-		  End If
-		  
-		  If sessionID <> 0 Then
-		    clauses.Add("ts.id = ?")
-		    values.Add(sessionID)
-		  End If
-		  
-		  If fromTime <> Nil Then
-		    clauses.Add("coalesce(" + timeColumn + ", us.start_time) >= ?")
-		    values.Add(fromTime.SecondsFrom1970)
-		  End If
-		  
-		  Return clauses
 		End Function
 	#tag EndMethod
 

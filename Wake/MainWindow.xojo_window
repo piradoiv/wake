@@ -286,6 +286,7 @@ Begin DesktopWindow MainWindow
       Width           =   974
    End
    Begin DesktopSearchField SearchField
+      Active          =   False
       AllowAutoDeactivate=   True
       AllowFocusRing  =   True
       AllowRecentItems=   False
@@ -303,6 +304,7 @@ Begin DesktopWindow MainWindow
       LockRight       =   True
       LockTop         =   True
       MaximumRecentItems=   -1
+      PanelIndex      =   0
       RecentItemsValue=   "Recent Searches"
       Scope           =   2
       TabIndex        =   6
@@ -313,6 +315,10 @@ Begin DesktopWindow MainWindow
       Transparent     =   False
       Visible         =   True
       Width           =   640
+      _mIndex         =   0
+      _mInitialParent =   ""
+      _mName          =   ""
+      _mPanelIndex    =   0
    End
    Begin DesktopPopupMenu KindPopup
       AllowAutoDeactivate=   True
@@ -1618,6 +1624,12 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Sub ShowFilesView()
+		  SetFilesView(True)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Sub ShowIndexing(message As String)
 		  IndexWheel.Visible = True
 		  StatusLabel.Text = message
@@ -1645,12 +1657,6 @@ End
 		    HitsList.RemoveAllRows
 		    LoadSessions
 		  End If
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Sub ShowFilesView()
-		  SetFilesView(True)
 		End Sub
 	#tag EndMethod
 
