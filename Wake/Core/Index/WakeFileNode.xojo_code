@@ -31,7 +31,7 @@ Protected Class WakeFileNode
 		  // sorted by name.
 		  Var projects() As WakeFileNode
 		  Var byProject As New Dictionary
-
+		  
 		  For Each f As WakeChangedFile In files
 		    Var project As WakeFileNode
 		    If byProject.HasKey(f.ProjectID) Then
@@ -45,30 +45,30 @@ Protected Class WakeFileNode
 		      byProject.Value(f.ProjectID) = project
 		      projects.Add(project)
 		    End If
-
+		    
 		    Var parent As WakeFileNode = project
 		    If f.IsOutside Then parent = project.Child(Kinds.Outside, kOutsideName)
-
+		    
 		    Var separator As String = If(f.Path.IndexOf("/") < 0 And f.Path.IndexOf("\") >= 0, "\", "/")
 		    Var parts() As String = SplitPath(f.Path, separator)
 		    If parts.Count = 0 Then Continue
-
+		    
 		    For i As Integer = 0 To parts.LastIndex - 1
 		      parent = parent.Child(Kinds.Folder, parts(i), separator)
 		    Next
-
+		    
 		    Var leaf As New WakeFileNode(Kinds.File, parts(parts.LastIndex))
 		    leaf.Path = f.Path
 		    leaf.File = f
 		    parent.AddChild(leaf)
 		  Next
-
+		  
 		  For Each project As WakeFileNode In projects
 		    project.Collapse
 		    Call project.Total
 		    project.Sort(Columns.Name, True)
 		  Next
-
+		  
 		  Return projects
 		End Function
 	#tag EndMethod
@@ -79,7 +79,7 @@ Protected Class WakeFileNode
 		  For Each node As WakeFileNode In Children
 		    If node.Kind = kind And node.Name.Compare(childName, ComparisonOptions.CaseSensitive) = 0 Then Return node
 		  Next
-
+		  
 		  Var node As New WakeFileNode(kind, childName)
 		  node.Path = If(Self.Kind = Kinds.Folder, Path + separator + childName, childName)
 		  node.mSeparator = separator
@@ -125,7 +125,7 @@ Protected Class WakeFileNode
 		  Case Columns.Tokens
 		    difference = a.Tokens - b.Tokens
 		  End Select
-
+		  
 		  If difference < 0 Then Return -1
 		  If difference > 0 Then Return 1
 		  Return a.Name.Compare(b.Name)
@@ -205,7 +205,7 @@ Protected Class WakeFileNode
 		    Next
 		    Return Self
 		  End If
-
+		  
 		  For Each node As WakeFileNode In Children
 		    AddTotals(node.Total)
 		  Next
