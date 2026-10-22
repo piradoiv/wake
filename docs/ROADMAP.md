@@ -410,7 +410,8 @@ Each milestone below is one session's work, ending with tests and a commit.
   `spctl -a -vv -t open --context context:primary-signature` on the image,
   then by mounting it, dragging Wake to Applications, and running
   `spctl -a -vv -t exec` on the copy (both expect "Notarized Developer ID").
-  Then the **Releases** note below says to ship the `.dmg` instead of a zip.
+  Then the **Releases** note below says to ship the `.dmg` instead of a zip,
+  uploaded as `Wake-macOS.dmg`, and the README's download links follow.
 
 After v0.1: Codex CLI and Gemini CLI parsers, once real sessions exist on a
 machine to inspect, and the console companion.
@@ -512,7 +513,9 @@ machine to inspect, and the console companion.
   ID Application certificate (not Apple Distribution), hardened runtime on,
   notarized by the IDE, no entitlements, no sandbox. Check a build with
   `spctl -a -vv -t exec Wake.app` (expect "Notarized Developer ID") and zip
-  it with `ditto -c -k --keepParent`. A Mac App Store build would need the
+  it with `ditto -c -k --keepParent`. Upload it as **`Wake-macOS.zip`**,
+  with no version in the name: the README's download links point at
+  `releases/latest/download/Wake-macOS.zip`. A Mac App Store build would need the
   sandbox, which hides `~/.claude`: the user would have to pick the folder,
   and Wake would keep a security-scoped bookmark to it.
 - **`WakeTimeline.Anchor` renders the page first**, so calling it while
