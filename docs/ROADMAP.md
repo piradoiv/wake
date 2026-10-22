@@ -361,6 +361,33 @@ Each milestone below is one session's work, ending with tests and a commit.
   mark calls `wakeJump(anchor)`; `wakeTab` tells the window, which greys
   out "Show reads" on Blame.
 
+- [ ] **27. About window.** The classic About box: Wake → About Wake on
+  macOS (a `DesktopApplicationMenuItem`, so it lands in the app menu), and
+  a new Help → About Wake on Windows and Linux. One `AboutWindow`, fixed
+  size, not resizable, reused if already open, closed with Cmd+W or Esc.
+  It shows, centred: the app icon, "Wake", the version and build from
+  `App.Version` (nothing hardcoded), the one-line description from the
+  README, the copyright line (`© 2026 Ricardo Cruz`, as in the project's
+  `LongVersion`), and "Reads transcripts read-only. No network, no
+  telemetry." A link to `github.com/piradoiv/wake` opens in the default
+  browser (`System.GotoURL`, which hands the URL to the browser; Wake itself
+  still opens no connection). Below, an **Acknowledgements** section: built
+  with Xojo; SQLite and its FTS5 search (public domain, no notice
+  required); XojoUnit, © 2014-2021 Xojo, Inc., MIT, worded so it also
+  tells the user that automated tests cover Wake ("Tested with XojoUnit",
+  no count, which would drift). A License button (or
+  disclosure) shows the full texts in a read-only scrolling field: Wake's
+  `LICENSE`, then XojoUnit's `Wake/Tests/XojoUnit/LICENSE.txt`, whose MIT
+  terms require the notice in every copy because the test classes are
+  compiled into the app. The texts are read from the app's resources,
+  copied there from those two files by a Copy Files build step (ask the
+  maintainer to add it in the IDE), so there's one source for each and it
+  can't drift. A last line: "Wake is not affiliated with Anthropic or the
+  makers of the agents it reads." Before adding anything else to the
+  acknowledgements, check what the build actually ships (vendored code,
+  fonts, artwork not drawn for Wake); today that's only the above. Checked
+  by eye in light and dark on macOS.
+
 After v0.1: Codex CLI and Gemini CLI parsers, once real sessions exist on a
 machine to inspect, and the console companion.
 
