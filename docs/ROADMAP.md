@@ -388,6 +388,30 @@ Each milestone below is one session's work, ending with tests and a commit.
   fonts, artwork not drawn for Wake); today that's only the above. Checked
   by eye in light and dark on macOS.
 
+- [ ] **28. Disk image for releases (macOS).** A Release build makes
+  `Wake-<version>.dmg` on its own, so shipping is no longer a manual zip.
+  An IDE Script build step in the Mac OS X list of `Build Automation`,
+  placed after Sign (which signs, notarizes and staples the app), runs only
+  for Release builds and does nothing on Debug runs. It stages the built
+  `Wake.app` and an `Applications` symlink in a temporary folder and runs
+  `hdiutil create -volname Wake -srcfolder <staging> -format UDZO` into the
+  build folder, with the version taken from the project (nothing
+  hardcoded), then removes the staging folder. Check the IDE scripting
+  docs for how a step learns the build kind, location and app name; if
+  that's unclear, it's a roadblock to raise, not a guess. The step is added
+  in the IDE (ask the maintainer), since build steps are project items.
+  The image is then signed, notarized and stapled too, as Apple asks for
+  the outermost container: `codesign --sign "Developer ID Application: …"
+  --timestamp`, `xcrun notarytool submit --keychain-profile <name> --wait`,
+  then `xcrun stapler staple` (stapling needs the signature). The IDE keeps
+  its notarization credentials to itself, so the maintainer creates the
+  keychain profile once with `xcrun notarytool store-credentials`; the
+  step fails the build if notarization is rejected. Checked with
+  `spctl -a -vv -t open --context context:primary-signature` on the image,
+  then by mounting it, dragging Wake to Applications, and running
+  `spctl -a -vv -t exec` on the copy (both expect "Notarized Developer ID").
+  Then the **Releases** note below says to ship the `.dmg` instead of a zip.
+
 After v0.1: Codex CLI and Gemini CLI parsers, once real sessions exist on a
 machine to inspect, and the console companion.
 
