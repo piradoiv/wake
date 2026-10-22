@@ -1405,7 +1405,7 @@ End
 		  FilesList.ColumnAlignmentAt(kFileColumnLines) = DesktopTable.Alignments.Right
 		  FilesList.ColumnAlignmentAt(kFileColumnReads) = DesktopTable.Alignments.Right
 		  FilesList.ColumnAlignmentAt(kFileColumnTokens) = DesktopTable.Alignments.Right
-		  FilesList.ColumnSortDirectionAt(kFileColumnName) = DesktopTable.SortDirections.Ascending
+		  ShowFileSortColumn(kFileColumnName)
 		  
 		  // Each kind row's tag lists the event kinds it searches, as the index names them.
 		  mLoading = True
@@ -1654,6 +1654,19 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Sub ShowFileSortColumn(column As Integer)
+		  // Shows the sort indicator on one column of the Files view. Every column keeps a direction
+		  // and stays sortable, because a header whose direction is None doesn't respond to clicks.
+		  For i As Integer = 0 To FilesList.ColumnCount - 1
+		    FilesList.ColumnSortTypeAt(i) = DesktopTable.SortTypes.Sortable
+		    Var ascending As Boolean = If(i = column, mFileSortAscending, i = kFileColumnName)
+		    FilesList.ColumnSortDirectionAt(i) = If(ascending, DesktopTable.SortDirections.Ascending, DesktopTable.SortDirections.Descending)
+		  Next
+		  FilesList.HeadingIndex = column
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Sub ShowFilesView()
 		  SetFilesView(True)
 		End Sub
@@ -1752,10 +1765,7 @@ End
 		    mFileSortAscending = (key = WakeFileNode.Columns.Name)
 		  End If
 		  
-		  For i As Integer = 0 To FilesList.ColumnCount - 1
-		    FilesList.ColumnSortDirectionAt(i) = DesktopTable.SortDirections.None
-		  Next
-		  FilesList.ColumnSortDirectionAt(column) = If(mFileSortAscending, DesktopTable.SortDirections.Ascending, DesktopTable.SortDirections.Descending)
+		  ShowFileSortColumn(column)
 		  
 		  Var scroll As Integer = FilesList.ScrollPosition
 		  LoadFiles

@@ -563,6 +563,9 @@ machine to inspect, and the console companion.
   on tinted tiles. Colour constants are `Type = Color`.
 - **`PaintCellText` draws the cell text in `g.DrawingColor`** when it returns
   False, so restore that colour after drawing anything else in the cell.
+- **A `DesktopTable` header whose sort direction is `None` ignores clicks**
+  (no `ColumnHeaderPressed`). To show the arrow on one column only, give
+  every column a direction and set `HeadingIndex`, as `ShowFileSortColumn` does.
 - **Xojo adds no File → Close item.** `FileCloseWindow` (Cmd+W) has a
   `Self.Close` handler in each window. A handler in `App` closing `WindowAt(0)`
   didn't close the front window. A new window needs its own handler.
