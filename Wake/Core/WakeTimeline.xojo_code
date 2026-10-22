@@ -55,10 +55,7 @@ Protected Class WakeTimeline
 		      lastModel = e.Response.Model
 		    End If
 
-		    mNextAnchor = mNextAnchor + 1
-		    Var anchor As String = "e" + mNextAnchor.ToString
-		    mAnchors.Value(uid + "/" + e.Sequence.ToString) = anchor
-		    
+		    Var anchor As String = NewAnchor(uid, e.Sequence)
 		    out.Add("<div class=""ev"" id=""" + anchor + """>")
 		    AddEvent(out, e)
 		    out.Add("</div>")
@@ -206,24 +203,27 @@ Protected Class WakeTimeline
 		End Function
 	#tag EndMethod
 
-	#tag Method, Flags = &h21
-		Private Function Block(text As String, isDiff As Boolean, cssClass As String) As String
+	#tag Method, Flags = &h1
+		Protected Function Block(text As String, isDiff As Boolean, cssClass As String, previewLines As Integer = 0, previewCharacters As Integer = 0) As String
 		  // Text or a diff, cut to a preview when it is long. The full block stays in memory and the
-		  // page asks for it with wakeLoad('expand', id), so large sessions load quickly.
+		  // page asks for it with wakeLoad('expand', id), so large sessions load quickly. A preview
+		  // limit of 0 takes the timeline's own.
+		  Var maxLines As Integer = If(previewLines > 0, previewLines, kPreviewLines)
+		  Var maxCharacters As Integer = If(previewCharacters > 0, previewCharacters, kPreviewCharacters)
 		  Var lines() As String = SplitLines(text)
 		  Var preview() As String
 		  Var used As Integer
 		  Var truncated As Boolean
-		  
+
 		  For Each textLine As String In lines
-		    If preview.Count >= kPreviewLines Or used >= kPreviewCharacters Then
+		    If preview.Count >= maxLines Or used >= maxCharacters Then
 		      truncated = True
 		      Exit
 		    End If
-		    
+
 		    Var shown As String = textLine
-		    If used + shown.Length > kPreviewCharacters Then
-		      shown = shown.Left(kPreviewCharacters - used) + WakeFormat.kEllipsis
+		    If used + shown.Length > maxCharacters Then
+		      shown = shown.Left(maxCharacters - used) + WakeFormat.kEllipsis
 		      truncated = True
 		    End If
 		    preview.Add(shown)
@@ -408,10 +408,20 @@ Protected Class WakeTimeline
 		End Function
 	#tag EndMethod
 
-	#tag Method, Flags = &h21
-		Private Function LocalTime(d As DateTime) As DateTime
+	#tag Method, Flags = &h1
+		Protected Function LocalTime(d As DateTime) As DateTime
 		  // Parsed timestamps keep the zone they were written in, usually UTC.
 		  Return New DateTime(d.SecondsFrom1970, TimeZone.Current)
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h1
+		Protected Function NewAnchor(sessionUID As String, sequence As Integer) As String
+		  // A new element id for an event, which Anchor finds by its session uid and sequence.
+		  mNextAnchor = mNextAnchor + 1
+		  Var anchor As String = "e" + mNextAnchor.ToString
+		  mAnchors.Value(sessionUID + "/" + sequence.ToString) = anchor
+		  Return anchor
 		End Function
 	#tag EndMethod
 
@@ -493,8 +503,8 @@ Protected Class WakeTimeline
 		End Function
 	#tag EndMethod
 
-	#tag Method, Flags = &h21
-		Private Function ScriptSource() As String
+	#tag Method, Flags = &h1
+		Protected Function ScriptSource() As String
 		  Var js() As String
 		  js.Add("function wakeAll(open) {")
 		  js.Add("  document.querySelectorAll('details').forEach(function (d) { d.open = open; });")
@@ -594,8 +604,8 @@ Protected Class WakeTimeline
 		End Function
 	#tag EndMethod
 
-	#tag Method, Flags = &h21
-		Private Function StyleSheet() As String
+	#tag Method, Flags = &h1
+		Protected Function StyleSheet() As String
 		  Var css() As String
 		  css.Add(":root { color-scheme: light dark; --bg: #ffffff; --fg: #1d1d1f; --muted: #6e6e73; --line: #e2e2e6; --card: #f5f5f7;")
 		  css.Add("  --user: #eef4ff; --user-line: #c8dbff; --code: #f2f2f4; --add-bg: #e6f6ea; --add: #1a7f37; --del-bg: #fdecec;")
@@ -657,8 +667,8 @@ Protected Class WakeTimeline
 		End Function
 	#tag EndMethod
 
-	#tag Method, Flags = &h21
-		Private Function TimeHTML(timestamp As DateTime) As String
+	#tag Method, Flags = &h1
+		Protected Function TimeHTML(timestamp As DateTime) As String
 		  If timestamp Is Nil Then Return ""
 		  
 		  Var d As DateTime = LocalTime(timestamp)
@@ -667,8 +677,8 @@ Protected Class WakeTimeline
 		End Function
 	#tag EndMethod
 
-	#tag Method, Flags = &h21
-		Private Function ToolStats(e As WakeEvent) As String
+	#tag Method, Flags = &h1
+		Protected Function ToolStats(e As WakeEvent) As String
 		  // The tokens a result added are an estimate from the growth of the next response's context.
 		  // Every later response reads them again from the cache, until the context is compacted.
 		  Var parts() As String

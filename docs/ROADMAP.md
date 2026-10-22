@@ -306,7 +306,7 @@ Each milestone below is one session's work, ending with tests and a commit.
   Sessions/Files, and `WakeCatalog.Sessions` takes the period.
   `DesktopToolbar` has no segmented item, so the switch is AppKit's
   `NSToolbarItemGroup` (`WakeTitleBar.AddViewSwitch`), made by the same
-  delegate subclass as the search item. Double-clicking a file does nothing until milestone 25. On real
+  delegate subclass as the search item. On real
   data (126 transcripts) 567 changes to 265 files, 118 of those files
   outside their project; 222 creates and 15 rewrites, as many as the Write
   results.
@@ -326,6 +326,20 @@ Each milestone below is one session's work, ending with tests and a commit.
   that changed the file. A header line says what the history can't show:
   the user's own edits, and whether a change is still in the file. Markdown
   export (Cmd+E) lists the prompts and diffs. Checked by eye.
+  **Built, waiting on a check by eye** (130 tests): `WakeFileHistory`
+  (Core) inherits `WakeTimeline`, whose page helpers (`Block` with optional
+  preview limits, `ToolStats`, `TimeHTML`, `StyleSheet`, `ScriptSource`,
+  `NewAnchor`, `LocalTime`) are now Protected. `AddSession` splits a parsed
+  session into `WakeHistoryTurn`s of `WakeHistoryEntry`s (changes by the
+  index's rule, reads by `WakeCallPattern.IsRead`, both by resolved path);
+  `Load` parses each session of `WakeCatalog.FileChanges` once. Headers call
+  `wakeOpen(id)` and `ChangeFor(id)` gives the session and event;
+  `Anchor(uid, seq)` finds a change for milestone 26. Reads show only for
+  the sessions that changed the file. `FileHistoryWindow` (a "Show reads"
+  check box above the page) opens from a double-click in the Files view;
+  `App.OpenTimeline` (moved from `MainWindow`) and `App.OpenFileHistory`
+  reuse an open window. Fixture session 11 is in its own root,
+  `claude-code/history/`. It doesn't watch for new changes yet.
 
 - [ ] **26. Line blame.** The file history window gets a Blame tab: the
   file as it is on disk now (read-only, capped in size, text files only),

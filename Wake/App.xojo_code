@@ -23,37 +23,22 @@ Inherits DesktopApplication
 
 
 	#tag Method, Flags = &h0
+		Sub ExportFileHistory(history As WakeFileHistory)
+		  // Asks where to save a Markdown report of a file's history. It can't be saved over the file
+		  // itself or a transcript.
+		  If history Is Nil Then Return
+		  SaveMarkdown(history.Markdown, "History of " + history.FileName, history.TargetPath)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub ExportMarkdown(info As WakeSessionInfo)
 		  // Asks where to save a Markdown report of a session and writes it there. The transcript is
 		  // only read, and the report can never be saved over it.
 		  If info Is Nil Then Return
 		  
 		  Var report As New WakeMarkdown(WakeCore.LoadSession(info.AgentID, info.FilePath), Prices)
-		  
-		  // A file name from the title, without characters that some systems don't allow.
-		  Var name As String = report.Title
-		  For Each character As String In Array("/", "\", ":", "*", "?", """", "<", ">", "|")
-		    name = name.ReplaceAll(character, " ")
-		  Next
-		  name = WakeFormat.OneLine(name, 80).Replace(WakeFormat.kEllipsis, "").Trim
-		  If name = "" Then name = "Session"
-		  
-		  Var f As FolderItem = FolderItem.ShowSaveFileDialog("", name + ".md")
-		  If f Is Nil Then Return
-		  
-		  If f.NativePath = info.FilePath Or f.Name.EndsWith(".jsonl") Then
-		    MessageBox("Wake doesn't write over transcripts. Choose another name.")
-		    Return
-		  End If
-		  
-		  Try
-		    Var output As TextOutputStream = TextOutputStream.Create(f)
-		    output.Encoding = Encodings.UTF8
-		    output.Write(report.Markdown)
-		    output.Close
-		  Catch err As IOException
-		    MessageBox("Could not save the report: " + err.Message)
-		  End Try
+		  SaveMarkdown(report.Markdown, report.Title, info.FilePath)
 		End Sub
 	#tag EndMethod
 
@@ -169,6 +154,42 @@ Inherits DesktopApplication
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub OpenFileHistory(targetPath As String, displayPath As String, changes() As WakeFileChangeInfo)
+		  // Opens a file's history, or brings its window to the front if it is open.
+		  For i As Integer = 0 To WindowCount - 1
+		    Var existing As DesktopWindow = WindowAt(i)
+		    If existing IsA FileHistoryWindow And FileHistoryWindow(existing).TargetPath.Compare(targetPath, ComparisonOptions.CaseSensitive) = 0 Then
+		      existing.Show
+		      Return
+		    End If
+		  Next
+		  
+		  Var historyWindow As New FileHistoryWindow
+		  historyWindow.ShowHistory(WakeFileHistory.Load(targetPath, displayPath, changes))
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub OpenTimeline(info As WakeSessionInfo, sessionUID As String, sequence As Integer)
+		  // Opens a session's timeline, or brings its window to the front if it is open, and scrolls it
+		  // to an event of the session or one of its subagents unless sequence is -1.
+		  If info Is Nil Then Return
+		  For i As Integer = 0 To WindowCount - 1
+		    Var existing As DesktopWindow = WindowAt(i)
+		    If existing IsA SessionWindow And SessionWindow(existing).FilePath = info.FilePath Then
+		      existing.Show
+		      If sequence >= 0 Then SessionWindow(existing).ShowEvent(sessionUID, sequence)
+		      Return
+		    End If
+		  Next
+		  
+		  Var timelineWindow As New SessionWindow
+		  timelineWindow.ShowSession(info)
+		  If sequence >= 0 Then timelineWindow.ShowEvent(sessionUID, sequence)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function Prices() As WakePriceTable
 		  // The user's price table, read from the app data folder the first time it is needed.
 		  If mPrices Is Nil Then
@@ -198,6 +219,7 @@ Inherits DesktopApplication
 		  
 		  For i As Integer = 0 To WindowCount - 1
 		    If WindowAt(i) IsA SessionWindow Then SessionWindow(WindowAt(i)).PricesChanged
+		    If WindowAt(i) IsA FileHistoryWindow Then FileHistoryWindow(WindowAt(i)).PricesChanged
 		  Next
 		End Sub
 	#tag EndMethod
@@ -224,6 +246,37 @@ Inherits DesktopApplication
 		  mTestController.Start
 		  Return True
 		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub SaveMarkdown(markdown As String, title As String, protectedPath As String)
+		  // Asks where to save a report and writes it there. It is never saved over protectedPath (the
+		  // file the report is about) or any transcript.
+		  // A file name from the title, without characters that some systems don't allow.
+		  Var name As String = title
+		  For Each character As String In Array("/", "\", ":", "*", "?", """", "<", ">", "|")
+		    name = name.ReplaceAll(character, " ")
+		  Next
+		  name = WakeFormat.OneLine(name, 80).Replace(WakeFormat.kEllipsis, "").Trim
+		  If name = "" Then name = "Report"
+
+		  Var f As FolderItem = FolderItem.ShowSaveFileDialog("", name + ".md")
+		  If f Is Nil Then Return
+
+		  If f.NativePath = protectedPath Or f.Name.EndsWith(".jsonl") Then
+		    MessageBox("Wake doesn't write over the files it reads. Choose another name.")
+		    Return
+		  End If
+
+		  Try
+		    Var output As TextOutputStream = TextOutputStream.Create(f)
+		    output.Encoding = Encodings.UTF8
+		    output.Write(markdown)
+		    output.Close
+		  Catch err As IOException
+		    MessageBox("Could not save the report: " + err.Message)
+		  End Try
+		End Sub
 	#tag EndMethod
 
 	#tag Method, Flags = &h0

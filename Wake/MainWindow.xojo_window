@@ -1102,35 +1102,33 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Sub OpenFileHistory()
+		  // Opens the selected file's history: every change agents made to it, over any period.
+		  Var node As WakeFileNode = SelectedFileNode
+		  If node Is Nil Or node.File Is Nil Or mCatalog Is Nil Then Return
+		  
+		  Var changes() As WakeFileChangeInfo
+		  Try
+		    changes = mCatalog.FileChanges(node.ProjectID, node.File.TargetPath)
+		  Catch err As DatabaseException
+		    MessageBox("Could not read the index: " + err.Message)
+		    Return
+		  End Try
+		  App.OpenFileHistory(node.File.TargetPath, node.File.Path, changes)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Sub OpenTimeline()
 		  // Opens the selected session's timeline. For a search hit, it scrolls to the matching event.
 		  Var info As WakeSessionInfo = SelectedSession
 		  If info Is Nil Then Return
 		  Var hit As WakeSearchHit = SelectedHit
 		  If hit Is Nil Then
-		    OpenTimelineAt(info, "", -1)
+		    App.OpenTimeline(info, "", -1)
 		  Else
-		    OpenTimelineAt(info, hit.EventSessionUID, hit.Sequence)
+		    App.OpenTimeline(info, hit.EventSessionUID, hit.Sequence)
 		  End If
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Sub OpenTimelineAt(info As WakeSessionInfo, sessionUID As String, sequence As Integer)
-		  // Opens a session's timeline, or brings its window to the front if it is open, and scrolls it
-		  // to an event of the session or one of its subagents unless sequence is -1.
-		  For i As Integer = 0 To App.WindowCount - 1
-		    Var existing As DesktopWindow = App.WindowAt(i)
-		    If existing IsA SessionWindow And SessionWindow(existing).FilePath = info.FilePath Then
-		      existing.Show
-		      If sequence >= 0 Then SessionWindow(existing).ShowEvent(sessionUID, sequence)
-		      Return
-		    End If
-		  Next
-		  
-		  Var timelineWindow As New SessionWindow
-		  timelineWindow.ShowSession(info)
-		  If sequence >= 0 Then timelineWindow.ShowEvent(sessionUID, sequence)
 		End Sub
 	#tag EndMethod
 
@@ -1596,6 +1594,7 @@ End
 		  AddDetail("Last changed", FormatTime(node.LastChanged))
 		  If node.Tokens > 0 Then AddDetail("≈ Tokens", WakeFormat.Count(node.Tokens))
 		  If node.File Is Nil Then Return
+		  AddDetail("History", "Double-click the file to see every change, with its prompt")
 		  
 		  Var changes() As WakeFileChangeInfo
 		  Try
@@ -2144,7 +2143,7 @@ End
 		  Var tag As Variant = Me.RowTagAt(row)
 		  If Not (tag.ObjectValue IsA WakeFileChangeInfo) Then Return
 		  Var c As WakeFileChangeInfo = WakeFileChangeInfo(tag.ObjectValue)
-		  OpenTimelineAt(c.Session, c.EventSessionUID, c.Sequence)
+		  App.OpenTimeline(c.Session, c.EventSessionUID, c.Sequence)
 		End Sub
 	#tag EndEvent
 	#tag Event
@@ -2296,6 +2295,13 @@ End
 	#tag EndEvent
 #tag EndEvents
 #tag Events FilesList
+	#tag Event
+		Sub DoublePressed(row As Integer, column As Integer)
+		  #Pragma Unused column
+		  If row < 0 Then Return
+		  OpenFileHistory
+		End Sub
+	#tag EndEvent
 	#tag Event
 		Sub RowExpanded(row As Integer)
 		  // Children of a project or folder, in the current sort order.

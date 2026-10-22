@@ -20,6 +20,7 @@ Inherits TestController
 		  group = New WakeContextTests(Self, "WakeContext")
 		  group = New WakeNowhereTests(Self, "WakeNowhere")
 		  group = New WakeFileChangesTests(Self, "WakeFileChanges")
+		  group = New WakeFileHistoryTests(Self, "WakeFileHistory")
 		  
 		  #Pragma Unused group
 		End Sub
