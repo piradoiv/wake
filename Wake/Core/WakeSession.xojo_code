@@ -22,6 +22,9 @@ Protected Class WakeSession
 		  response.InputSequences = mPendingInputs
 		  Var none() As Integer
 		  mPendingInputs = none
+		  response.FollowsCompaction = mCompactionPending
+		  response.StartsNewContext = mCompactionPending
+		  mCompactionPending = False
 		  Responses.Add(response)
 		  
 		  If timestamp <> Nil Then mLastActivity = timestamp
@@ -153,7 +156,8 @@ Protected Class WakeSession
 		  // Usage is recorded per response, never per tool result. A response's context (input, cache
 		  // writes and cache reads) minus the previous one's context and output is roughly what the
 		  // inputs in between added. Later responses read those tokens again from the cache, until
-		  // the context shrinks to less than half, which means it was compacted.
+		  // the context is compacted. Newer transcripts record each compaction. In older ones, a
+		  // context that shrinks to less than half was compacted.
 		  If mStatsComputed Then Return
 		  mStatsComputed = True
 		  
@@ -161,10 +165,10 @@ Protected Class WakeSession
 		    Var response As WakeResponse = Responses(i)
 		    Var previous As WakeResponse = Responses(i - 1)
 		    
-		    If response.ContextTokens * 2 < previous.ContextTokens Then
+		    If Not HasRecordedCompactions And response.ContextTokens * 2 < previous.ContextTokens Then
 		      response.StartsNewContext = True
-		      Continue
 		    End If
+		    If response.StartsNewContext Then Continue
 		    
 		    Var growth As Int64 = response.ContextTokens - previous.ContextTokens - previous.Usage.OutputTokens
 		    If growth > 0 And response.InputSequences.Count > 0 Then AttributeGrowth(response, growth)
@@ -394,6 +398,14 @@ Protected Class WakeSession
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub NoteCompaction()
+		  // The agent recorded a compaction. The next response starts a new context.
+		  HasRecordedCompactions = True
+		  mCompactionPending = True
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub NoteInput(e As WakeEvent, timestamp As DateTime)
 		  // Something sent to the model: a prompt, a command or a tool result. The next response
 		  // answers it.
@@ -498,7 +510,15 @@ Protected Class WakeSession
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
+		HasRecordedCompactions As Boolean
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
 		IsSubagent As Boolean
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mCompactionPending As Boolean
 	#tag EndProperty
 
 	#tag Property, Flags = &h21

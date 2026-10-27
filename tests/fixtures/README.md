@@ -64,3 +64,11 @@ Session 10 lives in its own root too. Only `WakeFileChangesTests` indexes it.
 | N  | Project folder    | What it covers | Expected |
 |----|-------------------|----------------|----------|
 | 10 | `-Users-dev-shop` | Turn 1 (10:00 UTC): Read of `src/app/price.py`, Write creating `src/app/format.py`, Edit of `price.py` with `structuredPatch`, and an `Agent` call whose subagent (`agent-a0fixture000010`) edits `README.md`. Turn 2 (11:00 UTC): Write replacing `format.py` (`type: update`), a failed Edit of `price.py`, `sed -i` on `price.py`, and a Write creating `/Users/dev/notes/shop.md`, outside the project. | 4 changed files, 5 changes: `format.py` 2 (+4 −1), `price.py` 1 (+2 −1, 1 read), `README.md` 1 (+2, subagent, turn 1's prompt), `shop.md` 1 (+1, outside). The failed edit and `sed -i` don't count. From 10:30 on: `format.py` (1) and `shop.md`. |
+
+## Recorded compaction (`claude-code/compaction/`)
+
+Session 12 lives in its own root too. Only `ClaudeCodeParserTests` parses it.
+
+| N  | Project folder   | What it covers | Expected |
+|----|------------------|----------------|----------|
+| 12 | `-Users-dev-big` | Turn 1 reads `src/config.py` (context 30,005, then 32,010). A `compact_boundary` system record (2.1.311+), the `isCompactSummary` user record and the `/compact` command follow. Turn 2 reads `config.py` again with a context of 28,005, more than half of the one before. | 2 prompts: the summary is a `compact_summary` system event. Response 3 starts a new context and follows the compaction, so the second read isn't a re-read. |

@@ -504,10 +504,16 @@ machine to inspect, and the console companion.
   session uid and sequence.
 - **A parser change that alters what the index stores** (such as which
   sessions are partial) needs a `kSchemaVersion` bump, because unchanged
-  files are never re-indexed. Schemas 8, 9 and 14 are only that.
+  files are never re-indexed. Schemas 8, 9, 14 and 15 are only that.
+- **Compactions come from `compact_boundary` records** when a session has
+  them (`WakeSession.NoteCompaction`, `WakeResponse.FollowsCompaction`). The
+  "context shrank to less than half" rule is only for older transcripts: a
+  manual compaction keeps the system prompt and tools, so it often leaves
+  more than half.
 - **Running tests:** create `Wake/WakeRunTests`, then `Wake/XojoRunProject.txt`.
   Wait for the trigger file to disappear, then for `tests/results.xml` or
-  `Wake/XojoCompileErrors.txt` to appear.
+  `Wake/XojoCompileErrors.txt` to appear. The run deletes `WakeRunTests`
+  too, so compare `results.xml`'s time with one taken before starting.
 - **Don't keep notes in `Wake/CLAUDE.md`.** Xojo's agentic mode deletes it.
   Use the root `CLAUDE.md` and this file.
 - **Write files the way the IDE saves them**, or its next save shows up as a

@@ -243,6 +243,21 @@ response reads those tokens again from the cache. When a context shrinks to
 less than half of the previous one, it was compacted, and nothing before it
 is counted as re-read.
 
+A compaction is also recorded exactly (seen in 2.1.311). A `system` record
+with `subtype` `compact_boundary` and `parentUuid` null starts the new chain;
+`logicalParentUuid` points at the last message before it. `compactMetadata`
+holds `trigger` (`manual`; presumably also `auto`), `preTokens` and
+`postTokens` (the conversation's tokens before and after, without the system
+prompt and tools), `cumulativeDroppedTokens`, `durationMs`, and the uuids of
+the messages kept verbatim (`preservedSegment`, `preservedMessages`). It's
+followed by a `user` record with `isCompactSummary` and
+`isVisibleInTranscriptOnly` true, whose text is the summary; Wake shows it as
+a `compact_summary` system event, not a prompt. The kept messages aren't
+written again: they stay where they were, before the boundary. The next
+response starts a new context. Sessions with these records don't use the
+half rule, which misses compactions that leave more than half: one went from
+63.6K to 50.4K, because the ~38K of system prompt and tools stays.
+
 The same usage gives what each turn **carried**. The session's starting
 context is its first response's context (system prompt and tools). A turn's
 older context is the previous response's context plus its output, and every
@@ -256,8 +271,6 @@ compaction inside a turn ends its carrying.
   proxy available.
 - `thinking` text is usually empty (redacted), so Wake shows "thinking"
   without content in that case.
-- The sample has no compaction (summary) records. If they show up, they'll be
-  counted as unknown until they're documented here.
 - `cost-state` gives the agent's own cost figure. Wake computes its own
   estimate from a user-editable price table and shows the agent's figure next
   to it, labelled as "reported by agent".

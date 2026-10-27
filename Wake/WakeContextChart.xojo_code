@@ -216,7 +216,11 @@ Inherits DesktopCanvas
 		    
 		    Var tip As String = "Turn " + turn.ToString + ", response " + responseInTurn.ToString + ": " + _
 		    WakeFormat.Count(context) + " tokens of context"
-		    If response.StartsNewContext Then tip = tip + ". The context shrank here, so it was probably compacted"
+		    If response.FollowsCompaction Then
+		      tip = tip + ". The conversation was compacted before this response"
+		    ElseIf response.StartsNewContext Then
+		      tip = tip + ". The context shrank here, so it was probably compacted"
+		    End If
 		    If response.TurnSequence >= 0 Then
 		      Var prompt As WakeEvent = session.Events(response.TurnSequence)
 		      If prompt.TurnCarriedTokens > 0 Then

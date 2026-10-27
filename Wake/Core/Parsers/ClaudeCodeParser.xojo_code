@@ -232,6 +232,9 @@ Implements IAgentParser
 		    session.NoteTurnDuration(WakeCore.JSONInteger(record, "durationMs"))
 		    Return
 		  End If
+		  
+		  // The conversation was compacted: the next response starts a new context.
+		  If subtype = "compact_boundary" Then session.NoteCompaction
 
 		  Var e As WakeEvent = session.AddEvent(WakeEvent.Kinds.System, timestamp)
 		  e.SystemSubtype = subtype
@@ -249,11 +252,17 @@ Implements IAgentParser
 		    Return
 		  End If
 
-		  Var isMeta As Boolean = WakeCore.JSONBoolean(record, "isMeta")
+		  // Meta records and the summary written by a compaction aren't prompts the person typed.
+		  Var systemSubtype As String
+		  If WakeCore.JSONBoolean(record, "isCompactSummary") Then
+		    systemSubtype = "compact_summary"
+		  ElseIf WakeCore.JSONBoolean(record, "isMeta") Then
+		    systemSubtype = "meta"
+		  End If
 		  Var content As Variant = message.Lookup("content", Nil)
 
 		  If content.Type = Variant.TypeString Then
-		    AddUserText(session, content.StringValue, isMeta, timestamp)
+		    AddUserText(session, content.StringValue, systemSubtype, timestamp)
 		    Return
 		  End If
 
@@ -293,7 +302,7 @@ Implements IAgentParser
 		  Next
 
 		  If textParts.Count > 0 Then
-		    AddUserText(session, String.FromArray(textParts, &u0A), isMeta, timestamp)
+		    AddUserText(session, String.FromArray(textParts, &u0A), systemSubtype, timestamp)
 		  End If
 		End Sub
 	#tag EndMethod
@@ -319,14 +328,14 @@ Implements IAgentParser
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
-		Private Sub AddUserText(session As WakeSession, text As String, isMeta As Boolean, timestamp As DateTime)
-		  // Slash commands, their output and background notifications arrive as user records,
-		  // but the person did not type them as a prompt. Show them as system events.
+		Private Sub AddUserText(session As WakeSession, text As String, systemSubtype As String, timestamp As DateTime)
+		  // Slash commands, their output, background notifications and compaction summaries arrive
+		  // as user records, but the person did not type them as a prompt. Show them as system events.
 		  Var e As WakeEvent
 
-		  If isMeta Then
+		  If systemSubtype <> "" Then
 		    e = session.AddEvent(WakeEvent.Kinds.System, timestamp)
-		    e.SystemSubtype = "meta"
+		    e.SystemSubtype = systemSubtype
 		  ElseIf IsCommandWrapper(text) Then
 		    e = session.AddEvent(WakeEvent.Kinds.System, timestamp)
 		    e.SystemSubtype = "command"

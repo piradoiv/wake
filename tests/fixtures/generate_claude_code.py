@@ -294,6 +294,34 @@ s.assistant("2026-08-29T16:05:05.000Z", "msg_nw_91", {"type": "text", "text": "s
 # Its own root, so the other tests' counts don't change.
 s.write(os.path.join(os.path.dirname(OUT), "nowhere", "-Users-dev-notes"))
 
+# 12. A recorded compaction (2.1.311+) that leaves more than half of the context: the system prompt
+# and tools stay. Its summary arrives as a user record, and the file read before it is read again.
+BIG = "/Users/dev/big"
+s = Session(12, BIG)
+read = {"file_path": BIG + "/src/config.py"}
+s.user("2026-09-02T09:00:00.000Z", "Summarize the config file.", promptId="p-12-1")
+a = s.assistant("2026-09-02T09:00:05.000Z", "msg_big_01", {"type": "tool_use", "id": "toolu_big_01", "name": "Read", "input": read},
+                usage(5, 50, 30000, 0))
+s.result("2026-09-02T09:00:05.500Z", "toolu_big_01", "1\tdef load():\n2\t    return read_settings()", {"filePath": read["file_path"]}, a)
+s.assistant("2026-09-02T09:00:10.000Z", "msg_big_02", {"type": "text", "text": "It loads the settings."}, usage(5, 40, 2000, 30005),
+            stop="end_turn")
+before = s.last
+s.env("system", "2026-09-02T09:05:00.000Z", parentUuid=None, logicalParentUuid=before, subtype="compact_boundary",
+      content="Conversation compacted", level="info",
+      compactMetadata={"trigger": "manual", "preTokens": 2100, "postTokens": 400, "cumulativeDroppedTokens": 1700,
+                       "durationMs": 9000, "preservedSegment": {"headUuid": before, "anchorUuid": before, "tailUuid": before},
+                       "preservedMessages": {"anchorUuid": before, "uuids": [before], "allUuids": [before]}})
+s.user("2026-09-02T09:05:00.100Z", "This session is being continued from a previous conversation. Summary: the config loads settings.",
+       isCompactSummary=True, isVisibleInTranscriptOnly=True)
+s.user("2026-09-02T09:05:00.200Z", "<command-name>/compact</command-name>\n<command-message>compact</command-message>\n<command-args></command-args>")
+s.user("2026-09-02T09:06:00.000Z", "Add a timeout option to the config.", promptId="p-12-2")
+a = s.assistant("2026-09-02T09:06:05.000Z", "msg_big_03", {"type": "tool_use", "id": "toolu_big_03", "name": "Read", "input": read},
+                usage(5, 50, 3000, 25000))
+s.result("2026-09-02T09:06:05.500Z", "toolu_big_03", "1\tdef load():\n2\t    return read_settings()", {"filePath": read["file_path"]}, a)
+s.assistant("2026-09-02T09:06:10.000Z", "msg_big_04", {"type": "text", "text": "Added."}, usage(5, 30, 500, 28055), stop="end_turn")
+# Its own root, so the other tests' counts don't change.
+s.write(os.path.join(os.path.dirname(OUT), "compaction", "-Users-dev-big"))
+
 # Not a session: memory notes are ignored.
 mem = os.path.join(DEMO_DIR, "memory"); os.makedirs(mem, exist_ok=True)
 with open(os.path.join(mem, "MEMORY.md"), "w") as f: f.write("- [Example](example.md) - not a transcript\n")

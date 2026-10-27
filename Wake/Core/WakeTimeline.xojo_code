@@ -82,7 +82,11 @@ Protected Class WakeTimeline
 		  
 		  Var detail As String = "Input " + WakeFormat.Count(u.InputTokens) + ", cache write " + WakeFormat.Count(u.CacheWriteTokens) + _
 		  ", cache read " + WakeFormat.Count(u.CacheReadTokens) + ", output " + WakeFormat.Count(u.OutputTokens)
-		  If response.StartsNewContext Then detail = detail + ". The context shrank here, so it was probably compacted."
+		  If response.FollowsCompaction Then
+		    detail = detail + ". The conversation was compacted before this response."
+		  ElseIf response.StartsNewContext Then
+		    detail = detail + ". The context shrank here, so it was probably compacted."
+		  End If
 		  
 		  Var usage As New WakeUsageGroup
 		  usage.Add(response.Model, u)

@@ -48,6 +48,10 @@ Protected Class WakeResponse
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
+		FollowsCompaction As Boolean
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
 		InputSequences() As Integer
 	#tag EndProperty
 

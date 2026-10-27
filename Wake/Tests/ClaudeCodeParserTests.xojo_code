@@ -30,6 +30,36 @@ Inherits TestGroup
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub CompactionTest()
+		  // Fixture 12: a recorded compaction that leaves more than half of the context.
+		  Var s As WakeSession = TestSupport.ParseClaudeFixture(12, "-Users-dev-big", "compaction")
+		  s.ComputeStats
+		  Assert.IsFalse(s.Report.IsPartial, s.Report.Summary)
+		  Assert.IsTrue(s.HasRecordedCompactions)
+		  Assert.AreEqual(2, s.PromptCount, "the summary isn't a prompt")
+
+		  Var count As Integer = s.Responses.Count
+		  Assert.AreEqual(4, count)
+		  If count <> 4 Then Return
+		  Assert.IsFalse(s.Responses(1).StartsNewContext)
+		  Assert.IsTrue(s.Responses(2).StartsNewContext, "recorded, though the context didn't halve")
+		  Assert.IsTrue(s.Responses(2).FollowsCompaction)
+		  Assert.IsFalse(s.Responses(3).StartsNewContext)
+
+		  Var summary As WakeEvent
+		  For Each e As WakeEvent In s.Events
+		    If e.SystemSubtype = "compact_summary" Then summary = e
+		  Next
+		  Assert.IsNotNil(summary)
+		  If summary <> Nil Then Assert.IsTrue(summary.Kind = WakeEvent.Kinds.System)
+
+		  Var second As WakeEvent = TestSupport.FindTool(s, "toolu_big_03")
+		  Assert.IsNotNil(second)
+		  If second <> Nil Then Assert.IsFalse(second.IsReread, "the earlier read was compacted away")
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub EditPatchTest()
 		  Var s As WakeSession = TestSupport.ParseClaudeFixture(2)
 		  Var e As WakeEvent = TestSupport.FindTool(s, "toolu_edit_01")
