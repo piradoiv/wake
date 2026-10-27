@@ -94,6 +94,7 @@ Every record has a `type`. There are two families.
 | `queue-operation`, `bridge-session`, `atis-latch` | Internal. Ignored.        |
 | `artifact-comment-monitor`, `artifact-autoreact-ledger` | Artifact state (2.1.300+). Ignored. |
 | `relocated`, `worktree-state` | Written after the session moves into a git worktree (2.1.306+), repeated through the file. `relocated` has `relocatedCwd`; `worktree-state` has a `worktreeSession` object (`originalCwd`, `preEnterOriginalCwd`, `worktreePath`, `worktreeName`, `worktreeBranch`, `sessionId`, `enteredExisting`). Ignored. |
+| `tools-used`            | `tools`: the names of the tools the session used, built-in and MCP, sorted. `sessionId`. Seen once per session (2.1.311+). Ignored. |
 | `api-request`, `api-request-blob`, `api-request-shape` | A log of each raw API request (2.1.300+): params, system prompt and tool shapes keyed by hash, message blobs. About 22 KB a line, and in the sample about 15% of all bytes. They carry `timestamp` and `version`. Wake skips lines starting with `{"type":"api-request` before parsing them. |
 
 Any other `type` must be counted as unknown and skipped.

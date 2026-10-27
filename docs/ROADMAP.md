@@ -504,7 +504,7 @@ machine to inspect, and the console companion.
   session uid and sequence.
 - **A parser change that alters what the index stores** (such as which
   sessions are partial) needs a `kSchemaVersion` bump, because unchanged
-  files are never re-indexed. Schemas 8 and 9 are only that.
+  files are never re-indexed. Schemas 8, 9 and 14 are only that.
 - **Running tests:** create `Wake/WakeRunTests`, then `Wake/XojoRunProject.txt`.
   Wait for the trigger file to disappear, then for `tests/results.xml` or
   `Wake/XojoCompileErrors.txt` to appear.

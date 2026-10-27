@@ -71,6 +71,8 @@ s.meta(type="relocated", relocatedCwd="/Users/dev/demo/.claude/worktrees/csv-fix
 s.meta(type="worktree-state", worktreeSession={"originalCwd": DEMO, "preEnterOriginalCwd": DEMO,
        "worktreePath": "/Users/dev/demo/.claude/worktrees/csv-fix", "worktreeName": "csv-fix",
        "worktreeBranch": "worktree-csv-fix", "sessionId": s.id, "enteredExisting": False})
+# The tool names the session used (2.1.311+).
+s.meta(type="tools-used", tools=["Read"], sessionId=s.id)
 s.write(DEMO_DIR)
 
 # 2. Tools: Bash, Edit, Write (create), parallel Reads, an error result, persisted output.
