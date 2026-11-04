@@ -1,3 +1,7 @@
+# Xojo Coding Guidance
+
+Do not modify this file. If you have your own project-specific guidance to add, put it in a separate file and link to it from AGENTS.md.
+
 ## Project Notes
 
 This project is written in Xojo, and saved in Xojo text ("Xojo Project") format.
