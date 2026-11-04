@@ -73,6 +73,9 @@ s.meta(type="worktree-state", worktreeSession={"originalCwd": DEMO, "preEnterOri
        "worktreeBranch": "worktree-csv-fix", "sessionId": s.id, "enteredExisting": False})
 # The tool names the session used (2.1.311+).
 s.meta(type="tools-used", tools=["Read"], sessionId=s.id)
+# Who owns the session (2.1.312+). The ids here are made up.
+s.meta(type="session-owner", accountUuid="00000000-aaaa-4000-8000-000000000001",
+       organizationUuid="00000000-bbbb-4000-8000-000000000001", sessionId=s.id)
 s.write(DEMO_DIR)
 
 # 2. Tools: Bash, Edit, Write (create), parallel Reads, an error result, persisted output.

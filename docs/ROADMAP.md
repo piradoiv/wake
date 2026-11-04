@@ -504,7 +504,7 @@ machine to inspect, and the console companion.
   session uid and sequence.
 - **A parser change that alters what the index stores** (such as which
   sessions are partial) needs a `kSchemaVersion` bump, because unchanged
-  files are never re-indexed. Schemas 8, 9, 14 and 15 are only that.
+  files are never re-indexed. Schemas 8, 9, 14, 15 and 16 are only that.
 - **Compactions come from `compact_boundary` records** when a session has
   them (`WakeSession.NoteCompaction`, `WakeResponse.FollowsCompaction`). The
   "context shrank to less than half" rule is only for older transcripts: a

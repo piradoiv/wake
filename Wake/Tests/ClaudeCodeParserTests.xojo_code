@@ -17,7 +17,7 @@ Inherits TestGroup
 		  Assert.AreEqual(3500, s.ActiveDurationMs)
 		  Assert.AreEqual(3.5, s.DurationSeconds, 0.001)
 		  Assert.IsFalse(s.Report.IsPartial, s.Report.Summary)
-		  Assert.AreEqual(10, s.Report.IgnoredRecords, "settings, last prompt, API request logs, artifact state, worktree state, tools used")
+		  Assert.AreEqual(11, s.Report.IgnoredRecords, "settings, last prompt, API request logs, artifact state, worktree state, tools used, session owner")
 
 		  Var actualCount As Integer = s.Events.Count
 		  Assert.AreEqual(3, actualCount, "prompt, thinking, text")

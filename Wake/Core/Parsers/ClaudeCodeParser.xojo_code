@@ -214,7 +214,7 @@ Implements IAgentParser
 		  Case "attachment", "last-prompt", "mode", "permission-mode", "agent-name", _
 		    "file-history-snapshot", "file-history-delta", "queue-operation", "bridge-session", "atis-latch", _
 		    "api-request", "api-request-blob", "api-request-shape", "artifact-autoreact-ledger", "artifact-comment-monitor", _
-		    "relocated", "worktree-state", "tools-used"
+		    "relocated", "worktree-state", "tools-used", "session-owner"
 		    // Known, but not part of the timeline.
 		    session.Report.IgnoredRecords = session.Report.IgnoredRecords + 1
 
