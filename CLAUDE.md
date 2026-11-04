@@ -2,6 +2,10 @@
 
 Wake is a read-only, local-only desktop explorer for AI coding-agent sessions.
 
+**Before working on a fresh clone:** open `Wake/Wake.xojo_project` in the Xojo
+IDE. The IDE generates `Wake/XOJO-CODING.md` (not in the repo), and
+`Wake/AGENTS.md` imports it, so `AGENTS.md` isn't valid until then.
+
 **Start here:** read `docs/ROADMAP.md` for milestone status, decisions already
 made and Xojo gotchas. Continue from the first unchecked milestone, and tick it
 off in the same commit that finishes it.
@@ -42,8 +46,5 @@ Remove anything that turns out to be wrong. Keep all three short and current.
 - After adding project items or editing window or menu files by hand, ask
   the maintainer to save the project in the Xojo IDE, then commit the IDE's
   reformat separately before the next piece of work.
-- The IDE rewrites `Wake/XOJO-CODING.md` from time to time. When it shows
-  up as changed, commit it on its own ("Update XOJO-CODING.md as written by
-  the Xojo IDE"). Don't edit it yourself or leave it uncommitted.
 - Don't keep notes in `Wake/CLAUDE.md`: Xojo's agentic mode manages the agent
   files inside the project folder and deletes that file when it runs.
