@@ -388,7 +388,7 @@ Each milestone below is one session's work, ending with tests and a commit.
   fonts, artwork not drawn for Wake); today that's only the above. Checked
   by eye in light and dark on macOS.
 
-- [ ] **28. Disk image for releases (macOS).** A Release build makes
+- [x] **28. Disk image for releases (macOS).** A Release build makes
   `Wake-<version>.dmg` on its own, so shipping is no longer a manual zip.
   An IDE Script build step in the Mac OS X list of `Build Automation`,
   placed after Sign (which signs, notarizes and staples the app), runs only
@@ -539,13 +539,25 @@ machine to inspect, and the console companion.
   unknown) until the PNGs were dropped into them again.
 - **Releases** are built for Direct Distribution: signed with the Developer
   ID Application certificate (not Apple Distribution), hardened runtime on,
-  notarized by the IDE, no entitlements, no sandbox. Check a build with
-  `spctl -a -vv -t exec Wake.app` (expect "Notarized Developer ID") and zip
-  it with `ditto -c -k --keepParent`. Upload it as **`Wake-macOS.zip`**,
+  notarized by the IDE, no entitlements, no sandbox. A Release build then
+  runs the `ReleaseScript` step, which calls `scripts/make-dmg.sh`: it makes
+  `Wake-<short version>.dmg` next to the app, signs it, notarizes it with
+  the `wake-notary` keychain profile (`xcrun notarytool store-credentials`,
+  once per Mac: the IDE keeps its own credentials to itself) and staples it.
+  A post-build step can't cancel the build, so a failure shows a dialog and
+  leaves no image. Check a build with `spctl -a -vv -t exec Wake.app` and
+  `spctl -a -vv -t open --context context:primary-signature` on the image
+  (both expect "Notarized Developer ID"). Bump `MajorVersion`/`MinorVersion`
+  and the Short Version together. Upload the image as **`Wake-macOS.dmg`**,
   with no version in the name: the README's download links point at
-  `releases/latest/download/Wake-macOS.zip`. A Mac App Store build would need the
+  `releases/latest/download/Wake-macOS.dmg`. Tag releases `v<major>.<minor>.<bug>`.
+  A Mac App Store build would need the
   sandbox, which hides `~/.claude`: the user would have to pick the folder,
   and Wake would keep a security-scoped bookmark to it.
+- **`CurrentBuildLocation` is the build folder**, not the app as the IDE
+  scripting docs say, so `make-dmg.sh` takes either and finds the one
+  `.app` inside. `hdiutil create`/`attach` print a deprecation warning
+  (use `diskutil image`) on macOS 27 but still work.
 - **`WakeTimeline.Anchor` renders the page first**, so calling it while
   the page renders recurses into a stack overflow. Use the Protected
   `KnownAnchor` there.

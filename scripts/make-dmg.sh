@@ -28,6 +28,13 @@ fail() {
 }
 
 [ -d "$app" ] || fail "no app at '$app'"
+# The IDE's CurrentBuildLocation is the build folder, not the app, despite the
+# docs, so take the one app inside a folder.
+if [ "${app%.app}" = "$app" ] && [ "${app%.app/}" = "$app" ]; then
+  apps=("$app"/*.app)
+  [ ${#apps[@]} -eq 1 ] && [ -d "${apps[0]}" ] || fail "expected one app in '$app'"
+  app="${apps[0]}"
+fi
 app="$(cd "$(dirname "$app")" && pwd)/$(basename "$app")"
 name="$(basename "$app" .app)"
 
