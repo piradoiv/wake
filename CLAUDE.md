@@ -19,6 +19,7 @@ right file in the same commit as the work:
 
 Remove anything that turns out to be wrong. Keep all three short and current.
 
+- Commit straight to `main`. Don't create branches unless the maintainer asks.
 - Never write to, move or delete agent transcript files. Open them read-only.
 - No network code and no telemetry.
 - The timeline and file history pages must stay self-contained: inline CSS and JS, no remote
