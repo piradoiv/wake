@@ -573,6 +573,13 @@ End
 	#tag EndMenuHandler
 
 	#tag MenuHandler
+		Function HelpAbout() As Boolean Handles HelpAbout.Action
+		  AboutWindow.Show
+		  Return True
+		End Function
+	#tag EndMenuHandler
+
+	#tag MenuHandler
 		Function ViewFiles() As Boolean Handles ViewFiles.Action
 		  SetFilesView(True)
 		  Return True

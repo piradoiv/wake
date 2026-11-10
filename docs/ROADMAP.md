@@ -661,6 +661,13 @@ machine to inspect, and the console companion.
   handlers in every window instead (Window → Usage and Prices are in all four).
 - **Closing the main window quits Wake** (`MainWindow.Closing` calls `Quit`).
   `AllowAutoQuit = True` in `App.Opening` covers the last-window case.
+- **`App.LongVersion` isn't readable in code** (no such member), and
+  there's no `Color.LinkColor`. The About window's copyright line is in its
+  layout, and its link uses `Color.HighlightColor`.
+- **Files the app reads at runtime** (the license texts, the 256 px icon)
+  are copied into the app's resources by the `CopyResources` Copy Files
+  step (Mac list only so far) and read with `SpecialFolder.Resource`. Its
+  `FolderItem` lines are base64 paths relative to the project file.
 - **`call` is a reserved word** in Xojo. Don't use it as a variable name.
 - **Xojo identifiers are case-insensitive.** A parameter named `usage` shadows
   a property named `Usage`, and a local `callKey` a method `CallKey`.

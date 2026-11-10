@@ -260,6 +260,13 @@ End
 	#tag EndMenuHandler
 
 	#tag MenuHandler
+		Function HelpAbout() As Boolean Handles HelpAbout.Action
+		  AboutWindow.Show
+		  Return True
+		End Function
+	#tag EndMenuHandler
+
+	#tag MenuHandler
 		Function ViewWatchForChanges() As Boolean Handles ViewWatchForChanges.Action
 		  App.ToggleWatching
 		  Return True
