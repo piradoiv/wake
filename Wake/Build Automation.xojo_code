@@ -21,6 +21,13 @@
 				  macOSEntitlements={"App Sandbox":"False","Hardened Runtime":"True","Notarize":"True","UserEntitlements":""}
 				End
 				Begin IDEScriptBuildStep ReleaseScript , AppliesTo = 2, Architecture = 0, Target = 0
+					Dim code As Integer
+					Dim output As String = DoShellCommand("""$PROJECT_PATH""/../scripts/make-dmg.sh " + CurrentBuildLocation, 1800000, code)
+					If InStr(output, "DMG OK:") = 0 Then
+					Print("The disk image wasn't made: " + output)
+					Else
+					DebugLog(output)
+					End If
 				End
 			End
 			Begin BuildStepList Windows
