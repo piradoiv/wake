@@ -5,8 +5,9 @@ Wake is a read-only, local-only desktop explorer for AI coding-agent sessions.
 **Before working on a fresh clone:** open `Wake/Wake.xojo_project` in the Xojo
 IDE. The IDE generates `Wake/XOJO-CODING.md` (not in the repo), and
 `Wake/AGENTS.md` imports it, so `AGENTS.md` isn't valid until then.
-`Wake/AGENTS.md` also imports `Wake/XOJO-AGENT-SERVER.md`, which only the
-beta IDE generates, so that import is missing with a release IDE.
+`Wake/AGENTS.md` also imports `Wake/XOJO-AGENT-SERVER.md` and
+`Wake/XOJO-SOURCE-FORMAT.md`, which only the beta IDE generates, so those
+imports are missing with a release IDE.
 
 **Start here:** read `docs/ROADMAP.md` for milestone status, decisions already
 made and Xojo gotchas. Continue from the first unchecked milestone, and tick it
