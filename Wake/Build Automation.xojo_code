@@ -20,6 +20,8 @@
 				  DeveloperID=Developer ID Application: Ricardo Angel Cruz Fernandez (76GS9GQ3ZE)
 				  macOSEntitlements={"App Sandbox":"False","Hardened Runtime":"True","Notarize":"True","UserEntitlements":""}
 				End
+				Begin IDEScriptBuildStep ReleaseScript , AppliesTo = 2, Architecture = 0, Target = 0
+				End
 			End
 			Begin BuildStepList Windows
 				Begin BuildProjectStep Build
