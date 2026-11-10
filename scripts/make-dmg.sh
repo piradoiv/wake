@@ -1,0 +1,70 @@
+#!/bin/bash
+# Makes a signed, notarized and stapled Wake-<version>.dmg next to a built Wake.app.
+#
+#   make-dmg.sh <path to Wake.app> [notarytool keychain profile]
+#
+# The version comes from the app's Info.plist and the signing identity from the
+# app's own signature, so nothing here changes between releases. The profile
+# defaults to "wake-notary" (create it once with `xcrun notarytool
+# store-credentials wake-notary`).
+#
+# The Xojo IDE runs this from the "Make Disk Image" build step after Sign. A
+# post-build step can't cancel the build, so the last line printed is
+# "DMG OK: <path>" or "DMG FAILED: <reason>", and a failed run removes the image
+# so an unnotarized one can't be shipped by mistake.
+
+set -u
+
+app="${1:-}"
+profile="${2:-wake-notary}"
+dmg=""
+staging=""
+
+fail() {
+  [ -n "$staging" ] && rm -rf "$staging"
+  [ -n "$dmg" ] && rm -f "$dmg"
+  echo "DMG FAILED: $1"
+  exit 1
+}
+
+[ -d "$app" ] || fail "no app at '$app'"
+app="$(cd "$(dirname "$app")" && pwd)/$(basename "$app")"
+name="$(basename "$app" .app)"
+
+# Xojo leaves CFBundleShortVersionString empty unless the project's Short
+# Version is set, and writes CFBundleVersion as major.minor.bug.stage.build.
+plist="$app/Contents/Info.plist"
+version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist" 2>/dev/null)"
+if [ -z "$version" ]; then
+  version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist" 2>/dev/null | cut -d. -f1-3)"
+fi
+[ -n "$version" ] || fail "no version in the app's Info.plist"
+
+identity="$(codesign -dvv "$app" 2>&1 | sed -n 's/^Authority=\(Developer ID Application: .*\)$/\1/p' | head -n 1)"
+[ -n "$identity" ] || fail "the app isn't signed with a Developer ID Application certificate"
+
+dmg="$(dirname "$app")/$name-$version.dmg"
+rm -f "$dmg"
+
+staging="$(mktemp -d "${TMPDIR:-/tmp}/wake-dmg.XXXXXX")" || fail "couldn't create a staging folder"
+ditto "$app" "$staging/$name.app" || fail "couldn't copy the app to the staging folder"
+ln -s /Applications "$staging/Applications" || fail "couldn't link Applications"
+
+hdiutil create -volname "$name" -srcfolder "$staging" -format UDZO -ov "$dmg" >/dev/null \
+  || fail "hdiutil create failed"
+rm -rf "$staging"
+staging=""
+
+codesign --sign "$identity" --timestamp "$dmg" || fail "codesign failed"
+
+notary="$(xcrun notarytool submit "$dmg" --keychain-profile "$profile" --wait 2>&1)"
+echo "$notary"
+echo "$notary" | grep -q "status: Accepted" \
+  || fail "notarization wasn't accepted (profile '$profile'); see notarytool's output above"
+
+xcrun stapler staple "$dmg" >/dev/null || fail "stapler staple failed"
+
+spctl -a -t open --context context:primary-signature "$dmg" 2>/dev/null \
+  || fail "Gatekeeper rejects the image"
+
+echo "DMG OK: $dmg"
