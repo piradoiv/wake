@@ -413,7 +413,24 @@ Each milestone below is one session's work, ending with tests and a commit.
   Then the **Releases** note below says to ship the `.dmg` instead of a zip,
   uploaded as `Wake.dmg`, and the README's download links follow.
 
-- [ ] **29. Homebrew cask.** `brew install piradoiv/tap/wake` installs the
+- [ ] **29. A disk image that looks finished.** Opening `Wake.dmg` shows a
+  fixed window (about 540 × 380, no toolbar, sidebar or status bar) with
+  128 px icons: Wake on the left, Applications on the right, and a
+  background with an arrow between them and "Drag Wake to Applications".
+  The background is drawn in `Artwork/` from the icon's SVG sources, with a
+  2× version combined by `tiffutil -cathidpicheck`, and reads well in light
+  and dark (Finder shows one picture in both). The mounted volume has Wake's
+  icon (`.VolumeIcon.icns`, flagged with `SetFile -a C`). No Python or other
+  installs: `make-dmg.sh` makes a read-write image, mounts it, lays out the
+  window with an AppleScript sent to Finder (`osascript`), then converts it
+  to a compressed read-only image (`ULFO`), before signing and notarizing as
+  now. Finder needs Automation permission for whatever runs the script (the
+  Xojo IDE in a build); the first run asks once. If Finder's layout proves
+  unreliable on current macOS (a known weak spot of this approach), that's
+  a roadblock to raise, not a reason to add a dependency. Checked by
+  mounting the image in light and dark, and with `spctl` as in 28.
+
+- [ ] **30. Homebrew cask.** `brew install piradoiv/tap/wake` installs the
   app. Needs 28. A third-party tap, because the official `homebrew/cask`
   only takes apps that are already well known (stars, forks, watchers).
   The tap is a new public repository, `piradoiv/homebrew-tap`. Before
