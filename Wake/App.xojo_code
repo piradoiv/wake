@@ -143,16 +143,6 @@ Inherits DesktopApplication
 		End Function
 	#tag EndMethod
 
-	#tag Method, Flags = &h21
-		Private Function OpenUsageWindow() As UsageWindow
-		  // The usage window if it is open. Going through its implicit instance would open it.
-		  For i As Integer = 0 To WindowCount - 1
-		    If WindowAt(i) IsA UsageWindow Then Return UsageWindow(WindowAt(i))
-		  Next
-		  Return Nil
-		End Function
-	#tag EndMethod
-
 	#tag Method, Flags = &h0
 		Sub OpenFileHistory(targetPath As String, displayPath As String, changes() As WakeFileChangeInfo)
 		  // Opens a file's history, or brings its window to the front if it is open.
@@ -187,6 +177,16 @@ Inherits DesktopApplication
 		  timelineWindow.ShowSession(info)
 		  If sequence >= 0 Then timelineWindow.ShowEvent(sessionUID, sequence)
 		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function OpenUsageWindow() As UsageWindow
+		  // The usage window if it is open. Going through its implicit instance would open it.
+		  For i As Integer = 0 To WindowCount - 1
+		    If WindowAt(i) IsA UsageWindow Then Return UsageWindow(WindowAt(i))
+		  Next
+		  Return Nil
+		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
@@ -259,15 +259,15 @@ Inherits DesktopApplication
 		  Next
 		  name = WakeFormat.OneLine(name, 80).Replace(WakeFormat.kEllipsis, "").Trim
 		  If name = "" Then name = "Report"
-
+		  
 		  Var f As FolderItem = FolderItem.ShowSaveFileDialog("", name + ".md")
 		  If f Is Nil Then Return
-
+		  
 		  If f.NativePath = protectedPath Or f.Name.EndsWith(".jsonl") Then
 		    MessageBox("Wake doesn't write over the files it reads. Choose another name.")
 		    Return
 		  End If
-
+		  
 		  Try
 		    Var output As TextOutputStream = TextOutputStream.Create(f)
 		    output.Encoding = Encodings.UTF8
