@@ -431,6 +431,13 @@ End
 
 #tag WindowCode
 	#tag Event
+		Sub Activated()
+		  // Picks up an appearance change made while the window was open.
+		  ColorLink
+		End Sub
+	#tag EndEvent
+
+	#tag Event
 		Function KeyDown(key As String) As Boolean
 		  Return CloseOnEscape(key)
 		End Function
@@ -447,7 +454,7 @@ End
 		  "SQLite and its FTS5 full-text search (public domain)." + &u0A + _
 		  "Tested with XojoUnit, © 2014-2021 Xojo, Inc. (MIT License)."
 		  
-		  LinkLabel.TextColor = Color.HighlightColor
+		  ColorLink
 		  mIcon = LoadIcon
 		  LicenseArea.Text = LicenseText
 		End Sub
@@ -496,6 +503,17 @@ End
 		  Self.Close
 		  Return True
 		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub ColorLink()
+		  // macOS's link blue. Xojo has no link colour, and the highlight colour is too pale for text.
+		  If Color.IsDarkMode Then
+		    LinkLabel.TextColor = Color.RGB(65, 156, 255)
+		  Else
+		    LinkLabel.TextColor = Color.RGB(0, 104, 218)
+		  End If
+		End Sub
 	#tag EndMethod
 
 	#tag Method, Flags = &h21

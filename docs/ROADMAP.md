@@ -662,8 +662,11 @@ machine to inspect, and the console companion.
 - **Closing the main window quits Wake** (`MainWindow.Closing` calls `Quit`).
   `AllowAutoQuit = True` in `App.Opening` covers the last-window case.
 - **`App.LongVersion` isn't readable in code** (no such member), and
-  there's no `Color.LinkColor`. The About window's copyright line is in its
-  layout, and its link uses `Color.HighlightColor`.
+  `App.Version` is the project's Short Version (also the app's
+  `CFBundleShortVersionString`), so keep it in step with the version
+  numbers when bumping them. There's no
+  `Color.LinkColor`, and `Color.HighlightColor` is too pale for text, so the
+  About window's link uses macOS's link blue for each appearance.
 - **Files the app reads at runtime** (the license texts, the 256 px icon)
   are copied into the app's resources by the `CopyResources` Copy Files
   step (Mac list only so far) and read with `SpecialFolder.Resource`. Its
