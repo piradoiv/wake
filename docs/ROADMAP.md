@@ -646,6 +646,9 @@ machine to inspect, and the console companion.
   on tinted tiles. Colour constants are `Type = Color`.
 - **`PaintCellText` draws the cell text in `g.DrawingColor`** when it returns
   False, so restore that colour after drawing anything else in the cell.
+- **Striped rows** come from `DesktopTable.HasAlternatingRowColors`, set in
+  code; `AlternatingRowColor` left Nil uses the platform tint. Every table
+  has them except `DetailList`, which sits plain under the tiles.
 - **A `DesktopTable` header whose sort direction is `None` ignores clicks**
   (no `ColumnHeaderPressed`). To show the arrow on one column only, give
   every column a direction and set `HeadingIndex`, as `ShowFileSortColumn` does.

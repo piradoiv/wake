@@ -111,6 +111,7 @@ End
 #tag WindowCode
 	#tag Event
 		Sub Opening()
+		  PricesList.HasAlternatingRowColors = True
 		  PricesList.ColumnHeaderAt(kColumnModel) = "Model"
 		  PricesList.ColumnHeaderAt(kColumnInput) = "Input"
 		  PricesList.ColumnHeaderAt(kColumnOutput) = "Output"

@@ -681,6 +681,9 @@ End
 		Private Sub SetUp()
 		  mLoading = True
 		  
+		  UsageList.HasAlternatingRowColors = True
+		  CallsList.HasAlternatingRowColors = True
+		  
 		  // Each grouping row's tag is its WakeCatalog.UsageGroupings value.
 		  GroupPopup.AddRow("By day")
 		  GroupPopup.RowTagAt(GroupPopup.LastAddedRowIndex) = Integer(WakeCatalog.UsageGroupings.Day)

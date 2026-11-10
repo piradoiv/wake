@@ -1443,6 +1443,12 @@ End
 		  mLoading = False
 		  
 		  DetailList.ColumnAlignmentAt(0) = DesktopTable.Alignments.Left
+		  
+		  // Striped rows, in the platform's own tint. The detail list stays plain under the tiles.
+		  Var striped() As DesktopTable = Array(SourceList, SessionsList, HitsList, FilesList)
+		  For Each list As DesktopTable In striped
+		    list.HasAlternatingRowColors = True
+		  Next
 		End Sub
 	#tag EndMethod
 
