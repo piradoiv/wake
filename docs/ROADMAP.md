@@ -389,7 +389,7 @@ Each milestone below is one session's work, ending with tests and a commit.
   by eye in light and dark on macOS.
 
 - [x] **28. Disk image for releases (macOS).** A Release build makes
-  `Wake-<version>.dmg` on its own, so shipping is no longer a manual zip.
+  `Wake.dmg` on its own, so shipping is no longer a manual zip.
   An IDE Script build step in the Mac OS X list of `Build Automation`,
   placed after Sign (which signs, notarizes and staples the app), runs only
   for Release builds and does nothing on Debug runs. It stages the built
@@ -411,7 +411,7 @@ Each milestone below is one session's work, ending with tests and a commit.
   then by mounting it, dragging Wake to Applications, and running
   `spctl -a -vv -t exec` on the copy (both expect "Notarized Developer ID").
   Then the **Releases** note below says to ship the `.dmg` instead of a zip,
-  uploaded as `Wake-macOS.dmg`, and the README's download links follow.
+  uploaded as `Wake.dmg`, and the README's download links follow.
 
 - [ ] **29. Homebrew cask.** `brew install piradoiv/tap/wake` installs the
   app. Needs 28. A third-party tap, because the official `homebrew/cask`
@@ -420,7 +420,7 @@ Each milestone below is one session's work, ending with tests and a commit.
   starting, ask the maintainer to create it on GitHub and wait for it:
   don't create it yourself. It holds `Casks/wake.rb`: `version`, `sha256` of
   the `.dmg`, a versioned `url` built from the tag
-  (`…/releases/download/v#{version}/Wake-macOS.dmg`, not the `latest`
+  (`…/releases/download/v#{version}/Wake.dmg`, not the `latest`
   link, so the checksum always matches), `name`, `desc`, `homepage`,
   `livecheck` on GitHub's latest release, `depends_on arch: :arm64` while
   only Apple silicon builds ship, `depends_on macos:` matching the build's
@@ -432,7 +432,7 @@ Each milestone below is one session's work, ending with tests and a commit.
   Gatekeeper. Checked with `brew audit --cask --new --online` and
   `brew style`, then `brew install`, launching Wake, `brew uninstall
   --zap`. The **Releases** note gains a step to bump `version` and `sha256`
-  (`shasum -a 256 Wake-macOS.dmg`) in the tap after each upload, and the
+  (`shasum -a 256 Wake.dmg`) in the tap after each upload, and the
   README lists the `brew` line under the download link.
 
 After v0.1: Codex CLI and Gemini CLI parsers, once real sessions exist on a
@@ -541,16 +541,16 @@ machine to inspect, and the console companion.
   ID Application certificate (not Apple Distribution), hardened runtime on,
   notarized by the IDE, no entitlements, no sandbox. A Release build then
   runs the `ReleaseScript` step, which calls `scripts/make-dmg.sh`: it makes
-  `Wake-<short version>.dmg` next to the app, signs it, notarizes it with
+  `Wake.dmg` next to the app, signs it, notarizes it with
   the `wake-notary` keychain profile (`xcrun notarytool store-credentials`,
   once per Mac: the IDE keeps its own credentials to itself) and staples it.
   A post-build step can't cancel the build, so a failure shows a dialog and
   leaves no image. Check a build with `spctl -a -vv -t exec Wake.app` and
   `spctl -a -vv -t open --context context:primary-signature` on the image
   (both expect "Notarized Developer ID"). Bump `MajorVersion`/`MinorVersion`
-  and the Short Version together. Upload the image as **`Wake-macOS.dmg`**,
+  and the Short Version together. Upload the image as is, **`Wake.dmg`**,
   with no version in the name: the README's download links point at
-  `releases/latest/download/Wake-macOS.dmg`. Tag releases `v<major>.<minor>.<bug>`.
+  `releases/latest/download/Wake.dmg`. Tag releases `v<major>.<minor>.<bug>`.
   A Mac App Store build would need the
   sandbox, which hides `~/.claude`: the user would have to pick the folder,
   and Wake would keep a security-scoped bookmark to it.

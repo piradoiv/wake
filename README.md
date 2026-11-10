@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/piradoiv/wake/releases/latest/download/Wake-macOS.dmg">
+  <a href="https://github.com/piradoiv/wake/releases/latest/download/Wake.dmg">
     <img src="https://img.shields.io/badge/Download_for_macOS-Free-2f6fde?style=for-the-badge&logo=apple" alt="Download Wake for macOS">
   </a>
   <br>
@@ -42,7 +42,7 @@ change them, doesn't connect to the internet and doesn't collect anything.
 
 ## Install
 
-1. [Download Wake](https://github.com/piradoiv/wake/releases/latest/download/Wake-macOS.dmg)
+1. [Download Wake](https://github.com/piradoiv/wake/releases/latest/download/Wake.dmg)
    and open it. Release notes and older versions are on the
    [Releases page](https://github.com/piradoiv/wake/releases).
 2. Drag **Wake** to the Applications folder in the window that opens, then

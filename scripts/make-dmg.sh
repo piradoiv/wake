@@ -1,10 +1,11 @@
 #!/bin/bash
-# Makes a signed, notarized and stapled Wake-<version>.dmg next to a built Wake.app.
+# Makes a signed, notarized and stapled Wake.dmg next to a built Wake.app. The name
+# has no version, so release downloads keep one link (releases/latest/download/Wake.dmg).
 #
 #   make-dmg.sh <path to Wake.app> [notarytool keychain profile]
 #
-# The version comes from the app's Info.plist and the signing identity from the
-# app's own signature, so nothing here changes between releases. The profile
+# The signing identity comes from the app's own signature, so nothing here
+# changes between releases. The profile
 # defaults to "wake-notary" (create it once with `xcrun notarytool
 # store-credentials wake-notary`).
 #
@@ -38,19 +39,10 @@ fi
 app="$(cd "$(dirname "$app")" && pwd)/$(basename "$app")"
 name="$(basename "$app" .app)"
 
-# Xojo leaves CFBundleShortVersionString empty unless the project's Short
-# Version is set, and writes CFBundleVersion as major.minor.bug.stage.build.
-plist="$app/Contents/Info.plist"
-version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist" 2>/dev/null)"
-if [ -z "$version" ]; then
-  version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist" 2>/dev/null | cut -d. -f1-3)"
-fi
-[ -n "$version" ] || fail "no version in the app's Info.plist"
-
 identity="$(codesign -dvv "$app" 2>&1 | sed -n 's/^Authority=\(Developer ID Application: .*\)$/\1/p' | head -n 1)"
 [ -n "$identity" ] || fail "the app isn't signed with a Developer ID Application certificate"
 
-dmg="$(dirname "$app")/$name-$version.dmg"
+dmg="$(dirname "$app")/$name.dmg"
 rm -f "$dmg"
 
 staging="$(mktemp -d "${TMPDIR:-/tmp}/wake-dmg.XXXXXX")" || fail "couldn't create a staging folder"
