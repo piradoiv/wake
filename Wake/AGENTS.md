@@ -2,3 +2,4 @@
 
 @CLAUDE.md
 @XOJO-CODING.md
+@XOJO-AGENT-SERVER.md
