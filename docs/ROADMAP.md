@@ -361,7 +361,7 @@ Each milestone below is one session's work, ending with tests and a commit.
   mark calls `wakeJump(anchor)`; `wakeTab` tells the window, which greys
   out "Show reads" on Blame.
 
-- [ ] **27. About window.** The classic About box: Wake → About Wake on
+- [x] **27. About window.** The classic About box: Wake → About Wake on
   macOS (a `DesktopApplicationMenuItem`, so it lands in the app menu), and
   a new Help → About Wake on Windows and Linux. One `AboutWindow`, fixed
   size, not resizable, reused if already open, closed with Cmd+W or Esc.
