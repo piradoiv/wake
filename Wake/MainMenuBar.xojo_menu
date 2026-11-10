@@ -319,6 +319,15 @@ Begin Menu MainMenuBar
       AutoEnabled = True
       AutoEnable = True
       Visible = True
+      Begin DesktopApplicationMenuItem HelpAbout
+         SpecialMenu = 0
+         Index = -2147483648
+         Text = "About Wake"
+         Symbol = ""
+         AutoEnabled = True
+         AutoEnable = True
+         Visible = True
+      End
    End
 End
 #tag EndMenu

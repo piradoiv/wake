@@ -1,5 +1,5 @@
 Type=Desktop
-RBProjectVersion=2026.03
+RBProjectVersion=2026.031
 MinIDEVersion=20210300
 OrigIDEVersion=20260300
 Class=App;App.xojo_code;&h0000000060F677FF;&h0000000000000000;false
@@ -38,6 +38,7 @@ Module=WakeFolders;Core/Index/WakeFolders.xojo_code;&h0000000035B7E1C9;&h0000000
 Class=WakeHiddenProjects;Core/Index/WakeHiddenProjects.xojo_code;&h000000003F6B2A1D;&h000000004A6D21B5;false
 Class=WakeSettings;Core/WakeSettings.xojo_code;&h0000000051C4E7A9;&h00000000344C984D;false
 Class=WakeIndexThread;WakeIndexThread.xojo_code;&h0000000047F1B26B;&h0000000000000000;false
+DesktopWindow=AboutWindow;AboutWindow.xojo_window;&h0000000063C8A7FF;&h0000000000000000;false
 Class=WakeIndexTests;Tests/WakeIndexTests.xojo_code;&h000000002E5A9D17;&h000000001662E964;false
 Module=WakeFormat;Core/WakeFormat.xojo_code;&h000000005C3E91A7;&h00000000344C984D;false
 Module=WakeCallPattern;Core/WakeCallPattern.xojo_code;&h000000005C7A19E3;&h00000000344C984D;false
