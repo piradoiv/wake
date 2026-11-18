@@ -3,7 +3,7 @@ Protected Class WakeTokenReport
 	#tag Method, Flags = &h21
 		Private Sub AddExamples(out() As String, key As String)
 		  // The most expensive calls of a pattern, exactly as the agent made them.
-		  Var calls() As WakeToolCallInfo = mCatalog.ToolCalls(WakeCatalog.ToolGroupings.Pattern, key, mFromTime, kExampleCount)
+		  Var calls() As WakeToolCallInfo = mCatalog.ToolCalls(WakeCatalog.ToolGroupings.Pattern, key, mFromTime, kExampleCount, ProjectID, UntilTime)
 		  If calls.Count = 0 Then Return
 		  
 		  out.Add("Most expensive calls:")
@@ -12,12 +12,21 @@ Protected Class WakeTokenReport
 		    Var c As WakeToolCallInfo = calls(i)
 		    Var number As Integer = i + 1
 		    Var line As String = number.ToString + ". ≈" + WakeFormat.Tokens(c.AddedTokens + c.CarriedTokens) + " tokens"
-		    If c.Session <> Nil Then line = line + " in " + WakeMarkdown.Cell(c.Session.DisplayTitle)
+		    If LeaveOutText Then
+		      // The tool and its target, and the session by id: no command or prompt text.
+		      line = line + ", " + WakeMarkdown.Cell(c.ToolName)
+		      If c.TargetPath <> "" Then line = line + " on " + WakeMarkdown.Cell(WakeMarkdown.Code(c.TargetPath))
+		      If c.Session <> Nil And c.Session.UID <> "" Then line = line + " in session " + WakeMarkdown.Code(c.Session.UID)
+		    ElseIf c.Session <> Nil Then
+		      line = line + " in " + WakeMarkdown.Cell(c.Session.DisplayTitle)
+		    End If
 		    If c.Timestamp <> Nil Then line = line + ", " + c.Timestamp.ToString(DateTime.FormatStyles.Medium, DateTime.FormatStyles.Short)
 		    out.Add(line)
 		    out.Add("")
-		    out.Add(Indent(WakeMarkdown.Fence(c.Description, "")))
-		    out.Add("")
+		    If Not LeaveOutText Then
+		      out.Add(Indent(WakeMarkdown.Fence(c.Description, "")))
+		      out.Add("")
+		    End If
 		  Next
 		End Sub
 	#tag EndMethod
@@ -26,7 +35,7 @@ Protected Class WakeTokenReport
 		Private Sub AddFiles(out() As String, key As String)
 		  // The files a pattern cost the most on.
 		  Var files() As WakeToolUsageGroup = mCatalog.ToolUsage(WakeCatalog.ToolGroupings.File, mFromTime, _
-		  WakeCatalog.ToolGroupings.Pattern, key)
+		  WakeCatalog.ToolGroupings.Pattern, key, ProjectID, UntilTime)
 		  If files.Count = 0 Then Return
 		  
 		  out.Add("| File | Calls | ≈ Tokens |")
@@ -48,7 +57,7 @@ Protected Class WakeTokenReport
 		Private Sub AddLongSessions(out() As String)
 		  // The sessions that paid most to re-send their earlier turns, and where that began to
 		  // outweigh each turn's own work.
-		  Var sessions() As WakeLongSession = mCatalog.LongSessions(mFromTime, kLongSessionCount)
+		  Var sessions() As WakeLongSession = mCatalog.LongSessions(mFromTime, kLongSessionCount, ProjectID, UntilTime)
 		  If sessions.Count = 0 Then Return
 		  
 		  out.Add("## Long sessions")
@@ -63,7 +72,9 @@ Protected Class WakeTokenReport
 		  For i As Integer = 0 To sessions.LastIndex
 		    Var g As WakeLongSession = sessions(i)
 		    Var number As Integer = i + 1
-		    out.Add("### " + number.ToString + ". " + WakeMarkdown.Cell(g.Label) + ": ≈" + WakeFormat.Tokens(g.CarriedTokens) + " carried")
+		    Var label As String = g.Label
+		    If LeaveOutText Then label = If(g.Session Is Nil, "Session", "Session " + WakeMarkdown.Code(g.Session.UID))
+		    out.Add("### " + number.ToString + ". " + WakeMarkdown.Cell(label) + ": ≈" + WakeFormat.Tokens(g.CarriedTokens) + " carried")
 		    out.Add("")
 		    
 		    Var facts() As String
@@ -81,7 +92,7 @@ Protected Class WakeTokenReport
 		    If g.TippingTurn > 0 Then
 		      Var line As String = "From turn " + g.TippingTurn.ToString + " on, re-sending earlier turns cost more " + _
 		      "than a turn's own work"
-		      If g.TippingPrompt <> "" Then
+		      If g.TippingPrompt <> "" And Not LeaveOutText Then
 		        out.Add(line + ". That turn began with:")
 		        out.Add("")
 		        out.Add(WakeMarkdown.Fence(WakeFormat.OneLine(g.TippingPrompt, kPromptLength), ""))
@@ -123,7 +134,8 @@ Protected Class WakeTokenReport
 	#tag Method, Flags = &h21
 		Private Sub AddReadsLedNowhere(out() As String)
 		  // The files whose reads most often led nowhere, by what those reads cost.
-		  Var files() As WakeToolUsageGroup = mCatalog.ToolUsage(WakeCatalog.ToolGroupings.File, mFromTime)
+		  Var files() As WakeToolUsageGroup = mCatalog.ToolUsage(WakeCatalog.ToolGroupings.File, mFromTime, _
+		  WakeCatalog.ToolGroupings.Tool, "", ProjectID, UntilTime)
 		  Var unused() As WakeToolUsageGroup
 		  Var order() As Int64
 		  Var reads, nowhereReads As Integer
@@ -200,7 +212,8 @@ Protected Class WakeTokenReport
 		  // nowhere and the sessions that carried most. Re-reads have their own section. Patterns with
 		  // no calls have none.
 		  // Raises DatabaseException.
-		  Var groups() As WakeToolUsageGroup = mCatalog.ToolUsage(WakeCatalog.ToolGroupings.Pattern, mFromTime)
+		  Var groups() As WakeToolUsageGroup = mCatalog.ToolUsage(WakeCatalog.ToolGroupings.Pattern, mFromTime, _
+		  WakeCatalog.ToolGroupings.Tool, "", ProjectID, UntilTime)
 		  
 		  Var all As New WakeUsageGroup
 		  Var calls As Integer
@@ -249,6 +262,14 @@ Protected Class WakeTokenReport
 	#tag EndMethod
 
 
+	#tag Property, Flags = &h0
+		#tag Note
+			True leaves out text from the transcripts (commands, prompts, session titles), keeping
+			tools, paths, session ids and figures. For reports that may end up in another project.
+		#tag EndNote
+		LeaveOutText As Boolean
+	#tag EndProperty
+
 	#tag Property, Flags = &h21
 		Private mCatalog As WakeCatalog
 	#tag EndProperty
@@ -267,6 +288,20 @@ Protected Class WakeTokenReport
 
 	#tag Property, Flags = &h21
 		Private mTotalTokens As Int64
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		#tag Note
+			One project's calls only, by index id. 0 means every project.
+		#tag EndNote
+		ProjectID As Integer
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		#tag Note
+			Leaves out calls from then on. Nil means up to now.
+		#tag EndNote
+		UntilTime As DateTime
 	#tag EndProperty
 
 

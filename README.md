@@ -29,8 +29,10 @@ any session step by step and find the command your agent ran last Tuesday.
 - **Learn why a session got expensive.** Every reply re-sends the whole
   conversation, so a long session pays for its first turns again and again.
   Wake shows you where that started, and which calls cost you the most.
-- **Hand the fix back to your agent.** Export a Markdown checklist of what
-  would have sent less, ready to paste into an issue or a prompt.
+- **Let your agent find its own waste.** The `wake` command gives a coding
+  agent the same figures, so it can see what cost most, change its
+  instructions or tools, and check later whether that helped. Or export a
+  Markdown checklist and hand it over yourself.
 - **Replay any session.** Prompts, answers, commands and diffs in one
   timeline, with subagents nested where they ran.
 - **Find anything.** Search every prompt, answer and command output across
@@ -51,6 +53,59 @@ change them, doesn't connect to the internet and doesn't collect anything.
    in a few seconds.
 
 Wake runs on Macs with Apple silicon. Windows and Linux versions are planned.
+
+## Use Wake from your coding agent
+
+Wake.app includes a `wake` command. With it, an agent such as Claude Code
+can ask where its own tokens went, without reading through transcripts, and
+fix the cause: a note in `CLAUDE.md` about where things live, a script that
+trims a noisy build's output, a habit of starting fresh sessions. Wake
+doesn't need to be open; the command updates the index itself.
+
+**1. Put `wake` on your PATH** by linking it from the app:
+
+```sh
+sudo mkdir -p /usr/local/bin
+sudo ln -sf /Applications/Wake.app/Contents/Helpers/wake/wake /usr/local/bin/wake
+wake --version
+```
+
+**2. Let your agent run it.** `wake` only reads, so you can allow it without
+being asked each time. In Claude Code, add `"Bash(wake:*)"` to
+`permissions.allow` in `.claude/settings.json` (or `~/.claude/settings.json`
+for every project).
+
+**3. Ask.** In a project folder, for example:
+
+> Run `wake report --project . --since 14d`. Where are we wasting tokens in
+> this project, and what's the one change that would save most?
+
+The agent can find the rest with `wake --help`. The commands it uses most:
+
+| Command | What it answers |
+|---|---|
+| `wake report --project . --since 14d` | What cost most, the files and commands behind it, and what to change |
+| `wake usage --by intent` | The same as a table: line-range reads, whole-file reads, searches, re-reads, commands… |
+| `wake calls --key "Re-read" --snippets` | The calls behind one row, and what each one asked for |
+| `wake sessions --since 7d` | Recent sessions with their tokens and cost |
+| `wake compare --project . --at 2026-11-18` | Before and after a change, as rates, so a busier week doesn't look worse |
+
+Leave out `--project` to look across every project. `--json` gives exact
+figures for scripts.
+
+**4. Make it a routine.** [`docs/AGENT-LOOP.md`](docs/AGENT-LOOP.md) is a
+prompt for doing this every week or two: read the report, change one thing,
+note the date in a log, and next time use `wake compare` to check whether it
+helped before changing anything else. It also tells the agent to aim at
+waste (reads that led nowhere, files read again, output nobody used), not at
+reading less, which would only save tokens by doing worse work. Copy it into
+your project, or paste it as the prompt.
+
+**What the agent sees.** By default, `wake` prints figures, file paths and
+session ids, and leaves out the projects you've hidden in Wake. `--snippets`
+adds text from your transcripts: commands, prompts and session titles. Wake
+itself never goes online, but whatever a command prints becomes part of the
+agent's conversation, and the agent sends that to its model provider.
 
 ## Feature tour
 
@@ -170,6 +225,10 @@ Wake is built with [Xojo](https://www.xojo.com).
 
 You can run and debug Wake in the Xojo IDE for free. A Xojo license is only
 needed to build standalone binaries.
+
+The `wake` command is its own console project, `WakeCLI/WakeCLI.xojo_project`,
+which shares Wake's `Core` code. Its tests run with Wake's. A release build of
+Wake copies the CLI's latest build into the app, so build `WakeCLI` first.
 
 ## Running the tests
 

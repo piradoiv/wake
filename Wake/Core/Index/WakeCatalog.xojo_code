@@ -193,21 +193,31 @@ Protected Class WakeCatalog
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
-		Function LongSessions(fromTime As DateTime = Nil, limit As Integer = 5) As WakeLongSession()
-		  // The top-level sessions whose turns carried the most from fromTime on, at most limit of
-		  // them, each with its carried tokens per model and the first turn whose carried tokens
-		  // outweighed its own work. Hidden projects are left out unless IncludeHidden is set.
-		  // Raises DatabaseException.
+		Function LongSessions(fromTime As DateTime = Nil, limit As Integer = 5, projectID As Integer = 0, untilTime As DateTime = Nil) As WakeLongSession()
+		  // The top-level sessions whose turns carried the most from fromTime on (and before untilTime),
+		  // at most limit of them, each with its carried tokens per model and the first turn whose
+		  // carried tokens outweighed its own work. projectID 0 means every project; hidden projects
+		  // are left out then unless IncludeHidden is set. Raises DatabaseException.
 		  Var clauses() As String
 		  Var values() As Variant
 		  clauses.Add("s.parent_id IS NULL")
 		  
-		  Var hidden As String = HiddenProjectsClause("s.project_id")
-		  If hidden <> "" Then clauses.Add(hidden)
+		  If projectID <> 0 Then
+		    clauses.Add("s.project_id = ?")
+		    values.Add(projectID)
+		  Else
+		    Var hidden As String = HiddenProjectsClause("s.project_id")
+		    If hidden <> "" Then clauses.Add(hidden)
+		  End If
 		  
 		  If fromTime <> Nil Then
 		    clauses.Add("coalesce(t.timestamp, s.start_time) >= ?")
 		    values.Add(fromTime.SecondsFrom1970)
+		  End If
+		  
+		  If untilTime <> Nil Then
+		    clauses.Add("coalesce(t.timestamp, s.start_time) < ?")
+		    values.Add(untilTime.SecondsFrom1970)
 		  End If
 		  values.Add(Max(limit, 1))
 		  
@@ -514,10 +524,10 @@ Protected Class WakeCatalog
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
-		Function Sessions(agentID As String, projectID As Integer, includeCommandOnly As Boolean = False, fromTime As DateTime = Nil) As WakeSessionInfo()
+		Function Sessions(agentID As String, projectID As Integer, includeCommandOnly As Boolean = False, fromTime As DateTime = Nil, untilTime As DateTime = Nil) As WakeSessionInfo()
 		  // Top-level sessions, newest first. An empty agentID means every agent, and projectID 0
 		  // means every project but the hidden ones. fromTime keeps the sessions that started from
-		  // then on. Raises DatabaseException.
+		  // then on, and untilTime those that started before then. Raises DatabaseException.
 		  Var clauses() As String
 		  Var values() As Variant
 		  clauses.Add("s.parent_id IS NULL")
@@ -540,6 +550,11 @@ Protected Class WakeCatalog
 		  If fromTime <> Nil Then
 		    clauses.Add("s.start_time >= ?")
 		    values.Add(fromTime.SecondsFrom1970)
+		  End If
+		  
+		  If untilTime <> Nil Then
+		    clauses.Add("s.start_time < ?")
+		    values.Add(untilTime.SecondsFrom1970)
 		  End If
 		  
 		  Return ReadSessions(String.FromArray(clauses, " AND "), values, "s.start_time IS NULL, s.start_time DESC, s.id DESC")
@@ -585,10 +600,11 @@ Protected Class WakeCatalog
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
-		Function ToolCalls(grouping As ToolGroupings, key As String, fromTime As DateTime = Nil, limit As Integer = 500) As WakeToolCallInfo()
+		Function ToolCalls(grouping As ToolGroupings, key As String, fromTime As DateTime = Nil, limit As Integer = 500, projectID As Integer = 0, untilTime As DateTime = Nil) As WakeToolCallInfo()
 		  // The tool calls in one group of ToolUsage, with the most tokens (added plus re-read) first,
 		  // at most limit of them. Each call carries its top-level session, also when a subagent made
-		  // it. Raises DatabaseException.
+		  // it. untilTime leaves out calls from then on, and projectID 0 means every project but the
+		  // hidden ones. Raises DatabaseException.
 		  Var clauses() As String
 		  Var values() As Variant
 		  clauses.Add(ToolGroupKey(grouping, clauses) + " = ?")
@@ -597,6 +613,19 @@ Protected Class WakeCatalog
 		  If fromTime <> Nil Then
 		    clauses.Add("coalesce(t.timestamp, us.start_time) >= ?")
 		    values.Add(fromTime.SecondsFrom1970)
+		  End If
+		  
+		  If untilTime <> Nil Then
+		    clauses.Add("coalesce(t.timestamp, us.start_time) < ?")
+		    values.Add(untilTime.SecondsFrom1970)
+		  End If
+		  
+		  If projectID <> 0 Then
+		    clauses.Add("ts.project_id = ?")
+		    values.Add(projectID)
+		  Else
+		    Var hidden As String = HiddenProjectsClause("ts.project_id")
+		    If hidden <> "" Then clauses.Add(hidden)
 		  End If
 		  
 		  Var source As String = " FROM tool_usage t JOIN sessions us ON us.id = t.session_id " + _
@@ -699,13 +728,14 @@ Protected Class WakeCatalog
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
-		Function ToolUsage(grouping As ToolGroupings, fromTime As DateTime = Nil, withinGrouping As ToolGroupings = ToolGroupings.Tool, withinKey As String = "") As WakeToolUsageGroup()
+		Function ToolUsage(grouping As ToolGroupings, fromTime As DateTime = Nil, withinGrouping As ToolGroupings = ToolGroupings.Tool, withinKey As String = "", projectID As Integer = 0, untilTime As DateTime = Nil) As WakeToolUsageGroup()
 		  // Estimated tokens per tool, tool and file type, shell command, file or pattern, from tool
 		  // calls made from fromTime on, with the most tokens (added plus re-read) first. Each group
 		  // is split by model so it can be priced, and counts its reads, re-reads and reads that led
 		  // nowhere, with what those cost. A withinKey
 		  // limits it to the calls in that group of withinGrouping, such as the files of one pattern.
-		  // Raises DatabaseException.
+		  // untilTime, when set, leaves out calls from then on. projectID 0 means every project but
+		  // the hidden ones. Raises DatabaseException.
 		  Var clauses() As String
 		  Var values() As Variant
 		  Var keyExpression As String = ToolGroupKey(grouping, clauses)
@@ -722,6 +752,19 @@ Protected Class WakeCatalog
 		  If fromTime <> Nil Then
 		    clauses.Add("coalesce(t.timestamp, us.start_time) >= ?")
 		    values.Add(fromTime.SecondsFrom1970)
+		  End If
+		  
+		  If untilTime <> Nil Then
+		    clauses.Add("coalesce(t.timestamp, us.start_time) < ?")
+		    values.Add(untilTime.SecondsFrom1970)
+		  End If
+		  
+		  If projectID <> 0 Then
+		    clauses.Add("ts.project_id = ?")
+		    values.Add(projectID)
+		  Else
+		    Var hidden As String = HiddenProjectsClause("ts.project_id")
+		    If hidden <> "" Then clauses.Add(hidden)
 		  End If
 		  
 		  // Subagent calls count toward the session that started the subagent.
@@ -773,10 +816,10 @@ Protected Class WakeCatalog
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
-		Function Usage(grouping As UsageGroupings, fromTime As DateTime = Nil, agentID As String = "", projectID As Integer = 0) As WakeUsageGroup()
+		Function Usage(grouping As UsageGroupings, fromTime As DateTime = Nil, agentID As String = "", projectID As Integer = 0, untilTime As DateTime = Nil) As WakeUsageGroup()
 		  // Token usage per day, project, model or top-level session, split by model so it can be
 		  // priced. Subagent usage counts toward the session that started it. fromTime limits it to
-		  // responses from then on. An empty agentID means every agent, and projectID 0 every
+		  // responses from then on, and untilTime to responses before then. An empty agentID means every agent, and projectID 0 every
 		  // project but the hidden ones. Days are calendar days in the local time zone, newest first; other groups come
 		  // with the most tokens first. Raises DatabaseException.
 		  Var keyExpression, labelExpression, order As String
@@ -817,6 +860,11 @@ Protected Class WakeCatalog
 		  If fromTime <> Nil Then
 		    clauses.Add("coalesce(u.timestamp, us.start_time, ts.start_time) >= ?")
 		    values.Add(fromTime.SecondsFrom1970)
+		  End If
+		  
+		  If untilTime <> Nil Then
+		    clauses.Add("coalesce(u.timestamp, us.start_time, ts.start_time) < ?")
+		    values.Add(untilTime.SecondsFrom1970)
 		  End If
 		  
 		  // Subagents are one level deep, so a response's top-level session is its session's

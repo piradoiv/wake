@@ -22,14 +22,17 @@ right file in the same commit as the work:
 
 Remove anything that turns out to be wrong. Keep all three short and current.
 
-- Commit straight to `main`. Don't create branches unless the maintainer asks.
+- Commit straight to the current release branch (`release/1.2` now). Don't
+  create other branches unless the maintainer asks.
 - Never write to, move or delete agent transcript files. Open them read-only.
 - No network code and no telemetry.
 - The timeline and file history pages must stay self-contained: inline CSS and JS, no remote
   URLs, and its content-security policy kept at `default-src 'none'`.
   Transcript text is always escaped with `WakeTimeline.EscapeHTML`.
-- Keep everything in `Wake/Core/` free of Desktop* UI classes, because a console
-  companion will reuse it later.
+- Keep everything in `Wake/Core/` free of Desktop* UI classes: the `wake` CLI
+  (`WakeCLI/WakeCLI.xojo_project`, its own folder) compiles it too. Add new Core items to both
+  project manifests. CLI logic lives in `Core/CLI` so the desktop project's
+  tests cover it.
 - UI code reads the index through `WakeCatalog`, not with its own SQL.
 - Unknown record types and fields must be skipped and counted, never crash.
 - Reports and analyses stay generic: no rules for a particular language, file
