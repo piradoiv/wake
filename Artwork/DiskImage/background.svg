@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 380" width="540" height="380">
+  <!-- The disk image window's background. Finder puts Wake's icon centred at
+       (140, 170) and Applications at (400, 170), 128 px, with their labels
+       below. Nothing goes in the bottom 30 points: Finder's path bar covers
+       them when the person has it turned on. -->
+  <defs>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C9DDF0"/>
+      <stop offset="1" stop-color="#A9C6E3"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="270" cy="170" r="190" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <!-- The wake fades out behind the point, as in the icon. -->
+    <linearGradient id="fade" x1="214" y1="0" x2="318" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1F64A8" stop-opacity="0"/>
+      <stop offset="1" stop-color="#1F64A8" stop-opacity="0.95"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="540" height="380" fill="url(#sea)"/>
+  <rect width="540" height="380" fill="url(#glow)"/>
+
+  <!-- The arrow: the icon's point travelling right, its wake opening behind it. -->
+  <g fill="none" stroke="url(#fade)" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M214 140 Q270 160 318 170 Q270 180 214 200" stroke-width="5"/>
+    <path d="M222 124 Q262 150 296 160" stroke-width="3.5" opacity="0.55"/>
+    <path d="M222 216 Q262 190 296 180" stroke-width="3.5" opacity="0.55"/>
+  </g>
+  <circle cx="320" cy="170" r="7" fill="#1F64A8"/>
+
+  <text x="270" y="318" text-anchor="middle" fill="#0A1A36"
+        font-family="SF Pro Text, Helvetica Neue, Helvetica, sans-serif"
+        font-size="15" font-weight="600">Drag Wake to Applications</text>
+</svg>

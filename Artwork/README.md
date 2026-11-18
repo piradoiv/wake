@@ -16,6 +16,18 @@ for n in 32 48 64 128 256 512 1024; do
 done
 ```
 
+## Disk image background
+
+`DiskImage/background.svg` is the window background of `Wake.dmg`
+(540×380 points): an arrow from Wake to Applications, drawn like the icon's
+wake, and "Drag Wake to Applications". `scripts/make-dmg.sh` puts
+`DiskImage/background.tiff` in the image, so render it again after changing
+the SVG:
+
+```sh
+Artwork/DiskImage/render.sh
+```
+
 ## Social preview
 
 `social-preview.png` (1280×640) is the image GitHub shows when the repository

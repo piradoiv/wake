@@ -413,7 +413,74 @@ Each milestone below is one session's work, ending with tests and a commit.
   Then the **Releases** note below says to ship the `.dmg` instead of a zip,
   uploaded as `Wake.dmg`, and the README's download links follow.
 
-- [ ] **29. A disk image that looks finished.** Opening `Wake.dmg` shows a
+### 1.2: Wake on the command line
+
+Goal: a coding agent can ask Wake where its tokens went, change something
+(instruction files, a wrapper script, a habit), and check later whether it
+helped, in a loop it runs every day, week or month. A `wake` console app
+built on `Wake/Core` answers with the figures the Usage window shows, so
+the agent never parses transcripts itself. CLI, not MCP: it costs no
+context until it's run, every agent and cron job can call it, and it's
+tested like the rest. A `wake mcp` over stdio can wrap the same commands
+later if it's ever needed. Every command stays read-only: Wake reports and
+the agent changes things. Output is meant to be read by a model, so it's
+short by default (tables of the top rows, `--limit`), with `--json` for
+scripts. Aggregates and paths only by default; prompt, command and summary
+text, which can carry one project's content into another project's agent,
+only with `--snippets`. Hidden projects are left out unless `--all`.
+
+- [x] **29. Console app and `wake usage`.** `WakeCLI/WakeCLI.xojo_project`
+  (console, built as `wake`) lists the desktop project's `Core/` files
+  through `../Wake/Core/` paths; its own items are `App.xojo_code`, which
+  wires `WakeCLI` to Wake's folders, stdout and stderr, and its build steps. Everything else is
+  in `Core/CLI`, tested in the desktop project: `WakeCLIArgs` (options,
+  flags, `ParseStart`/`ParseEnd` for `today`, `yesterday`, `7d`, `4w`, `3m`,
+  `1y`, `YYYY-MM-DD`, `all`) and `WakeCLI` (`help`, `--version`, `usage`;
+  output collected in `Output`/`ErrorOutput`, `CurrentTime` for tests).
+  `wake usage` indexes first (`--no-index` skips it), then prints one row
+  per `--by` group (`project`, `model`, `day`, `session`, `tool`,
+  `file-type`, `command`, `file`, `intent`, the last with its advice),
+  `--limit` 20 by default, `--json` with exact counts per model.
+  `--project` takes a path, a folder inside one (`.`), or a name; within a
+  project, files are shown relative to it. `WakeCatalog.Usage` gains
+  `untilTime`, and `ToolUsage` gains `projectID`, `untilTime` and leaves
+  out hidden projects like the other queries. 10 tests (149 in all). On
+  real data, a run with the index up to date takes 0.2 s.
+- [x] **30. `wake report`, `wake calls` and `wake sessions`.** `report`
+  prints `WakeTokenReport` for the period and project; it gains
+  `ProjectID`, `UntilTime` and `LeaveOutText`, which names calls by tool,
+  target and session id and sessions by id, with no commands or prompts.
+  `calls --key` (an intent's label or key, a tool, a command or a file,
+  relative to the project) lists the group's calls with time, tokens,
+  tool, intent, target and session id. `sessions` lists the sessions that
+  started in the period with their whole totals. `--snippets` adds the
+  transcript text (commands, titles, prompts) to all three; without it
+  output holds figures, paths and ids only. `ToolCalls`, `LongSessions`
+  and `Sessions` gain the project and end filters. `WakeCLI.Prepare` reads
+  the period and opens the catalog for every command. 13 CLI tests (152 in
+  all).
+- [x] **31. `wake compare`.** `--at DAY [--days N]` (14 by default, the
+  after side ending today at the latest) or `--before A..B --after C..D`,
+  per project. Sessions count in the period they started in, with their
+  whole totals, since a session started before a change didn't have it;
+  tool calls count by when they were made. Rates: sessions and prompts
+  (the sample), tokens per session and per prompt, cost per session when
+  priced, ≈ carried share, tool calls per prompt, ≈ tokens per call, the
+  share of reads that led nowhere and each intent's share of tool tokens.
+  Shares change in points, the rest in percent. Fewer than 5 sessions on a
+  side gets a warning (`few_sessions` in JSON). 14 CLI tests (153 in all).
+- [x] **32. Ship the CLI and describe the loop.** Wake's Release build
+  copies WakeCLI's build into `Wake.app/Contents/Helpers/wake` (`CopyCLI`),
+  Sign signs and notarizes the app with the CLI inside, and
+  `scripts/check-cli.sh` (`CheckCLI`) checks the CLI after it; `make-dmg.sh` refuses an app whose CLI isn't signed with the
+  app's identity. The README has a CLI section and the PATH link, and
+  `docs/AGENT-LOOP.md` is the routine for agents: report, change one
+  thing, log the date, `wake compare --at` it next time, and cut waste
+  signals, not reads the work needed. Checked on the 1.2 build: app and
+  image accepted by Gatekeeper as notarized, the bundled `wake` runs from
+  the mounted image through a symlink.
+
+- [x] **33. A disk image that looks finished.** Opening `Wake.dmg` shows a
   fixed window (about 540 × 380, no toolbar, sidebar or status bar) with
   128 px icons: Wake on the left, Applications on the right, and a
   background with an arrow between them and "Drag Wake to Applications".
@@ -429,9 +496,66 @@ Each milestone below is one session's work, ending with tests and a commit.
   unreliable on current macOS (a known weak spot of this approach), that's
   a roadblock to raise, not a reason to add a dependency. Checked by
   mounting the image in light and dark, and with `spctl` as in 28.
+  Done as described, except that the background is light: Finder keeps the
+  icon labels black over a background picture in dark mode too. The 1.2
+  release build's image is `ULFO`, 12.9 MB, notarized and stapled, with the
+  volume icon, and its window was checked by the maintainer in both modes.
 
-- [ ] **30. Homebrew cask.** `brew install piradoiv/tap/wake` installs the
-  app. Needs 28. A third-party tap, because the official `homebrew/cask`
+Found by an agent trying `wake report` on this project's own sessions
+(2026-11-18). Agents mostly run compound shell commands (`cd … && a; b; c`),
+and the figures per file get unreliable with them:
+
+- [ ] **34. One intent and target per part of a compound command.** A Bash
+  call is labelled by its first program and credited to one file, so
+  `ls dir; sed -n 1,40p a; sed -n 170,200p a` counts as a Listing on `a`,
+  and a `sed` on one file plus a `grep` on another goes to whichever file
+  comes last. Split the command on `;`, `&&`, `||` and newlines (not
+  inside quotes or heredocs), classify each part, and give the call the
+  intent of its heaviest part (reads over listings over the rest) with
+  every file it touched. Tokens can't be split between parts, so per-file
+  tables share a call's tokens evenly between its files, or count it once
+  under each file with a note saying so. Pick one and record it in
+  Decisions.
+- [ ] **35. Follow `cd` through a command.** Paths are resolved against the
+  directory at the start of the command, so `…; cd Wake; sed … Core/X`
+  is shown as `<project>/Core/X`, which doesn't exist. Keep track of the
+  directory across the parts from 34 (`cd dir`, `cd ..`, `cd "$D"` when
+  `D=` was set earlier in the same command), and resolve each part's
+  paths against it.
+- [ ] **36. Clean paths.** Collapse `.` and `..` (`Wake/../docs/X` becomes
+  `docs/X`). Expand variables set earlier in the same command
+  (`S=/tmp/…; cat > $S/x`). A path that still holds an unexpanded `$` is
+  shown as written, but never resolved against the project folder.
+- [ ] **37. Credit calls to the project their files are in.** A session
+  started in one project can `cd` into another one, and its calls are
+  counted under the first. When every file a call touched resolves inside
+  another known project, count the call under that project, and leave out
+  files outside every project (temporary and scratch folders) from the
+  per-file tables. Sessions keep the project they started in.
+- [ ] **38. Show what a call added, not only what it cost later.** "≈ Total"
+  is mostly re-reads of the cache, so it ranks calls by how early they
+  came in a long session more than by how big their output was: a call
+  that added 6.9K showed as 1.1M. In the report, list each top call's
+  "added" next to its total, and pick the top calls of each section by
+  what they added, so the heavy outputs come first. The section totals
+  stay as they are.
+- [ ] **39. One number and date format in CLI output.** Costs follow the
+  system locale (`$6,71`) but `<$0.01` doesn't, and the report's dates
+  are localised (`18 nov 2026, 9:25`) while `calls` uses ISO. The CLI's
+  readers are mostly models and scripts, so use `.` for decimals and ISO
+  dates and times (`2026-11-18 09:25`) everywhere in its output. The
+  desktop app keeps the locale.
+- [ ] **40. The whole spend at the top of the report.** The report leads
+  with tool calls' cost ($6.71 here) while one session's carried context
+  cost $6.36 by itself, and the total ($28.91) appears nowhere. Add the
+  period's sessions, total tokens, total cost and ≈ carried share to the
+  summary table, and when carried context costs more than tool calls,
+  say so in a line above the sections, pointing to Long sessions.
+
+- [ ] **41. Homebrew cask.** `brew install piradoiv/tap/wake` installs the
+  app, and its `binary` stanza links `Contents/Helpers/wake/wake` (the
+  tool inside the folder that also holds `wake Libs`) as `wake`.
+  Needs 28 and 32. A third-party tap, because the official `homebrew/cask`
   only takes apps that are already well known (stars, forks, watchers).
   The tap is a new public repository, `piradoiv/homebrew-tap`. Before
   starting, ask the maintainer to create it on GitHub and wait for it:
@@ -452,8 +576,8 @@ Each milestone below is one session's work, ending with tests and a commit.
   (`shasum -a 256 Wake.dmg`) in the tap after each upload, and the
   README lists the `brew` line under the download link.
 
-After v0.1: Codex CLI and Gemini CLI parsers, once real sessions exist on a
-machine to inspect, and the console companion.
+Later: Codex CLI and Gemini CLI parsers, once real sessions exist on a
+machine to inspect, and `wake mcp` if the CLI proves not enough.
 
 ## Decisions
 
@@ -507,10 +631,45 @@ machine to inspect, and the console companion.
 | **Line blame matches by text**, not by replaying patches: the latest change that added a line with the same text claims it, nearest position first, and the page says it's a guess. | Transcripts hold patches, not file states, and the user's own edits are invisible, so a replay would break at the first gap. Text matching degrades one line at a time. |
 | The blame is a **tab in the history page**, not a native control. | No window uses a segmented control or tab panel yet, and a mark's jump to its change stays inside the page. |
 | macOS builds are **ARM 64-bit only** (Apple silicon), `MacBuildArchitecture=3` in the project file. | Chosen by the maintainer. Rosetta ends after macOS 27, and since September 2026 the Mac App Store takes arm64-only apps that need macOS 13 or later. |
+| Agents query Wake through a **`wake` CLI, not an MCP server**. MCP may wrap it later. | Chosen by the maintainer. A CLI costs no context until it's run and works with any agent or cron job; an MCP server's tool definitions sit in every session. |
 | Long blocks and persisted output are **fetched on demand** with `executeInXojoSync`, not embedded. | Keeps the page small for 10 MB transcripts. Persisted output is read only when asked for, capped at 4 MB. |
 
 ## Working notes and gotchas
 
+- **Two projects share `Core/`.** `Wake/Wake.xojo_project` lists it as
+  `Core/…`, `WakeCLI/WakeCLI.xojo_project` as `../Wake/Core/…`: the IDE
+  compiles from those paths and keeps them when it saves (checked). Each
+  project has its own folder because the IDE writes per-folder files
+  (`AGENTS.md`, `XOJO-*.md`, `XojoAgentServer.json`, `Build Automation`).
+  A new Core item goes into both manifests. With both open in the IDE,
+  reload a changed shared item in both, or the stale copy can overwrite it
+  on the next save. The console project has no tests: they run in the
+  desktop project.
+- **A `RunProject` right after reloading items in the other project can do
+  nothing**: the Messages panel shows "Wake Ended" with no "Launched", and
+  the `WakeRunTests` marker stays. Send `RunProject` again.
+- **`String.IndexOf` ignores case** unless given `ComparisonOptions.CaseSensitive`,
+  so a test that checks some text is missing can match other wording.
+- **Xojo's Sign step skips ARM 64 console apps.** On an ARM 64 `WakeCLI`
+  build it leaves `wake` and `wake Libs` ad-hoc signed (2026r3.1, with
+  either certificate and Notarize on or off; a Universal build is signed
+  fine; reported to Xojo). `WakeCLI` keeps a Sign step (Developer ID, hardened runtime,
+  no notarization) that does nothing until Xojo fixes it. It doesn't matter
+  for releases: Wake's own Sign step signs everything in
+  `Contents/Helpers`, CLI included. The maintainer wants the IDE to sign
+  it, never a script. Universal builds already come out signed, but Wake
+  is ARM 64 only and a Universal CLI doubles its size.
+- **"Make sure that your computer is connected to Internet"** from the
+  IDE's notarization can mean Apple refused it. Run `xcrun notarytool
+  history --keychain-profile wake-notary`: a 403 "required agreement is
+  missing or has expired" means accepting the new agreements on
+  developer.apple.com and in App Store Connect, then waiting a few minutes.
+- **Building the CLI:** `RunIDEScript` with `BuildApp(24)` (macOS ARM 64)
+  on `WakeCLI/WakeCLI.xojo_project`, only when the maintainer has said so. A debug
+  run's stdout goes nowhere readable. The build is
+  `WakeCLI/Builds - WakeCLI/macOS ARM 64 bit/wake/wake` plus a `wake Libs` folder
+  beside it that it needs (milestone 32 ships both). Don't `Print` in an
+  IDE script: it opens a dialog.
 - **Shared borders in MainWindow:** neighbouring bordered tables overlap by
   1 px so their borders draw as one line: the left lists' right border and
   `DetailList`'s left border both sit at x 880. `GlanceTiles` draws no border,
@@ -558,14 +717,21 @@ machine to inspect, and the console companion.
   ID Application certificate (not Apple Distribution), hardened runtime on,
   notarized by the IDE, no entitlements, no sandbox. A Release build then
   runs the `ReleaseScript` step, which calls `scripts/make-dmg.sh`: it makes
-  `Wake.dmg` next to the app, signs it, notarizes it with
+  `Wake.dmg` next to the app (laid out by Finder, see below), signs it,
+  notarizes it with
   the `wake-notary` keychain profile (`xcrun notarytool store-credentials`,
   once per Mac: the IDE keeps its own credentials to itself) and staples it.
   A post-build step can't cancel the build, so a failure shows a dialog and
   leaves no image. Check a build with `spctl -a -vv -t exec Wake.app` and
   `spctl -a -vv -t open --context context:primary-signature` on the image
   (both expect "Notarized Developer ID"). Bump `MajorVersion`/`MinorVersion`
-  and the Short Version together. Upload the image as is, **`Wake.dmg`**,
+  and the Short Version together, in both `Wake.xojo_project` and
+  `WakeCLI.xojo_project`. Build `WakeCLI` (macOS ARM 64) before Wake: the
+  `CopyCLI` step copies its build folder into `Contents/Helpers/wake`, Sign
+  signs it with the app, and then `CheckCLI` runs `scripts/check-cli.sh`,
+  which refuses a CLI build older than the Core sources, with another
+  version, or not signed like the app (Developer ID, hardened runtime,
+  timestamp). Upload the image as is, **`Wake.dmg`**,
   with no version in the name: the README's download links point at
   `releases/latest/download/Wake.dmg`. Tag releases `v<major>.<minor>.<bug>`.
   A Mac App Store build would need the
@@ -573,8 +739,26 @@ machine to inspect, and the console companion.
   and Wake would keep a security-scoped bookmark to it.
 - **`CurrentBuildLocation` is the build folder**, not the app as the IDE
   scripting docs say, so `make-dmg.sh` takes either and finds the one
-  `.app` inside. `hdiutil create`/`attach` print a deprecation warning
-  (use `diskutil image`) on macOS 27 but still work.
+  `.app` inside. `hdiutil create`/`attach`/`convert` print a deprecation
+  warning (use `diskutil image`) on macOS 27 but still work.
+- **The disk image window** is laid out by Finder, through an AppleScript in
+  `make-dmg.sh`, so the IDE needs Automation permission for Finder (macOS
+  asks on the first release build). `make-dmg.sh --unsigned <app copy>`
+  makes the image without signing or notarizing, to check the layout; run
+  it on a copy, because it replaces the `Wake.dmg` next to the app. What
+  Finder does that isn't obvious:
+  - it addresses disks by name, and the maintainer often has several Wake
+    volumes mounted, so the script finds the volume by its mount path;
+  - window bounds include the 28-point title bar;
+  - reopening the window forgets its size, so the script sets it again;
+  - its layout pass removes `.VolumeIcon.icns`, and `hdiutil -srcfolder`
+    leaves it out, so the icon is copied in last;
+  - icon labels stay black over a background picture in dark mode too,
+    so the background can be light;
+  - the path bar is the viewer's own setting and covers the window's
+    bottom 28 points, so the background keeps text out of them.
+  The background is `Artwork/DiskImage/background.svg`; render it with
+  `Artwork/DiskImage/render.sh` and commit `background.tiff`.
 - **`WakeTimeline.Anchor` renders the page first**, so calling it while
   the page renders recurses into a stack overflow. Use the Protected
   `KnownAnchor` there.
